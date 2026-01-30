@@ -34,7 +34,7 @@ public class JpaLocationService implements LocationService {
     @Override
     @Transactional(readOnly = true)
     public List<LocationSummary> listActive() {
-        return locationMapper.toSummaryList(locationRepository.findByActiveTrueOrderBySortOrderAsc(null));
+        return locationMapper.toSummaryListFromEntities(locationRepository.findByActiveTrueOrderBySortOrderAsc());
     }
 
     @Override
