@@ -15,6 +15,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.Version;
 import com.vaadin.flow.server.WebBrowser;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import com.vaadin.flow.component.dependency.Uses;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
@@ -25,6 +26,7 @@ import org.vaadin.lineawesome.LineAwesomeIconUrl;
 @PageTitle("About")
 @Menu(order = 0, icon = LineAwesomeIconUrl.INFO_CIRCLE_SOLID)
 @PermitAll
+@Uses(LumoUtility.class)
 public class AboutView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     public AboutView() {
