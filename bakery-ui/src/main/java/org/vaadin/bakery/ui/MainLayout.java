@@ -25,7 +25,6 @@ import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import com.vaadin.flow.component.dependency.Uses;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.uimodel.data.UserDetail;
@@ -47,7 +46,6 @@ import java.util.Optional;
  */
 @Layout
 @PermitAll
-@Uses(LumoUtility.class)
 public class MainLayout extends AppLayout implements RouterLayout, AfterNavigationObserver {
 
     private final CurrentUserService currentUserService;
