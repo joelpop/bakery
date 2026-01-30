@@ -310,36 +310,36 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 5: Security
+## Phase 5: Security ✅
 
 ### 5.1 Security Configuration (bakery-app)
 
-- [ ] **SecurityConfig** - Spring Security + Vaadin integration
-  - [ ] VaadinSecurityConfigurer setup
-  - [ ] Custom login view configuration
-  - [ ] BCryptPasswordEncoder bean
-  - [ ] Session configuration (timeout, fixation protection)
+- [x] **SecurityConfig** - Spring Security + Vaadin integration
+  - [x] VaadinSecurityConfigurer setup
+  - [x] Custom login view configuration
+  - [x] BCryptPasswordEncoder bean
+  - [x] Session configuration (timeout, fixation protection)
 
-- [ ] **UserDetailsServiceImpl** - Load user by email
-  - [ ] Map UserEntity to Spring Security UserDetails
-  - [ ] Convert UserRoleCode to GrantedAuthority
+- [x] **UserDetailsServiceImpl** - Load user by email
+  - [x] Map UserEntity to Spring Security UserDetails
+  - [x] Convert UserRoleCode to GrantedAuthority
 
-- [ ] **CurrentUserServiceImpl** - Access authenticated user
-  - [ ] Get current user from SecurityContext
-  - [ ] Role checking methods
+- [x] **CurrentUserServiceImpl** - Access authenticated user
+  - [x] Get current user from SecurityContext
+  - [x] Role checking methods
 
 ### 5.2 Method Security (bakery-app)
 
-- [ ] Enable @PreAuthorize annotations
-- [ ] Admin-only operations in UserService
-- [ ] Self-edit restrictions (cannot delete own account, cannot demote last admin)
+- [x] Enable @PreAuthorize annotations
+- [ ] Admin-only operations in UserService *(to be added with admin views)*
+- [ ] Self-edit restrictions (cannot delete own account, cannot demote last admin) *(to be added with admin views)*
 
 ### 5.3 Password Validation
 
-- [ ] Entropy-based password strength calculation
-- [ ] Minimum 50 bits entropy requirement
-- [ ] Common password blocklist check
-- [ ] Strength indicator for UI feedback
+- [x] Entropy-based password strength calculation
+- [x] Minimum 50 bits entropy requirement
+- [x] Common password blocklist check
+- [x] Strength indicator for UI feedback
 
 ---
 
