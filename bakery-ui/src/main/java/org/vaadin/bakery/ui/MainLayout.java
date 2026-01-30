@@ -303,6 +303,21 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 "        padding: var(--lumo-space-xs) 0;" +
                 "      }" +
                 "      .main-layout [slot=''] { padding-bottom: 60px; }" +
+                "      /* Full-screen dialogs on mobile */" +
+                "      vaadin-dialog-overlay[theme~='responsive-dialog'] {" +
+                "        --_vaadin-dialog-content-width: 100vw !important;" +
+                "        --_vaadin-dialog-content-height: 100vh !important;" +
+                "      }" +
+                "      vaadin-dialog-overlay[theme~='responsive-dialog'] [part='overlay'] {" +
+                "        width: 100vw !important;" +
+                "        height: 100vh !important;" +
+                "        max-width: 100vw !important;" +
+                "        max-height: 100vh !important;" +
+                "        border-radius: 0;" +
+                "      }" +
+                "      /* Touch-optimized tap targets */" +
+                "      vaadin-button { min-height: 44px; min-width: 44px; }" +
+                "      vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-time-picker { --lumo-text-field-size: var(--lumo-size-l); }" +
                 "    }" +
                 "    .main-layout vaadin-tab a { text-decoration: none; color: inherit; display: flex; align-items: center; }" +
                 "  `;" +

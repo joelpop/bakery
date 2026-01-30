@@ -86,8 +86,12 @@ public class NewOrderDialog extends Dialog {
         setHeaderTitle("New Order");
         setModal(true);
         setCloseOnOutsideClick(false);
-        setWidth("700px");
-        setHeight("600px");
+        // Responsive sizing: max-width on desktop, full-screen on mobile via CSS theme
+        getElement().getThemeList().add("responsive-dialog");
+        setWidth("100%");
+        setMaxWidth("700px");
+        setHeight("auto");
+        setMaxHeight("90vh");
 
         // Step indicator
         stepIndicator = new Span("Step 1 of 2: Order Details");

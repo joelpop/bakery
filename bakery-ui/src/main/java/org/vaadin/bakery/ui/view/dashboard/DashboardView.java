@@ -177,7 +177,7 @@ public class DashboardView extends VerticalLayout {
         var row = new Div();
         row.getStyle()
                 .set("display", "grid")
-                .set("grid-template-columns", "1fr 1fr")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
                 .set("gap", "var(--lumo-space-m)");
 
         // Upcoming orders panel
