@@ -343,38 +343,40 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 6: Core UI Components
+## Phase 6: Core UI Components ✅
 
 ### 6.1 Application Shell (bakery-app)
 
-- [ ] **Application.java** updates
-  - [ ] @StyleSheet(Aura.STYLESHEET) - Aura theme
-  - [ ] @EnableVaadin for route scanning
+- [x] **Application.java** updates
+  - [x] @StyleSheet(Aura.STYLESHEET) - Aura theme
+  - [x] @EnableVaadin for route scanning
 
 ### 6.2 Main Layout (bakery-ui)
 
-- [ ] **MainLayout** - Application shell with navigation
-  - [ ] App branding (Café Sunshine logo/name)
-  - [ ] Desktop: Top horizontal navigation tabs
-  - [ ] Mobile: Bottom tab bar with overflow menu
-  - [ ] User menu trigger (avatar with notification badge)
-  - [ ] Role-based navigation item visibility
-  - [ ] Active tab highlighting
+- [x] **MainLayout** - Application shell with navigation
+  - [x] App branding (Café Sunshine logo/name)
+  - [x] Desktop: Top horizontal navigation tabs
+  - [x] Mobile: Bottom tab bar with overflow menu
+  - [x] User menu trigger (avatar with notification badge)
+  - [x] Role-based navigation item visibility
+  - [x] Active tab highlighting
 
 ### 6.3 Login View (bakery-ui)
 
-- [ ] **LoginView** - Authentication screen
-  - [ ] Centered layout with Café Sunshine logo/branding
-  - [ ] Email and password fields
-  - [ ] Login button
-  - [ ] Passkey login button
-  - [ ] Error display for invalid credentials
-  - [ ] Redirect based on role:
+- [x] **LoginView** - Authentication screen
+  - [x] Centered layout with Café Sunshine logo/branding
+  - [x] Email and password fields
+  - [x] Login button
+  - [x] Passkey login button (placeholder - Coming Soon)
+  - [x] Error display for invalid credentials
+  - [ ] Redirect based on role: *(deferred until Dashboard/Storefront views exist)*
     - [ ] Admin → Dashboard
     - [ ] Baker/Barista → Storefront
-  - [ ] @AnonymousAllowed, autoLayout=false
+  - [x] @AnonymousAllowed, autoLayout=false
 
-### 6.4 Passkey Authentication (WebAuthn)
+### 6.4 Passkey Authentication (WebAuthn) *(Deferred)*
+
+> **Note**: Full WebAuthn implementation deferred due to webauthn4j dependency issues with current Maven repository configuration. Passkey button added as placeholder.
 
 - [ ] WebAuthn integration for passwordless login
 - [ ] Passkey login flow on LoginView

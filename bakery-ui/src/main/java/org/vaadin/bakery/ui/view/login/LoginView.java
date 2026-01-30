@@ -38,15 +38,23 @@ public class LoginView extends Main implements BeforeEnterObserver {
     private final LoginForm loginForm;
 
     public LoginView() {
-        addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.AlignItems.CENTER, LumoUtility.JustifyContent.CENTER,
-                LumoUtility.Height.FULL, LumoUtility.Width.FULL);
-        getStyle().set("background", "var(--lumo-shade-5pct)");
+        // Set explicit styles for full-page centering
+        getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("align-items", "center")
+                .set("justify-content", "center")
+                .set("min-height", "100vh")
+                .set("width", "100%")
+                .set("background", "var(--lumo-shade-5pct)")
+                .set("padding", "var(--lumo-space-m)")
+                .set("box-sizing", "border-box");
 
         var container = new VerticalLayout();
         container.setAlignItems(FlexComponent.Alignment.CENTER);
         container.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
         container.setMaxWidth("400px");
+        container.setWidth("100%");
         container.addClassNames(
                 LumoUtility.Background.BASE,
                 LumoUtility.BorderRadius.LARGE,
@@ -68,8 +76,6 @@ public class LoginView extends Main implements BeforeEnterObserver {
 
         container.add(branding, loginForm, divider, passkeyButton);
         add(container);
-
-        setSizeFull();
     }
 
     private Div createBranding() {
