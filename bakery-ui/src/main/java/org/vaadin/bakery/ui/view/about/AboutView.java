@@ -31,7 +31,7 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
         var content = getContent();
         content.addClassNames(LumoUtility.Padding.LARGE);
 
-        var title = new H2("Bakery Application");
+        var title = new H2("Café Sunshine");
         title.addClassNames(LumoUtility.Margin.Bottom.MEDIUM);
         content.add(title);
 
@@ -59,7 +59,7 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
 
     private Div createApplicationInfo() {
         var info = new Div();
-        info.add(createInfoRow("Name", "Bakery"));
+        info.add(createInfoRow("Name", "Café Sunshine"));
         info.add(createInfoRow("Version", "1.0.0-SNAPSHOT"));
         return info;
     }

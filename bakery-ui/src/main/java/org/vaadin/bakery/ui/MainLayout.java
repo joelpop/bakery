@@ -1,88 +1,298 @@
 package org.vaadin.bakery.ui;
 
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.avatar.Avatar;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.orderedlayout.Scroller;
-import com.vaadin.flow.component.sidenav.SideNav;
-import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.menubar.MenuBar;
+import com.vaadin.flow.component.menubar.MenuBarVariant;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.component.tabs.TabsVariant;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.router.RouterLayout;
+import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
+import org.vaadin.bakery.service.CurrentUserService;
+import org.vaadin.bakery.uimodel.data.UserDetail;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
- * Main application layout with navigation drawer.
+ * Main application layout with horizontal navigation.
+ * Features:
+ * - App branding (Café Sunshine)
+ * - Desktop: Top horizontal navigation tabs
+ * - Mobile: Bottom tab bar with touch optimization
+ * - User menu with avatar
+ * - Role-based navigation item visibility
  */
 @Layout
 @PermitAll
 public class MainLayout extends AppLayout implements RouterLayout, AfterNavigationObserver {
 
-    private H1 viewTitle;
+    private final CurrentUserService currentUserService;
+    private final AccessAnnotationChecker accessChecker;
 
-    public MainLayout() {
-        setPrimarySection(Section.DRAWER);
-        addDrawerContent();
+    private Tabs navigationTabs;
+    private Tabs bottomNavigationTabs;
+    private final Map<String, Tab> routeToTab = new HashMap<>();
+    private final Map<String, Tab> routeToBottomTab = new HashMap<>();
+
+    public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker) {
+        this.currentUserService = currentUserService;
+        this.accessChecker = accessChecker;
+
+        addClassName("main-layout");
+        setPrimarySection(Section.NAVBAR);
+
         addHeaderContent();
+        addBottomNavigation();
     }
 
     private void addHeaderContent() {
-        var toggle = new DrawerToggle();
-        toggle.setAriaLabel("Menu toggle");
-
-        viewTitle = new H1();
-        viewTitle.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
-
-        var header = new Header(toggle, viewTitle);
+        var header = new Header();
         header.addClassNames(
                 LumoUtility.AlignItems.CENTER,
                 LumoUtility.Display.FLEX,
-                LumoUtility.Padding.End.MEDIUM,
+                LumoUtility.Gap.MEDIUM,
+                LumoUtility.Padding.Horizontal.MEDIUM,
                 LumoUtility.Width.FULL
         );
 
-        addToNavbar(true, header);
+        // App branding
+        var appName = createAppBranding();
+
+        // Navigation tabs
+        navigationTabs = createNavigationTabs();
+
+        // Spacer to push user menu to the right
+        var spacer = new Div();
+        spacer.addClassNames(LumoUtility.Flex.GROW);
+
+        // User menu
+        var userMenu = createUserMenu();
+
+        header.add(appName, navigationTabs, spacer, userMenu);
+        addToNavbar(header);
     }
 
-    private void addDrawerContent() {
-        var appName = new Span("Bakery");
-        appName.addClassNames(LumoUtility.AlignItems.CENTER, LumoUtility.Display.FLEX,
-                LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.SEMIBOLD,
-                LumoUtility.Height.XLARGE, LumoUtility.Padding.Horizontal.MEDIUM);
+    private Component createAppBranding() {
+        var sunIcon = new Icon(VaadinIcon.SUN_O);
+        sunIcon.addClassNames(LumoUtility.TextColor.PRIMARY);
 
-        addToDrawer(appName, new Scroller(createNavigation()));
+        var appName = new H1("Café Sunshine");
+        appName.addClassNames(
+                LumoUtility.FontSize.LARGE,
+                LumoUtility.Margin.NONE,
+                LumoUtility.Whitespace.NOWRAP
+        );
+
+        var brandingContainer = new Div(sunIcon, appName);
+        brandingContainer.addClassNames(
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Display.FLEX,
+                LumoUtility.Gap.SMALL
+        );
+
+        return brandingContainer;
     }
 
-    private SideNav createNavigation() {
-        var nav = new SideNav();
+    private Tabs createNavigationTabs() {
+        var tabs = new Tabs();
+        tabs.addThemeVariants(TabsVariant.LUMO_MINIMAL);
+        tabs.addClassNames("desktop-navigation");
+        tabs.getStyle().set("--lumo-primary-text-color", "var(--lumo-primary-color)");
 
-        MenuConfiguration.getMenuEntries().forEach(entry -> nav.addItem(createSideNavItem(entry)));
+        MenuConfiguration.getMenuEntries().stream()
+                .filter(this::isAccessible)
+                .forEach(entry -> {
+                    var tab = createTab(entry);
+                    tabs.add(tab);
+                    routeToTab.put(entry.path(), tab);
+                });
 
-        return nav;
+        return tabs;
     }
 
-    private SideNavItem createSideNavItem(MenuEntry menuEntry) {
-        var item = new SideNavItem(menuEntry.title(), menuEntry.path());
-        item.setMatchNested(true);
-        if (menuEntry.icon() != null) {
-            item.setPrefixComponent(new Icon(menuEntry.icon()));
+    private Tab createTab(MenuEntry entry) {
+        var link = new Anchor(entry.path().isEmpty() ? "/" : "/" + entry.path());
+        link.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.TextColor.BODY
+        );
+        link.getStyle().set("text-decoration", "none");
+
+        if (entry.icon() != null) {
+            var icon = new Icon(entry.icon());
+            icon.addClassNames(LumoUtility.Margin.End.SMALL);
+            link.add(icon);
         }
-        return item;
+        link.add(new Span(entry.title()));
+
+        var tab = new Tab(link);
+        tab.addClassNames(LumoUtility.Padding.Horizontal.SMALL);
+        return tab;
+    }
+
+    private void addBottomNavigation() {
+        bottomNavigationTabs = new Tabs();
+        bottomNavigationTabs.addThemeVariants(TabsVariant.LUMO_EQUAL_WIDTH_TABS);
+        bottomNavigationTabs.addClassNames("bottom-navigation");
+
+        MenuConfiguration.getMenuEntries().stream()
+                .filter(this::isAccessible)
+                .forEach(entry -> {
+                    var tab = createBottomTab(entry);
+                    bottomNavigationTabs.add(tab);
+                    routeToBottomTab.put(entry.path(), tab);
+                });
+
+        // Add to touch-optimized navbar slot for mobile
+        addToNavbar(true, bottomNavigationTabs);
+    }
+
+    private Tab createBottomTab(MenuEntry entry) {
+        var link = new Anchor(entry.path().isEmpty() ? "/" : "/" + entry.path());
+        link.addClassNames(
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.FontSize.XSMALL,
+                LumoUtility.TextColor.BODY
+        );
+        link.getStyle().set("text-decoration", "none");
+
+        if (entry.icon() != null) {
+            var icon = new Icon(entry.icon());
+            link.add(icon);
+        }
+        link.add(new Span(entry.title()));
+
+        var tab = new Tab(link);
+        return tab;
+    }
+
+    private Component createUserMenu() {
+        var menuBar = new MenuBar();
+        menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+
+        Optional<UserDetail> currentUser = currentUserService.getCurrentUser();
+
+        var avatar = new Avatar();
+        currentUser.ifPresent(user -> {
+            avatar.setName(user.getFirstName() + " " + user.getLastName());
+            if (user.getPhoto() != null && user.getPhoto().length > 0) {
+                // Photo would be set as stream resource in real implementation
+            }
+        });
+
+        var menuItem = menuBar.addItem(avatar);
+        var subMenu = menuItem.getSubMenu();
+
+        // User info section
+        currentUser.ifPresent(user -> {
+            var userInfo = new Div();
+            userInfo.addClassNames(
+                    LumoUtility.Padding.MEDIUM,
+                    LumoUtility.Border.BOTTOM
+            );
+
+            var userName = new Div(user.getFirstName() + " " + user.getLastName());
+            userName.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
+
+            var userEmail = new Div(user.getEmail());
+            userEmail.addClassNames(
+                    LumoUtility.FontSize.SMALL,
+                    LumoUtility.TextColor.SECONDARY
+            );
+
+            var userRole = new Div(user.getRole().getDisplayName());
+            userRole.addClassNames(
+                    LumoUtility.FontSize.XSMALL,
+                    LumoUtility.TextColor.TERTIARY
+            );
+
+            userInfo.add(userName, userEmail, userRole);
+            subMenu.addItem(userInfo);
+        });
+
+        // Preferences link
+        subMenu.addItem("Preferences", e ->
+                UI.getCurrent().navigate("preferences"));
+
+        // Logout
+        subMenu.addItem(createLogoutLink());
+
+        return menuBar;
+    }
+
+    private Component createLogoutLink() {
+        var logoutIcon = new Icon(VaadinIcon.SIGN_OUT);
+        logoutIcon.addClassNames(LumoUtility.Margin.End.SMALL);
+
+        var logoutLink = new Anchor("/logout", "Log out");
+        logoutLink.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.AlignItems.CENTER
+        );
+        logoutLink.getElement().insertChild(0, logoutIcon.getElement());
+
+        return logoutLink;
+    }
+
+    private boolean isAccessible(MenuEntry entry) {
+        // Use the access checker to determine if the current user can access the view
+        try {
+            var viewClass = Class.forName(entry.menuClass().getName());
+            return accessChecker.hasAccess(viewClass);
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+
+        // Add CSS for responsive behavior
+        attachEvent.getUI().getPage().addStyleSheet("context://frontend/styles/main-layout.css");
     }
 
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
-        viewTitle.setText(getCurrentPageTitle());
-    }
+        String path = event.getLocation().getPath();
 
-    private String getCurrentPageTitle() {
-        return MenuConfiguration.getPageHeader(getContent()).orElse("");
+        // Update desktop tabs selection
+        Tab selectedTab = routeToTab.get(path);
+        if (selectedTab != null) {
+            navigationTabs.setSelectedTab(selectedTab);
+        } else {
+            navigationTabs.setSelectedTab(null);
+        }
+
+        // Update mobile bottom tabs selection
+        Tab selectedBottomTab = routeToBottomTab.get(path);
+        if (selectedBottomTab != null) {
+            bottomNavigationTabs.setSelectedTab(selectedBottomTab);
+        } else {
+            bottomNavigationTabs.setSelectedTab(null);
+        }
     }
 }
