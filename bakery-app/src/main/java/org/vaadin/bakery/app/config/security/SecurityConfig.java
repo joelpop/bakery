@@ -13,6 +13,13 @@ import org.vaadin.bakery.ui.view.login.LoginView;
 
 /**
  * Spring Security configuration for the Bakery application.
+ * Features:
+ * - Vaadin security integration
+ * - Session management with concurrent session control
+ * - BCrypt password encoding
+ *
+ * Note: WebAuthn passkey authentication is prepared in the UI but requires
+ * additional configuration with webauthn4j-core dependency when ready.
  */
 @Configuration
 @EnableWebSecurity
