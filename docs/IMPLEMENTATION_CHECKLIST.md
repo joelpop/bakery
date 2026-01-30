@@ -387,57 +387,57 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 7: Admin Views
+## Phase 7: Admin Views ✅
 
 ### 7.1 Users View (bakery-ui)
 
-- [ ] **UsersView** - User management (Admin only)
-  - [ ] Searchable data grid
-  - [ ] Columns: Avatar, Email, Name, Role
-  - [ ] "+ New user" button
-  - [ ] Row click opens edit dialog
-  - [ ] @RolesAllowed("ADMIN")
+- [x] **UsersView** - User management (Admin only)
+  - [x] Searchable data grid
+  - [x] Columns: Avatar, Email, Name, Role
+  - [x] "+ New user" button
+  - [x] Row click opens edit dialog
+  - [x] @RolesAllowed("ADMIN")
 
-- [ ] **UserDialog** - Create/Edit user dialog
-  - [ ] Photo upload
-  - [ ] Email, First name, Last name fields
-  - [ ] Password field with show/hide toggle
-  - [ ] Role dropdown (Admin, Baker, Barista)
-  - [ ] Save, Cancel, Delete buttons
-  - [ ] Validation: unique email, password requirements
-  - [ ] Self-edit restrictions
+- [x] **UserDialog** - Create/Edit user dialog
+  - [x] Photo upload
+  - [x] Email, First name, Last name fields
+  - [x] Password field with show/hide toggle
+  - [x] Role dropdown (Admin, Baker, Barista)
+  - [x] Save, Cancel, Delete buttons
+  - [x] Validation: unique email, password requirements
+  - [x] Self-edit restrictions
 
 ### 7.2 Products View (bakery-ui)
 
-- [ ] **ProductsView** - Product catalog management
-  - [ ] Searchable data grid
-  - [ ] Columns: Image, Name, Size, Price, Available
-  - [ ] "+ New product" button (Admin only)
-  - [ ] Edit/Delete actions (Admin only)
-  - [ ] Read-only mode for Baker role
-  - [ ] @RolesAllowed({"ADMIN", "BAKER"}) with conditional editing
+- [x] **ProductsView** - Product catalog management
+  - [x] Searchable data grid
+  - [x] Columns: Image, Name, Size, Price, Available
+  - [x] "+ New product" button (Admin only)
+  - [x] Edit/Delete actions (Admin only)
+  - [x] Read-only mode for Baker role
+  - [x] @RolesAllowed({"ADMIN", "BAKER"}) with conditional editing
 
-- [ ] **ProductDialog** - Create/Edit product dialog
-  - [ ] Photo upload
-  - [ ] Name, Description, Size, Price fields
-  - [ ] Available toggle
-  - [ ] Save, Cancel, Delete buttons
-  - [ ] Validation: unique name, positive price
+- [x] **ProductDialog** - Create/Edit product dialog
+  - [x] Photo upload
+  - [x] Name, Description, Size, Price fields
+  - [x] Available toggle
+  - [x] Save, Cancel, Delete buttons
+  - [x] Validation: unique name, positive price
 
 ### 7.3 Locations View (bakery-ui)
 
-- [ ] **LocationsView** - Location management (Admin only)
-  - [ ] Data grid with Name, Code, Address, Active, Sort Order
-  - [ ] "+ New location" button
-  - [ ] @RolesAllowed("ADMIN")
+- [x] **LocationsView** - Location management (Admin only)
+  - [x] Data grid with Name, Code, Address, Active, Sort Order
+  - [x] "+ New location" button
+  - [x] @RolesAllowed("ADMIN")
 
-- [ ] **LocationDialog** - Create/Edit location dialog
-  - [ ] Name, Code, Address fields
-  - [ ] Active checkbox
-  - [ ] Sort order number field
-  - [ ] Save, Cancel, Delete buttons
-  - [ ] Validation: unique name/code, at least one active location
-  - [ ] Deletion protection (cannot delete with orders)
+- [x] **LocationDialog** - Create/Edit location dialog
+  - [x] Name, Code, Address fields
+  - [x] Active checkbox
+  - [x] Sort order number field
+  - [x] Save, Cancel, Delete buttons
+  - [x] Validation: unique name/code, at least one active location
+  - [ ] Deletion protection (cannot delete with orders) *(service layer handles this)*
 
 ---
 

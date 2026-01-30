@@ -18,8 +18,6 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import com.vaadin.flow.component.dependency.Uses;
-
 /**
  * Login view for user authentication.
  * Features:
@@ -34,7 +32,6 @@ import com.vaadin.flow.component.dependency.Uses;
 @Route(value = "login", autoLayout = false)
 @PageTitle("Login | Café Sunshine")
 @AnonymousAllowed
-@Uses(LumoUtility.class)
 public class LoginView extends Main implements BeforeEnterObserver {
 
     private final LoginForm loginForm;
