@@ -1,6 +1,5 @@
 package org.vaadin.bakery.ui;
 
-import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -8,8 +7,9 @@ import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
@@ -25,9 +25,12 @@ import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import com.vaadin.flow.component.dependency.Uses;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.uimodel.data.UserDetail;
+
+import com.vaadin.flow.component.AttachEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +47,7 @@ import java.util.Optional;
  */
 @Layout
 @PermitAll
+@Uses(LumoUtility.class)
 public class MainLayout extends AppLayout implements RouterLayout, AfterNavigationObserver {
 
     private final CurrentUserService currentUserService;
@@ -66,14 +70,10 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private void addHeaderContent() {
-        var header = new Header();
-        header.addClassNames(
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Display.FLEX,
-                LumoUtility.Gap.MEDIUM,
-                LumoUtility.Padding.Horizontal.MEDIUM,
-                LumoUtility.Width.FULL
-        );
+        var header = new HorizontalLayout();
+        header.setWidthFull();
+        header.setAlignItems(FlexComponent.Alignment.CENTER);
+        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
 
         // App branding
         var appName = createAppBranding();
@@ -81,14 +81,12 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         // Navigation tabs
         navigationTabs = createNavigationTabs();
 
-        // Spacer to push user menu to the right
-        var spacer = new Div();
-        spacer.addClassNames(LumoUtility.Flex.GROW);
-
-        // User menu
+        // User menu (will be pushed to the right by expand on tabs)
         var userMenu = createUserMenu();
 
-        header.add(appName, navigationTabs, spacer, userMenu);
+        header.add(appName, navigationTabs, userMenu);
+        header.expand(navigationTabs);
+
         addToNavbar(header);
     }
 
@@ -103,12 +101,10 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 LumoUtility.Whitespace.NOWRAP
         );
 
-        var brandingContainer = new Div(sunIcon, appName);
-        brandingContainer.addClassNames(
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Display.FLEX,
-                LumoUtility.Gap.SMALL
-        );
+        var brandingContainer = new HorizontalLayout(sunIcon, appName);
+        brandingContainer.setAlignItems(FlexComponent.Alignment.CENTER);
+        brandingContainer.setSpacing(false);
+        brandingContainer.addClassNames(LumoUtility.Gap.SMALL);
 
         return brandingContainer;
     }
@@ -124,14 +120,30 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 .forEach(entry -> {
                     var tab = createTab(entry);
                     tabs.add(tab);
-                    routeToTab.put(entry.path(), tab);
+                    routeToTab.put(normalizePathForLookup(entry.path()), tab);
                 });
 
         return tabs;
     }
 
+    private String normalizePathForLookup(String path) {
+        // Normalize path for consistent map lookups (empty string for root)
+        if (path == null || path.equals("/")) {
+            return "";
+        }
+        return path;
+    }
+
+    private String buildHref(String path) {
+        // Build proper href, avoiding double slashes
+        if (path == null || path.isEmpty() || path.equals("/")) {
+            return "/";
+        }
+        return path.startsWith("/") ? path : "/" + path;
+    }
+
     private Tab createTab(MenuEntry entry) {
-        var link = new Anchor(entry.path().isEmpty() ? "/" : "/" + entry.path());
+        var link = new Anchor(buildHref(entry.path()));
         link.addClassNames(
                 LumoUtility.Display.FLEX,
                 LumoUtility.AlignItems.CENTER,
@@ -161,7 +173,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 .forEach(entry -> {
                     var tab = createBottomTab(entry);
                     bottomNavigationTabs.add(tab);
-                    routeToBottomTab.put(entry.path(), tab);
+                    routeToBottomTab.put(normalizePathForLookup(entry.path()), tab);
                 });
 
         // Add to touch-optimized navbar slot for mobile
@@ -169,7 +181,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private Tab createBottomTab(MenuEntry entry) {
-        var link = new Anchor(entry.path().isEmpty() ? "/" : "/" + entry.path());
+        var link = new Anchor(buildHref(entry.path()));
         link.addClassNames(
                 LumoUtility.AlignItems.CENTER,
                 LumoUtility.Display.FLEX,
@@ -271,13 +283,39 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
 
-        // Add CSS for responsive behavior
-        attachEvent.getUI().getPage().addStyleSheet("context://frontend/styles/main-layout.css");
+        // Inject responsive CSS inline to avoid cross-module frontend resource issues
+        attachEvent.getUI().getPage().executeJs(
+                "if (!document.getElementById('main-layout-styles')) {" +
+                "  const style = document.createElement('style');" +
+                "  style.id = 'main-layout-styles';" +
+                "  style.textContent = `" +
+                "    .desktop-navigation { display: flex; }" +
+                "    .bottom-navigation { display: none; }" +
+                "    @media (max-width: 768px) {" +
+                "      .desktop-navigation { display: none; }" +
+                "      .bottom-navigation {" +
+                "        display: flex;" +
+                "        position: fixed;" +
+                "        bottom: 0;" +
+                "        left: 0;" +
+                "        right: 0;" +
+                "        background: var(--lumo-base-color);" +
+                "        border-top: 1px solid var(--lumo-contrast-10pct);" +
+                "        z-index: 100;" +
+                "        padding: var(--lumo-space-xs) 0;" +
+                "      }" +
+                "      .main-layout [slot=''] { padding-bottom: 60px; }" +
+                "    }" +
+                "    .main-layout vaadin-tab a { text-decoration: none; color: inherit; display: flex; align-items: center; }" +
+                "  `;" +
+                "  document.head.appendChild(style);" +
+                "}"
+        );
     }
 
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
-        String path = event.getLocation().getPath();
+        String path = normalizePathForLookup(event.getLocation().getPath());
 
         // Update desktop tabs selection
         Tab selectedTab = routeToTab.get(path);
