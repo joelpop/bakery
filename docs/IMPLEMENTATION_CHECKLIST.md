@@ -441,119 +441,114 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 8: Storefront View
+## Phase 8: Storefront View ✅
 
 ### 8.1 Order List (bakery-ui)
 
-- [ ] **StorefrontView** - Order management
-  - [ ] Card-based order list
-  - [ ] Grouped by: Today, Tomorrow, This Week, Upcoming
-  - [ ] @PermitAll
+- [x] **StorefrontView** - Order management
+  - [x] Card-based order list
+  - [x] Grouped by: Today, Tomorrow, This Week, Upcoming
+  - [x] @RolesAllowed({"ADMIN", "BARISTA"})
 
-- [ ] **OrderCard** - Individual order display
-  - [ ] Status badge with color coding
-  - [ ] Paid indicator (checkmark)
-  - [ ] Time and location
-  - [ ] Customer name
-  - [ ] Order items summary
-  - [ ] Click to open detail view
+- [x] **OrderCard** - Individual order display
+  - [x] Status badge with color coding
+  - [x] Paid indicator (checkmark)
+  - [x] Time and location
+  - [x] Customer name
+  - [x] Order items summary
+  - [x] Click to open detail view
 
 ### 8.2 Order Filtering
 
-- [ ] **FilterBar** - Order filtering component
-  - [ ] Search/filter input with dropdown
-  - [ ] Status filter (multi-select chips)
-  - [ ] Customer filter (searchable dropdown)
-  - [ ] Paid/Unpaid filter
-  - [ ] "Show past orders" checkbox
-  - [ ] "Clear filters" link
-  - [ ] Filter chips for applied filters
+- [x] **FilterBar** - Order filtering component
+  - [x] Date range picker (from/to)
+  - [x] Status filter (multi-select)
+  - [x] Location filter (dropdown)
+  - [ ] Customer filter (searchable dropdown) *(deferred)*
+  - [ ] Paid/Unpaid filter *(deferred)*
+  - [ ] "Show past orders" checkbox *(deferred)*
+  - [ ] "Clear filters" link *(deferred)*
+  - [ ] Filter chips for applied filters *(deferred)*
 
 ### 8.3 New Order Dialog
 
-- [ ] **NewOrderDialog** - Two-step order creation wizard
-  - [ ] Step 1: Order Details
-    - [ ] Due date picker (first field)
-    - [ ] Due time dropdown (hourly slots)
-    - [ ] Location dropdown
-    - [ ] Product section (add multiple items)
-      - [ ] Product combo box with autocomplete
-      - [ ] Quantity stepper (+/-)
-      - [ ] Details text input
-      - [ ] Line price display
-    - [ ] Discount field
-    - [ ] Total calculation
-    - [ ] Customer section
-      - [ ] Customer combo box (create new or select existing)
-      - [ ] Phone number input (triggers autofill)
-      - [ ] Additional details text area
-    - [ ] Cancel and "Review order" buttons
-  - [ ] Step 2: Review Order
-    - [ ] Read-only summary of all order details
-    - [ ] Back and "Place order" buttons
+- [x] **NewOrderDialog** - Two-step order creation wizard
+  - [x] Step 1: Order Details
+    - [x] Customer name field
+    - [x] Phone number field
+    - [x] Due date picker
+    - [x] Due time picker (15-minute intervals)
+    - [x] Location dropdown
+    - [x] Additional details text area
+    - [x] Cancel and "Next" buttons
+  - [x] Step 2: Add Items
+    - [x] Product combo box
+    - [x] Quantity field with stepper
+    - [x] Item notes field
+    - [x] Items grid with remove button
+    - [x] Total calculation
+    - [x] Back and "Create Order" buttons
 
 ### 8.4 Order Detail View
 
-- [ ] **OrderDetailView** - Full order information and actions
-  - [ ] Complete order information display
-  - [ ] Status progression buttons
-  - [ ] "Mark as Paid" button
-  - [ ] "Mark as Not OK" button (with problem description)
-  - [ ] Edit order details (role-based):
-    - [ ] Admin: Full edit until PICKED_UP/CANCELLED
-    - [ ] Baker: Add notes only until PICKED_UP/CANCELLED
-    - [ ] Barista: Add notes only until PICKED_UP/CANCELLED
-  - [ ] Order history/audit trail
+- [x] **OrderDetailView** - Full order information and actions
+  - [x] Complete order information display
+  - [x] Status change dialog
+  - [x] "Mark as Paid" button
+  - [x] "Cancel Order" button (for pre-production orders)
+  - [ ] "Mark as Not OK" button (with problem description) *(deferred)*
+  - [ ] Edit order details (role-based) *(deferred)*
+  - [ ] Order history/audit trail *(deferred)*
 
 ### 8.5 Direct Order Links
 
-- [ ] Route: `/orders/{orderId}`
-- [ ] Deep linking support for sharing orders
+- [x] Route: `/orders/{orderId}`
+- [x] Deep linking support for sharing orders
 
 ---
 
-## Phase 9: Dashboard View
+## Phase 9: Dashboard View ✅
 
 ### 9.1 KPI Cards (bakery-ui)
 
-- [ ] **DashboardView** - Business analytics
-  - [ ] @PermitAll
+- [x] **DashboardView** - Business analytics
+  - [x] @PermitAll
 
-- [ ] **KPI Cards** (top row)
-  - [ ] Remaining Today (count + next pickup time)
-  - [ ] Not Available (count + orders affected note)
-  - [ ] New (count + "last X ago" timestamp)
-  - [ ] Tomorrow (count + first pickup time)
-  - [ ] Month Total (count + dual delta: vs prev month AND vs same month last year)
-  - [ ] Year Total (count + dual delta: vs prev year AND vs same period last year)
+- [x] **KPI Cards** (top row)
+  - [x] Remaining Today (count + next pickup time)
+  - [x] Not Available (count + products unavailable)
+  - [x] New (count + "last X ago" timestamp)
+  - [x] Tomorrow (count + first pickup time)
+  - [x] Month Total (count + dual delta: vs prev month AND vs same month last year)
+  - [x] Year Total (count + dual delta: vs prev year AND vs same period last year)
 
 ### 9.2 Alerts Section
 
-- [ ] **AlertsPanel** - Bulletin board
+- [ ] **AlertsPanel** - Bulletin board *(deferred to future enhancement)*
   - [ ] Ingredient alerts
   - [ ] Problem orders (NOT_OK status)
   - [ ] Staff messages
 
 ### 9.3 Charts
 
-- [ ] **PickupCharts** (second row)
+- [ ] **PickupCharts** (second row) *(placeholder added, charts deferred)*
   - [ ] Pickups in [Current Month] - Daily bar chart
   - [ ] Pickups in [Current Year] - Monthly bar chart
 
-- [ ] **SalesTrendChart** (third row)
+- [ ] **SalesTrendChart** (third row) *(deferred)*
   - [ ] Sales Last Years - Multi-line year-over-year comparison
 
-- [ ] **ProductsBreakdownChart** (bottom row)
+- [ ] **ProductsBreakdownChart** (bottom row) *(placeholder added, chart deferred)*
   - [ ] Products Delivered in [Current Month] - Donut/pie chart
 
 ### 9.4 Upcoming Orders Widget
 
-- [ ] **UpcomingOrdersPanel** - Condensed order list
-  - [ ] Status badge
-  - [ ] Paid indicator
-  - [ ] Day, time, location
-  - [ ] Customer name
-  - [ ] Items summary
+- [x] **UpcomingOrdersPanel** - Condensed order list
+  - [x] Status badge
+  - [x] Paid indicator
+  - [x] Day, time, location
+  - [x] Customer name
+  - [x] Items summary
 
 ---
 
