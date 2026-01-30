@@ -17,7 +17,7 @@ import org.vaadin.bakery.jpamodel.projection.UserSummaryProjection;
  * Staff members who can log into the system.
  */
 @Entity
-@Table(name = "user")
+@Table(name = "app_user")
 public class UserEntity extends AbstractEntity implements UserSummaryProjection {
 
     @NotBlank
