@@ -27,90 +27,90 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 1: Core Domain Model
+## Phase 1: Core Domain Model ✅
 
 ### 1.1 Enums (bakery-jpamodel)
 
-- [ ] **UserRoleCode** - User authorization roles
-  - [ ] ADMIN - Full system access
-  - [ ] BAKER - Kitchen staff access
-  - [ ] BARISTA - Front-of-house access
+- [x] **UserRoleCode** - User authorization roles
+  - [x] ADMIN - Full system access
+  - [x] BAKER - Kitchen staff access
+  - [x] BARISTA - Front-of-house access
 
-- [ ] **OrderStatusCode** - Order lifecycle states
-  - [ ] NEW - Order just received
-  - [ ] VERIFIED - Order reviewed and accepted
-  - [ ] NOT_OK - Problem requiring attention
-  - [ ] CANCELLED - Order cancelled
-  - [ ] IN_PROGRESS - Being manufactured
-  - [ ] BAKED - Baking completed
-  - [ ] PACKAGED - Packaged for transport
-  - [ ] READY_FOR_PICK_UP - Available for pickup
-  - [ ] PICKED_UP - Order complete
+- [x] **OrderStatusCode** - Order lifecycle states
+  - [x] NEW - Order just received
+  - [x] VERIFIED - Order reviewed and accepted
+  - [x] NOT_OK - Problem requiring attention
+  - [x] CANCELLED - Order cancelled
+  - [x] IN_PROGRESS - Being manufactured
+  - [x] BAKED - Baking completed
+  - [x] PACKAGED - Packaged for transport
+  - [x] READY_FOR_PICK_UP - Available for pickup
+  - [x] PICKED_UP - Order complete
 
 ### 1.2 Abstract Base Entity (bakery-jpamodel)
 
-- [ ] **AbstractEntity** - Base class for all entities
-  - [ ] id (Long) - Primary key, auto-generated
-  - [ ] version (Integer) - Optimistic locking
+- [x] **AbstractEntity** - Base class for all entities
+  - [x] id (Long) - Primary key, auto-generated
+  - [x] version (Integer) - Optimistic locking
 
 ### 1.3 JPA Entities (bakery-jpamodel)
 
-- [ ] **UserEntity** - Staff members
-  - [ ] email (String, unique) - Login identifier
-  - [ ] firstName (String)
-  - [ ] lastName (String)
-  - [ ] passwordHash (String) - BCrypt hashed
-  - [ ] role (UserRoleCode)
-  - [ ] photo (byte[]) - Profile photo
-  - [ ] photoContentType (String)
+- [x] **UserEntity** - Staff members
+  - [x] email (String, unique) - Login identifier
+  - [x] firstName (String)
+  - [x] lastName (String)
+  - [x] passwordHash (String) - BCrypt hashed
+  - [x] role (UserRoleCode)
+  - [x] photo (byte[]) - Profile photo
+  - [x] photoContentType (String)
 
-- [ ] **CustomerEntity** - Customers who place orders
-  - [ ] name (String)
-  - [ ] phoneNumber (String)
-  - [ ] email (String, optional)
-  - [ ] active (boolean, default: true) - For soft delete
-  - [ ] Relationship: orders (One-to-Many → OrderEntity)
+- [x] **CustomerEntity** - Customers who place orders
+  - [x] name (String)
+  - [x] phoneNumber (String)
+  - [x] email (String, optional)
+  - [x] active (boolean, default: true) - For soft delete
+  - [x] Relationship: orders (One-to-Many → OrderEntity)
 
-- [ ] **ProductEntity** - Bakery products
-  - [ ] name (String, unique)
-  - [ ] description (String, optional)
-  - [ ] size (String) - e.g., "12 ppl", "individual"
-  - [ ] price (BigDecimal)
-  - [ ] available (boolean)
-  - [ ] photo (byte[])
-  - [ ] photoContentType (String)
+- [x] **ProductEntity** - Bakery products
+  - [x] name (String, unique)
+  - [x] description (String, optional)
+  - [x] size (String) - e.g., "12 ppl", "individual"
+  - [x] price (BigDecimal)
+  - [x] available (boolean)
+  - [x] photo (byte[])
+  - [x] photoContentType (String)
 
-- [ ] **LocationEntity** - Pickup locations
-  - [ ] name (String, unique)
-  - [ ] code (String, unique) - e.g., "STORE", "BAKERY"
-  - [ ] address (String, optional)
-  - [ ] active (boolean)
-  - [ ] sortOrder (Integer)
+- [x] **LocationEntity** - Pickup locations
+  - [x] name (String, unique)
+  - [x] code (String, unique) - e.g., "STORE", "BAKERY"
+  - [x] address (String, optional)
+  - [x] active (boolean)
+  - [x] sortOrder (Integer)
 
-- [ ] **OrderEntity** - Customer orders
-  - [ ] status (OrderStatusCode)
-  - [ ] dueDate (LocalDate)
-  - [ ] dueTime (LocalTime)
-  - [ ] additionalDetails (String, optional)
-  - [ ] total (BigDecimal)
-  - [ ] discount (BigDecimal, optional)
-  - [ ] paid (Boolean)
-  - [ ] createdAt (LocalDateTime)
-  - [ ] updatedAt (LocalDateTime, optional)
-  - [ ] Relationship: customer (Many-to-One → CustomerEntity)
-  - [ ] Relationship: location (Many-to-One → LocationEntity)
-  - [ ] Relationship: items (One-to-Many → OrderItemEntity, cascade ALL)
-  - [ ] Relationship: createdBy (Many-to-One → UserEntity)
-  - [ ] Relationship: updatedBy (Many-to-One → UserEntity)
-  - [ ] Lifecycle callbacks: PrePersist, PreUpdate
+- [x] **OrderEntity** - Customer orders
+  - [x] status (OrderStatusCode)
+  - [x] dueDate (LocalDate)
+  - [x] dueTime (LocalTime)
+  - [x] additionalDetails (String, optional)
+  - [x] total (BigDecimal)
+  - [x] discount (BigDecimal, optional)
+  - [x] paid (Boolean)
+  - [x] createdAt (LocalDateTime)
+  - [x] updatedAt (LocalDateTime, optional)
+  - [x] Relationship: customer (Many-to-One → CustomerEntity)
+  - [x] Relationship: location (Many-to-One → LocationEntity)
+  - [x] Relationship: items (One-to-Many → OrderItemEntity, cascade ALL)
+  - [x] Relationship: createdBy (Many-to-One → UserEntity)
+  - [x] Relationship: updatedBy (Many-to-One → UserEntity)
+  - [x] Lifecycle callbacks: PrePersist, PreUpdate
 
-- [ ] **OrderItemEntity** - Order line items
-  - [ ] quantity (Integer)
-  - [ ] details (String, optional) - Per-item customizations
-  - [ ] unitPrice (BigDecimal) - Price snapshot at order time
-  - [ ] lineTotal (BigDecimal) - Calculated
-  - [ ] Relationship: order (Many-to-One → OrderEntity)
-  - [ ] Relationship: product (Many-to-One → ProductEntity)
+- [x] **OrderItemEntity** - Order line items
+  - [x] quantity (Integer)
+  - [x] details (String, optional) - Per-item customizations
+  - [x] unitPrice (BigDecimal) - Price snapshot at order time
+  - [x] lineTotal (BigDecimal) - Calculated
+  - [x] Relationship: order (Many-to-One → OrderEntity)
+  - [x] Relationship: product (Many-to-One → ProductEntity)
 
 - [ ] **NotificationEntity** - User-to-user notifications *(Deferred)*
   - [ ] message (String)
@@ -123,16 +123,16 @@ The following decisions were made during documentation review to resolve conflic
 
 ### 1.4 Interface Projections (bakery-jpamodel)
 
-- [ ] **UserSummaryProjection** - User list grid display
-- [ ] **CustomerSummaryProjection** - Customer combo box
-- [ ] **ProductSummaryProjection** - Product admin grid
-- [ ] **ProductSelectProjection** - Order form product dropdown
-- [ ] **LocationSummaryProjection** - Location dropdown
-- [ ] **OrderListProjection** - Storefront order list (with items)
-- [ ] **OrderDashboardProjection** - Dashboard upcoming orders
-- [ ] **OrderTimeProjection** - Dashboard KPI queries
-- [ ] **OrderItemSummaryProjection** - Order item display
-- [ ] **NotificationSummaryProjection** - Notification panel
+- [x] **UserSummaryProjection** - User list grid display
+- [x] **CustomerSummaryProjection** - Customer combo box
+- [x] **ProductSummaryProjection** - Product admin grid
+- [x] **ProductSelectProjection** - Order form product dropdown
+- [x] **LocationSummaryProjection** - Location dropdown
+- [x] **OrderListProjection** - Storefront order list (with items)
+- [x] **OrderDashboardProjection** - Dashboard upcoming orders
+- [x] **OrderTimeProjection** - Dashboard KPI queries
+- [x] **OrderItemSummaryProjection** - Order item display
+- [ ] **NotificationSummaryProjection** - Notification panel *(Deferred)*
 
 ---
 
