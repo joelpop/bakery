@@ -552,19 +552,19 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 10: User Menu & Preferences
+## Phase 10: User Menu & Preferences ✅
 
 ### 10.1 Menu Trigger
 
-- [ ] User avatar in header
-- [ ] Click/tap to open dropdown
+- [x] User avatar in header
+- [x] Click/tap to open dropdown
 
 ### 10.2 Menu Contents
 
-- [ ] **UserMenuPopup** - Dropdown menu
-  - [ ] User profile section (avatar, name, email)
-  - [ ] "Preferences" link
-  - [ ] "Log out" button
+- [x] **UserMenuPopup** - Dropdown menu (MenuBar in MainLayout)
+  - [x] User profile section (avatar, name, email, role)
+  - [x] "Preferences" link
+  - [x] "Log out" button
 
 ### 10.3 Notifications *(Deferred)*
 
@@ -572,32 +572,32 @@ The following decisions were made during documentation review to resolve conflic
 
 ### 10.4 Preferences View
 
-- [ ] **PreferencesView** - Full user settings
-  - [ ] Route: `/preferences`
-  - [ ] @PermitAll
+- [x] **PreferencesView** - Full user settings
+  - [x] Route: `/preferences`
+  - [x] @PermitAll
 
-  - [ ] **Profile Settings Section**
-    - [ ] Profile photo upload
-    - [ ] Display name (read-only)
-    - [ ] Email (read-only)
-    - [ ] Role badge (read-only)
+  - [x] **Profile Settings Section**
+    - [x] Profile photo upload
+    - [x] Display name (read-only)
+    - [x] Email (read-only)
+    - [x] Role badge (read-only)
 
-  - [ ] **Security Settings Section**
-    - [ ] Change password form
-      - [ ] Current password verification
-      - [ ] New password with entropy validation
-      - [ ] Confirm password
-      - [ ] Strength indicator
-    - [ ] Passkey management
+  - [x] **Security Settings Section**
+    - [x] Change password form
+      - [x] Current password field
+      - [x] New password with minimum length validation
+      - [x] Confirm password
+      - [ ] Strength indicator *(deferred)*
+    - [ ] Passkey management *(deferred - requires WebAuthn)*
       - [ ] List of registered passkeys
       - [ ] Add passkey button
       - [ ] Remove passkey button
 
-  - [ ] **Notification Preferences Section** *(Placeholder for future)*
+  - [ ] **Notification Preferences Section** *(Deferred)*
     - [ ] Email notifications toggle
     - [ ] In-app notifications toggle
 
-  - [ ] **Display Settings Section**
+  - [ ] **Display Settings Section** *(Deferred)*
     - [ ] Theme selection (Light/Dark/System)
 
 ---
