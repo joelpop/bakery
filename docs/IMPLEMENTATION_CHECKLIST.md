@@ -219,45 +219,45 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 4: Service Layer
+## Phase 4: Service Layer ✅
 
 ### 4.1 Service Interfaces (bakery-service)
 
-- [ ] **UserService**
-  - [ ] list() / search(query)
-  - [ ] get(id) / getByEmail(email)
-  - [ ] create(user) / update(id, user) / delete(id)
-  - [ ] changePassword(id, password)
+- [x] **UserService**
+  - [x] list() / search(query)
+  - [x] get(id) / getByEmail(email)
+  - [x] create(user) / update(id, user) / delete(id)
+  - [x] changePassword(id, password)
 
-- [ ] **CustomerService**
-  - [ ] search(query) - Active customers only
-  - [ ] getByPhoneNumber(phone)
-  - [ ] create(customer) / update(id, customer)
-  - [ ] delete(id) - Soft delete with order status checks:
-    - [ ] Block if in-progress orders exist
-    - [ ] Cancel pre-production orders on confirmation
-    - [ ] Set active=false
-  - [ ] canDelete(id) - Returns deletion eligibility and affected orders
+- [x] **CustomerService**
+  - [x] search(query) - Active customers only
+  - [x] getByPhoneNumber(phone)
+  - [x] create(customer) / update(id, customer)
+  - [x] delete(id) - Soft delete with order status checks:
+    - [x] Block if in-progress orders exist
+    - [x] Cancel pre-production orders on confirmation
+    - [x] Set active=false
+  - [x] canDelete(id) - Returns deletion eligibility and affected orders
 
-- [ ] **ProductService**
-  - [ ] list() / listAvailable()
-  - [ ] get(id)
-  - [ ] create(product) / update(id, product) / delete(id)
-  - [ ] countUnavailable() (dashboard KPI)
+- [x] **ProductService**
+  - [x] list() / listAvailable()
+  - [x] get(id)
+  - [x] create(product) / update(id, product) / delete(id)
+  - [x] countUnavailable() (dashboard KPI)
 
-- [ ] **LocationService**
-  - [ ] list() / listActive()
-  - [ ] get(id) / getByCode(code)
-  - [ ] create(location) / update(id, location) / delete(id)
+- [x] **LocationService**
+  - [x] list() / listActive()
+  - [x] get(id) / getByCode(code)
+  - [x] create(location) / update(id, location) / delete(id)
 
-- [ ] **OrderService**
-  - [ ] listUpcoming() / listByDateRange(start, end)
-  - [ ] listByStatus(status) / listByCustomer(customerId)
-  - [ ] get(id)
-  - [ ] create(order) / update(id, order)
-  - [ ] updateStatus(id, status)
-  - [ ] markAsPaid(id)
-  - [ ] Dashboard KPI methods
+- [x] **OrderService**
+  - [x] listUpcoming() / listByDateRange(start, end)
+  - [x] listByStatus(status) / listByCustomer(customerId)
+  - [x] get(id)
+  - [x] create(order) / update(id, order)
+  - [x] updateStatus(id, status)
+  - [x] markAsPaid(id)
+  - [x] Dashboard KPI methods
 
 - [ ] **NotificationService** *(Deferred)*
   - [ ] getUnreadForUser(userId)
@@ -268,45 +268,45 @@ The following decisions were made during documentation review to resolve conflic
 
   > **Note**: Notification functionality is deferred to future enhancement
 
-- [ ] **CurrentUserService**
-  - [ ] getCurrentUserEmail()
-  - [ ] getCurrentUser()
-  - [ ] hasRole(role)
-  - [ ] isAdmin()
+- [x] **CurrentUserService**
+  - [x] getCurrentUserEmail()
+  - [x] getCurrentUser()
+  - [x] hasRole(role)
+  - [x] isAdmin()
 
-- [ ] **DashboardService**
-  - [ ] getRemainingTodayCount()
-  - [ ] getNextPickupTime()
-  - [ ] getNewOrdersCount()
-  - [ ] getLastNewOrderTime()
-  - [ ] getTomorrowCount()
-  - [ ] getFirstPickupTimeTomorrow()
-  - [ ] getUnavailableProductsCount()
-  - [ ] getUpcomingOrders(limit)
-  - [ ] getMonthlyPickupData()
-  - [ ] getYearlyPickupData()
-  - [ ] getProductBreakdown()
-  - [ ] getYearOverYearSales()
+- [x] **DashboardService**
+  - [x] getRemainingTodayCount()
+  - [x] getNextPickupTime()
+  - [x] getNewOrdersCount()
+  - [x] getLastNewOrderTime()
+  - [x] getTomorrowCount()
+  - [x] getFirstPickupTimeTomorrow()
+  - [x] getUnavailableProductsCount()
+  - [x] getUpcomingOrders(limit)
+  - [x] getMonthlyPickupData()
+  - [x] getYearlyPickupData()
+  - [x] getProductBreakdown()
+  - [x] getYearOverYearSales()
 
 ### 4.2 Service Implementations (bakery-jpaservice)
 
-- [ ] **JpaUserService**
-- [ ] **JpaCustomerService**
-- [ ] **JpaProductService**
-- [ ] **JpaLocationService**
-- [ ] **JpaOrderService**
-- [ ] **JpaNotificationService**
-- [ ] **JpaDashboardService**
+- [x] **JpaUserService**
+- [x] **JpaCustomerService**
+- [x] **JpaProductService**
+- [x] **JpaLocationService**
+- [x] **JpaOrderService**
+- [ ] **JpaNotificationService** *(Deferred)*
+- [x] **JpaDashboardService**
 
 ### 4.3 MapStruct Mappers (bakery-jpaservice)
 
-- [ ] **UserMapper** - UserEntity ↔ UserSummary/UserDetail
-- [ ] **CustomerMapper** - CustomerEntity ↔ CustomerSummary
-- [ ] **ProductMapper** - ProductEntity ↔ ProductSummary/ProductSelect
-- [ ] **LocationMapper** - LocationEntity ↔ LocationSummary
-- [ ] **OrderMapper** - OrderEntity ↔ OrderList/OrderDetail/OrderDashboard
-- [ ] **OrderItemMapper** - OrderItemEntity ↔ OrderItemSummary/OrderItemDetail
-- [ ] **NotificationMapper** - NotificationEntity ↔ NotificationSummary
+- [x] **UserMapper** - UserEntity ↔ UserSummary/UserDetail
+- [x] **CustomerMapper** - CustomerEntity ↔ CustomerSummary
+- [x] **ProductMapper** - ProductEntity ↔ ProductSummary/ProductSelect
+- [x] **LocationMapper** - LocationEntity ↔ LocationSummary
+- [x] **OrderMapper** - OrderEntity ↔ OrderList/OrderDetail/OrderDashboard
+- [x] **OrderItemMapper** - OrderItemEntity ↔ OrderItemSummary/OrderItemDetail
+- [ ] **NotificationMapper** - NotificationEntity ↔ NotificationSummary *(Deferred)*
 
 ---
 
