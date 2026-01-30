@@ -136,58 +136,58 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 2: Persistence Layer
+## Phase 2: Persistence Layer ✅
 
 ### 2.1 JPA Configuration (bakery-jpaclient)
 
-- [ ] **JpaConfig** - Spring Data JPA configuration
-  - [ ] @EntityScan for bakery-jpamodel
-  - [ ] @EnableJpaRepositories for bakery-jpaclient
+- [x] **JpaConfig** - Spring Data JPA configuration
+  - [x] @EntityScan for bakery-jpamodel
+  - [x] @EnableJpaRepositories for bakery-jpaclient
 
 ### 2.2 Repositories (bakery-jpaclient)
 
-- [ ] **UserRepository**
-  - [ ] findByEmail / findByEmailIgnoreCase
-  - [ ] existsByEmail / existsByEmailAndIdNot
-  - [ ] findByRole / findByRoleOrderByLastNameAscFirstNameAsc
-  - [ ] countByRole
-  - [ ] Projection queries for UserSummaryProjection
+- [x] **UserRepository**
+  - [x] findByEmail / findByEmailIgnoreCase
+  - [x] existsByEmail / existsByEmailAndIdNot
+  - [x] findByRole / findByRoleOrderByLastNameAscFirstNameAsc
+  - [x] countByRole
+  - [x] Projection queries for UserSummaryProjection
 
-- [ ] **CustomerRepository**
-  - [ ] findByPhoneNumber
-  - [ ] findByPhoneNumberAndActiveTrue
-  - [ ] findByNameContainingIgnoreCaseAndActiveTrueOrderByName
-  - [ ] existsByPhoneNumber
-  - [ ] Projection queries for CustomerSummaryProjection (active only)
+- [x] **CustomerRepository**
+  - [x] findByPhoneNumber
+  - [x] findByPhoneNumberAndActiveTrue
+  - [x] findByNameContainingIgnoreCaseAndActiveTrueOrderByName
+  - [x] existsByPhoneNumber
+  - [x] Projection queries for CustomerSummaryProjection (active only)
 
-- [ ] **ProductRepository**
-  - [ ] findByName / existsByName / existsByNameAndIdNot
-  - [ ] findByAvailableTrueOrderByNameAsc
-  - [ ] countByAvailableFalse (dashboard KPI)
-  - [ ] Projection queries for ProductSummaryProjection, ProductSelectProjection
+- [x] **ProductRepository**
+  - [x] findByName / existsByName / existsByNameAndIdNot
+  - [x] findByAvailableTrueOrderByNameAsc
+  - [x] countByAvailableFalse (dashboard KPI)
+  - [x] Projection queries for ProductSummaryProjection, ProductSelectProjection
 
-- [ ] **LocationRepository**
-  - [ ] findByCode / existsByCode / existsByCodeAndIdNot
-  - [ ] existsByName / existsByNameAndIdNot
-  - [ ] findByActiveTrueOrderBySortOrderAsc
-  - [ ] countByActiveTrue
-  - [ ] Projection queries for LocationSummaryProjection
+- [x] **LocationRepository**
+  - [x] findByCode / existsByCode / existsByCodeAndIdNot
+  - [x] existsByName / existsByNameAndIdNot
+  - [x] findByActiveTrueOrderBySortOrderAsc
+  - [x] countByActiveTrue
+  - [x] Projection queries for LocationSummaryProjection
 
-- [ ] **OrderRepository**
-  - [ ] findByStatus
-  - [ ] findByDueDateOrderByDueTimeAsc
-  - [ ] findByDueDateBetweenOrderByDueDateAscDueTimeAsc
-  - [ ] findByCustomerIdOrderByDueDateDescDueTimeDesc
-  - [ ] countByStatus / countByDueDate / countByDueDateAndStatusNot
-  - [ ] Projection queries for OrderListProjection, OrderDashboardProjection
-  - [ ] Time-based queries for OrderTimeProjection
+- [x] **OrderRepository**
+  - [x] findByStatus
+  - [x] findByDueDateOrderByDueTimeAsc
+  - [x] findByDueDateBetweenOrderByDueDateAscDueTimeAsc
+  - [x] findByCustomerIdOrderByDueDateDescDueTimeDesc
+  - [x] countByStatus / countByDueDate / countByDueDateAndStatusNot
+  - [x] Projection queries for OrderListProjection, OrderDashboardProjection
+  - [x] Time-based queries for OrderTimeProjection
 
-- [ ] **OrderItemRepository**
-  - [ ] findByOrderIdOrderByIdAsc
-  - [ ] deleteByOrderId
-  - [ ] Projection queries for OrderItemSummaryProjection
+- [x] **OrderItemRepository**
+  - [x] findByOrderIdOrderByIdAsc
+  - [x] deleteByOrderId
+  - [x] Projection queries for OrderItemSummaryProjection
 
-- [ ] **NotificationRepository**
+- [ ] **NotificationRepository** *(Deferred)*
   - [ ] findByRecipientIdAndReadAtIsNullOrderBySentAtDesc
   - [ ] countByRecipientIdAndReadAtIsNull
   - [ ] findTop10ByRecipientIdOrderBySentAtDesc
