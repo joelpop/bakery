@@ -1,0 +1,776 @@
+# Implementation Checklist
+
+This checklist covers all features and capabilities documented for the Café Sunshine Bakery Order Management System. Items are ordered for logical implementation sequence.
+
+---
+
+## Key Decisions
+
+The following decisions were made during documentation review to resolve conflicts and gaps:
+
+| Area | Decision |
+|------|----------|
+| **Application Name** | Café Sunshine |
+| **Baker Role** | Read-only access to Products view (can view but not edit) |
+| **Role Hierarchy** | No hierarchy - flat roles with explicit permissions |
+| **Default Landing Page** | Admin → Dashboard; Baker/Barista → Storefront |
+| **Order Direct Links** | `/storefront/{orderId}` (opens storefront with order selected) |
+| **Order Editing** | Admin can edit after production starts; Baker/Admin can add notes until picked up/cancelled |
+| **Customer Deletion** | Soft delete (mark inactive); blocked if in-progress orders; cancels pre-production orders on confirmation |
+| **Passkey Authentication** | Implement now (WebAuthn support in initial release) |
+| **Notifications** | Deferred to future enhancement |
+| **Seed Data** | Full demo data (locations, admin, products, customers, orders) |
+| **KPI Deltas** | Show both comparisons (vs previous period AND vs same period last year) |
+| **Concurrent Sessions** | Allowed (users can be logged in on multiple devices) |
+| **Preferences View** | Full settings (profile, password, passkeys, notification prefs, display settings) |
+| **Admin View** | Removed (not needed - admin functions have separate views) |
+
+---
+
+## Phase 1: Core Domain Model
+
+### 1.1 Enums (bakery-jpamodel)
+
+- [ ] **UserRoleCode** - User authorization roles
+  - [ ] ADMIN - Full system access
+  - [ ] BAKER - Kitchen staff access
+  - [ ] BARISTA - Front-of-house access
+
+- [ ] **OrderStatusCode** - Order lifecycle states
+  - [ ] NEW - Order just received
+  - [ ] VERIFIED - Order reviewed and accepted
+  - [ ] NOT_OK - Problem requiring attention
+  - [ ] CANCELLED - Order cancelled
+  - [ ] IN_PROGRESS - Being manufactured
+  - [ ] BAKED - Baking completed
+  - [ ] PACKAGED - Packaged for transport
+  - [ ] READY_FOR_PICK_UP - Available for pickup
+  - [ ] PICKED_UP - Order complete
+
+### 1.2 Abstract Base Entity (bakery-jpamodel)
+
+- [ ] **AbstractEntity** - Base class for all entities
+  - [ ] id (Long) - Primary key, auto-generated
+  - [ ] version (Integer) - Optimistic locking
+
+### 1.3 JPA Entities (bakery-jpamodel)
+
+- [ ] **UserEntity** - Staff members
+  - [ ] email (String, unique) - Login identifier
+  - [ ] firstName (String)
+  - [ ] lastName (String)
+  - [ ] passwordHash (String) - BCrypt hashed
+  - [ ] role (UserRoleCode)
+  - [ ] photo (byte[]) - Profile photo
+  - [ ] photoContentType (String)
+
+- [ ] **CustomerEntity** - Customers who place orders
+  - [ ] name (String)
+  - [ ] phoneNumber (String)
+  - [ ] email (String, optional)
+  - [ ] active (boolean, default: true) - For soft delete
+  - [ ] Relationship: orders (One-to-Many → OrderEntity)
+
+- [ ] **ProductEntity** - Bakery products
+  - [ ] name (String, unique)
+  - [ ] description (String, optional)
+  - [ ] size (String) - e.g., "12 ppl", "individual"
+  - [ ] price (BigDecimal)
+  - [ ] available (boolean)
+  - [ ] photo (byte[])
+  - [ ] photoContentType (String)
+
+- [ ] **LocationEntity** - Pickup locations
+  - [ ] name (String, unique)
+  - [ ] code (String, unique) - e.g., "STORE", "BAKERY"
+  - [ ] address (String, optional)
+  - [ ] active (boolean)
+  - [ ] sortOrder (Integer)
+
+- [ ] **OrderEntity** - Customer orders
+  - [ ] status (OrderStatusCode)
+  - [ ] dueDate (LocalDate)
+  - [ ] dueTime (LocalTime)
+  - [ ] additionalDetails (String, optional)
+  - [ ] total (BigDecimal)
+  - [ ] discount (BigDecimal, optional)
+  - [ ] paid (Boolean)
+  - [ ] createdAt (LocalDateTime)
+  - [ ] updatedAt (LocalDateTime, optional)
+  - [ ] Relationship: customer (Many-to-One → CustomerEntity)
+  - [ ] Relationship: location (Many-to-One → LocationEntity)
+  - [ ] Relationship: items (One-to-Many → OrderItemEntity, cascade ALL)
+  - [ ] Relationship: createdBy (Many-to-One → UserEntity)
+  - [ ] Relationship: updatedBy (Many-to-One → UserEntity)
+  - [ ] Lifecycle callbacks: PrePersist, PreUpdate
+
+- [ ] **OrderItemEntity** - Order line items
+  - [ ] quantity (Integer)
+  - [ ] details (String, optional) - Per-item customizations
+  - [ ] unitPrice (BigDecimal) - Price snapshot at order time
+  - [ ] lineTotal (BigDecimal) - Calculated
+  - [ ] Relationship: order (Many-to-One → OrderEntity)
+  - [ ] Relationship: product (Many-to-One → ProductEntity)
+
+- [ ] **NotificationEntity** - User-to-user notifications *(Deferred)*
+  - [ ] message (String)
+  - [ ] sentAt (LocalDateTime)
+  - [ ] readAt (LocalDateTime, optional)
+  - [ ] Relationship: sender (Many-to-One → UserEntity)
+  - [ ] Relationship: recipient (Many-to-One → UserEntity)
+
+  > **Note**: Notification functionality is deferred to future enhancement
+
+### 1.4 Interface Projections (bakery-jpamodel)
+
+- [ ] **UserSummaryProjection** - User list grid display
+- [ ] **CustomerSummaryProjection** - Customer combo box
+- [ ] **ProductSummaryProjection** - Product admin grid
+- [ ] **ProductSelectProjection** - Order form product dropdown
+- [ ] **LocationSummaryProjection** - Location dropdown
+- [ ] **OrderListProjection** - Storefront order list (with items)
+- [ ] **OrderDashboardProjection** - Dashboard upcoming orders
+- [ ] **OrderTimeProjection** - Dashboard KPI queries
+- [ ] **OrderItemSummaryProjection** - Order item display
+- [ ] **NotificationSummaryProjection** - Notification panel
+
+---
+
+## Phase 2: Persistence Layer
+
+### 2.1 JPA Configuration (bakery-jpaclient)
+
+- [ ] **JpaConfig** - Spring Data JPA configuration
+  - [ ] @EntityScan for bakery-jpamodel
+  - [ ] @EnableJpaRepositories for bakery-jpaclient
+
+### 2.2 Repositories (bakery-jpaclient)
+
+- [ ] **UserRepository**
+  - [ ] findByEmail / findByEmailIgnoreCase
+  - [ ] existsByEmail / existsByEmailAndIdNot
+  - [ ] findByRole / findByRoleOrderByLastNameAscFirstNameAsc
+  - [ ] countByRole
+  - [ ] Projection queries for UserSummaryProjection
+
+- [ ] **CustomerRepository**
+  - [ ] findByPhoneNumber
+  - [ ] findByPhoneNumberAndActiveTrue
+  - [ ] findByNameContainingIgnoreCaseAndActiveTrueOrderByName
+  - [ ] existsByPhoneNumber
+  - [ ] Projection queries for CustomerSummaryProjection (active only)
+
+- [ ] **ProductRepository**
+  - [ ] findByName / existsByName / existsByNameAndIdNot
+  - [ ] findByAvailableTrueOrderByNameAsc
+  - [ ] countByAvailableFalse (dashboard KPI)
+  - [ ] Projection queries for ProductSummaryProjection, ProductSelectProjection
+
+- [ ] **LocationRepository**
+  - [ ] findByCode / existsByCode / existsByCodeAndIdNot
+  - [ ] existsByName / existsByNameAndIdNot
+  - [ ] findByActiveTrueOrderBySortOrderAsc
+  - [ ] countByActiveTrue
+  - [ ] Projection queries for LocationSummaryProjection
+
+- [ ] **OrderRepository**
+  - [ ] findByStatus
+  - [ ] findByDueDateOrderByDueTimeAsc
+  - [ ] findByDueDateBetweenOrderByDueDateAscDueTimeAsc
+  - [ ] findByCustomerIdOrderByDueDateDescDueTimeDesc
+  - [ ] countByStatus / countByDueDate / countByDueDateAndStatusNot
+  - [ ] Projection queries for OrderListProjection, OrderDashboardProjection
+  - [ ] Time-based queries for OrderTimeProjection
+
+- [ ] **OrderItemRepository**
+  - [ ] findByOrderIdOrderByIdAsc
+  - [ ] deleteByOrderId
+  - [ ] Projection queries for OrderItemSummaryProjection
+
+- [ ] **NotificationRepository**
+  - [ ] findByRecipientIdAndReadAtIsNullOrderBySentAtDesc
+  - [ ] countByRecipientIdAndReadAtIsNull
+  - [ ] findTop10ByRecipientIdOrderBySentAtDesc
+  - [ ] Paginated projection queries
+
+---
+
+## Phase 3: UI Models
+
+### 3.1 UI Model Enums (bakery-uimodel)
+
+- [ ] **UserRole** - UI representation of user roles
+- [ ] **OrderStatus** - UI representation of order statuses
+
+### 3.2 UI Model POJOs (bakery-uimodel)
+
+- [ ] **UserSummary** - User list display
+- [ ] **UserDetail** - User create/edit form
+- [ ] **CustomerSummary** - Customer combo box/autocomplete
+- [ ] **ProductSummary** - Product admin grid
+- [ ] **ProductSelect** - Order form product dropdown
+- [ ] **LocationSummary** - Location dropdown
+- [ ] **OrderList** - Storefront order list
+- [ ] **OrderDetail** - Order detail/edit
+- [ ] **OrderDashboard** - Dashboard upcoming orders
+- [ ] **OrderItemSummary** - Order item display
+- [ ] **OrderItemDetail** - Order item create/edit
+- [ ] **NotificationSummary** - Notification display
+
+---
+
+## Phase 4: Service Layer
+
+### 4.1 Service Interfaces (bakery-service)
+
+- [ ] **UserService**
+  - [ ] list() / search(query)
+  - [ ] get(id) / getByEmail(email)
+  - [ ] create(user) / update(id, user) / delete(id)
+  - [ ] changePassword(id, password)
+
+- [ ] **CustomerService**
+  - [ ] search(query) - Active customers only
+  - [ ] getByPhoneNumber(phone)
+  - [ ] create(customer) / update(id, customer)
+  - [ ] delete(id) - Soft delete with order status checks:
+    - [ ] Block if in-progress orders exist
+    - [ ] Cancel pre-production orders on confirmation
+    - [ ] Set active=false
+  - [ ] canDelete(id) - Returns deletion eligibility and affected orders
+
+- [ ] **ProductService**
+  - [ ] list() / listAvailable()
+  - [ ] get(id)
+  - [ ] create(product) / update(id, product) / delete(id)
+  - [ ] countUnavailable() (dashboard KPI)
+
+- [ ] **LocationService**
+  - [ ] list() / listActive()
+  - [ ] get(id) / getByCode(code)
+  - [ ] create(location) / update(id, location) / delete(id)
+
+- [ ] **OrderService**
+  - [ ] listUpcoming() / listByDateRange(start, end)
+  - [ ] listByStatus(status) / listByCustomer(customerId)
+  - [ ] get(id)
+  - [ ] create(order) / update(id, order)
+  - [ ] updateStatus(id, status)
+  - [ ] markAsPaid(id)
+  - [ ] Dashboard KPI methods
+
+- [ ] **NotificationService** *(Deferred)*
+  - [ ] getUnreadForUser(userId)
+  - [ ] countUnreadForUser(userId)
+  - [ ] getRecentForUser(userId, limit)
+  - [ ] send(senderId, recipientId, message)
+  - [ ] markAsRead(id) / markAllAsRead(userId)
+
+  > **Note**: Notification functionality is deferred to future enhancement
+
+- [ ] **CurrentUserService**
+  - [ ] getCurrentUserEmail()
+  - [ ] getCurrentUser()
+  - [ ] hasRole(role)
+  - [ ] isAdmin()
+
+- [ ] **DashboardService**
+  - [ ] getRemainingTodayCount()
+  - [ ] getNextPickupTime()
+  - [ ] getNewOrdersCount()
+  - [ ] getLastNewOrderTime()
+  - [ ] getTomorrowCount()
+  - [ ] getFirstPickupTimeTomorrow()
+  - [ ] getUnavailableProductsCount()
+  - [ ] getUpcomingOrders(limit)
+  - [ ] getMonthlyPickupData()
+  - [ ] getYearlyPickupData()
+  - [ ] getProductBreakdown()
+  - [ ] getYearOverYearSales()
+
+### 4.2 Service Implementations (bakery-jpaservice)
+
+- [ ] **JpaUserService**
+- [ ] **JpaCustomerService**
+- [ ] **JpaProductService**
+- [ ] **JpaLocationService**
+- [ ] **JpaOrderService**
+- [ ] **JpaNotificationService**
+- [ ] **JpaDashboardService**
+
+### 4.3 MapStruct Mappers (bakery-jpaservice)
+
+- [ ] **UserMapper** - UserEntity ↔ UserSummary/UserDetail
+- [ ] **CustomerMapper** - CustomerEntity ↔ CustomerSummary
+- [ ] **ProductMapper** - ProductEntity ↔ ProductSummary/ProductSelect
+- [ ] **LocationMapper** - LocationEntity ↔ LocationSummary
+- [ ] **OrderMapper** - OrderEntity ↔ OrderList/OrderDetail/OrderDashboard
+- [ ] **OrderItemMapper** - OrderItemEntity ↔ OrderItemSummary/OrderItemDetail
+- [ ] **NotificationMapper** - NotificationEntity ↔ NotificationSummary
+
+---
+
+## Phase 5: Security
+
+### 5.1 Security Configuration (bakery-app)
+
+- [ ] **SecurityConfig** - Spring Security + Vaadin integration
+  - [ ] VaadinSecurityConfigurer setup
+  - [ ] Custom login view configuration
+  - [ ] BCryptPasswordEncoder bean
+  - [ ] Session configuration (timeout, fixation protection)
+
+- [ ] **UserDetailsServiceImpl** - Load user by email
+  - [ ] Map UserEntity to Spring Security UserDetails
+  - [ ] Convert UserRoleCode to GrantedAuthority
+
+- [ ] **CurrentUserServiceImpl** - Access authenticated user
+  - [ ] Get current user from SecurityContext
+  - [ ] Role checking methods
+
+### 5.2 Method Security (bakery-app)
+
+- [ ] Enable @PreAuthorize annotations
+- [ ] Admin-only operations in UserService
+- [ ] Self-edit restrictions (cannot delete own account, cannot demote last admin)
+
+### 5.3 Password Validation
+
+- [ ] Entropy-based password strength calculation
+- [ ] Minimum 50 bits entropy requirement
+- [ ] Common password blocklist check
+- [ ] Strength indicator for UI feedback
+
+---
+
+## Phase 6: Core UI Components
+
+### 6.1 Application Shell (bakery-app)
+
+- [ ] **Application.java** updates
+  - [ ] @StyleSheet(Aura.STYLESHEET) - Aura theme
+  - [ ] @EnableVaadin for route scanning
+
+### 6.2 Main Layout (bakery-ui)
+
+- [ ] **MainLayout** - Application shell with navigation
+  - [ ] App branding (Café Sunshine logo/name)
+  - [ ] Desktop: Top horizontal navigation tabs
+  - [ ] Mobile: Bottom tab bar with overflow menu
+  - [ ] User menu trigger (avatar with notification badge)
+  - [ ] Role-based navigation item visibility
+  - [ ] Active tab highlighting
+
+### 6.3 Login View (bakery-ui)
+
+- [ ] **LoginView** - Authentication screen
+  - [ ] Centered layout with Café Sunshine logo/branding
+  - [ ] Email and password fields
+  - [ ] Login button
+  - [ ] Passkey login button
+  - [ ] Error display for invalid credentials
+  - [ ] Redirect based on role:
+    - [ ] Admin → Dashboard
+    - [ ] Baker/Barista → Storefront
+  - [ ] @AnonymousAllowed, autoLayout=false
+
+### 6.4 Passkey Authentication (WebAuthn)
+
+- [ ] WebAuthn integration for passwordless login
+- [ ] Passkey login flow on LoginView
+- [ ] Passkey registration in PreferencesView
+- [ ] Support for:
+  - [ ] Platform authenticators (TouchID, FaceID, Windows Hello)
+  - [ ] Roaming authenticators (YubiKey, FIDO2 keys)
+
+---
+
+## Phase 7: Admin Views
+
+### 7.1 Users View (bakery-ui)
+
+- [ ] **UsersView** - User management (Admin only)
+  - [ ] Searchable data grid
+  - [ ] Columns: Avatar, Email, Name, Role
+  - [ ] "+ New user" button
+  - [ ] Row click opens edit dialog
+  - [ ] @RolesAllowed("ADMIN")
+
+- [ ] **UserDialog** - Create/Edit user dialog
+  - [ ] Photo upload
+  - [ ] Email, First name, Last name fields
+  - [ ] Password field with show/hide toggle
+  - [ ] Role dropdown (Admin, Baker, Barista)
+  - [ ] Save, Cancel, Delete buttons
+  - [ ] Validation: unique email, password requirements
+  - [ ] Self-edit restrictions
+
+### 7.2 Products View (bakery-ui)
+
+- [ ] **ProductsView** - Product catalog management
+  - [ ] Searchable data grid
+  - [ ] Columns: Image, Name, Size, Price, Available
+  - [ ] "+ New product" button (Admin only)
+  - [ ] Edit/Delete actions (Admin only)
+  - [ ] Read-only mode for Baker role
+  - [ ] @RolesAllowed({"ADMIN", "BAKER"}) with conditional editing
+
+- [ ] **ProductDialog** - Create/Edit product dialog
+  - [ ] Photo upload
+  - [ ] Name, Description, Size, Price fields
+  - [ ] Available toggle
+  - [ ] Save, Cancel, Delete buttons
+  - [ ] Validation: unique name, positive price
+
+### 7.3 Locations View (bakery-ui)
+
+- [ ] **LocationsView** - Location management (Admin only)
+  - [ ] Data grid with Name, Code, Address, Active, Sort Order
+  - [ ] "+ New location" button
+  - [ ] @RolesAllowed("ADMIN")
+
+- [ ] **LocationDialog** - Create/Edit location dialog
+  - [ ] Name, Code, Address fields
+  - [ ] Active checkbox
+  - [ ] Sort order number field
+  - [ ] Save, Cancel, Delete buttons
+  - [ ] Validation: unique name/code, at least one active location
+  - [ ] Deletion protection (cannot delete with orders)
+
+---
+
+## Phase 8: Storefront View
+
+### 8.1 Order List (bakery-ui)
+
+- [ ] **StorefrontView** - Order management
+  - [ ] Card-based order list
+  - [ ] Grouped by: Today, Tomorrow, This Week, Upcoming
+  - [ ] @PermitAll
+
+- [ ] **OrderCard** - Individual order display
+  - [ ] Status badge with color coding
+  - [ ] Paid indicator (checkmark)
+  - [ ] Time and location
+  - [ ] Customer name
+  - [ ] Order items summary
+  - [ ] Click to open detail view
+
+### 8.2 Order Filtering
+
+- [ ] **FilterBar** - Order filtering component
+  - [ ] Search/filter input with dropdown
+  - [ ] Status filter (multi-select chips)
+  - [ ] Customer filter (searchable dropdown)
+  - [ ] Paid/Unpaid filter
+  - [ ] "Show past orders" checkbox
+  - [ ] "Clear filters" link
+  - [ ] Filter chips for applied filters
+
+### 8.3 New Order Dialog
+
+- [ ] **NewOrderDialog** - Two-step order creation wizard
+  - [ ] Step 1: Order Details
+    - [ ] Due date picker (first field)
+    - [ ] Due time dropdown (hourly slots)
+    - [ ] Location dropdown
+    - [ ] Product section (add multiple items)
+      - [ ] Product combo box with autocomplete
+      - [ ] Quantity stepper (+/-)
+      - [ ] Details text input
+      - [ ] Line price display
+    - [ ] Discount field
+    - [ ] Total calculation
+    - [ ] Customer section
+      - [ ] Customer combo box (create new or select existing)
+      - [ ] Phone number input (triggers autofill)
+      - [ ] Additional details text area
+    - [ ] Cancel and "Review order" buttons
+  - [ ] Step 2: Review Order
+    - [ ] Read-only summary of all order details
+    - [ ] Back and "Place order" buttons
+
+### 8.4 Order Detail View
+
+- [ ] **OrderDetailView** - Full order information and actions
+  - [ ] Complete order information display
+  - [ ] Status progression buttons
+  - [ ] "Mark as Paid" button
+  - [ ] "Mark as Not OK" button (with problem description)
+  - [ ] Edit order details (role-based):
+    - [ ] Admin: Full edit until PICKED_UP/CANCELLED
+    - [ ] Baker: Add notes only until PICKED_UP/CANCELLED
+    - [ ] Barista: Add notes only until PICKED_UP/CANCELLED
+  - [ ] Order history/audit trail
+
+### 8.5 Direct Order Links
+
+- [ ] Route: `/orders/{orderId}`
+- [ ] Deep linking support for sharing orders
+
+---
+
+## Phase 9: Dashboard View
+
+### 9.1 KPI Cards (bakery-ui)
+
+- [ ] **DashboardView** - Business analytics
+  - [ ] @PermitAll
+
+- [ ] **KPI Cards** (top row)
+  - [ ] Remaining Today (count + next pickup time)
+  - [ ] Not Available (count + orders affected note)
+  - [ ] New (count + "last X ago" timestamp)
+  - [ ] Tomorrow (count + first pickup time)
+  - [ ] Month Total (count + dual delta: vs prev month AND vs same month last year)
+  - [ ] Year Total (count + dual delta: vs prev year AND vs same period last year)
+
+### 9.2 Alerts Section
+
+- [ ] **AlertsPanel** - Bulletin board
+  - [ ] Ingredient alerts
+  - [ ] Problem orders (NOT_OK status)
+  - [ ] Staff messages
+
+### 9.3 Charts
+
+- [ ] **PickupCharts** (second row)
+  - [ ] Pickups in [Current Month] - Daily bar chart
+  - [ ] Pickups in [Current Year] - Monthly bar chart
+
+- [ ] **SalesTrendChart** (third row)
+  - [ ] Sales Last Years - Multi-line year-over-year comparison
+
+- [ ] **ProductsBreakdownChart** (bottom row)
+  - [ ] Products Delivered in [Current Month] - Donut/pie chart
+
+### 9.4 Upcoming Orders Widget
+
+- [ ] **UpcomingOrdersPanel** - Condensed order list
+  - [ ] Status badge
+  - [ ] Paid indicator
+  - [ ] Day, time, location
+  - [ ] Customer name
+  - [ ] Items summary
+
+---
+
+## Phase 10: User Menu & Preferences
+
+### 10.1 Menu Trigger
+
+- [ ] User avatar in header
+- [ ] Click/tap to open dropdown
+
+### 10.2 Menu Contents
+
+- [ ] **UserMenuPopup** - Dropdown menu
+  - [ ] User profile section (avatar, name, email)
+  - [ ] "Preferences" link
+  - [ ] "Log out" button
+
+### 10.3 Notifications *(Deferred)*
+
+> Notification UI is deferred to future enhancement
+
+### 10.4 Preferences View
+
+- [ ] **PreferencesView** - Full user settings
+  - [ ] Route: `/preferences`
+  - [ ] @PermitAll
+
+  - [ ] **Profile Settings Section**
+    - [ ] Profile photo upload
+    - [ ] Display name (read-only)
+    - [ ] Email (read-only)
+    - [ ] Role badge (read-only)
+
+  - [ ] **Security Settings Section**
+    - [ ] Change password form
+      - [ ] Current password verification
+      - [ ] New password with entropy validation
+      - [ ] Confirm password
+      - [ ] Strength indicator
+    - [ ] Passkey management
+      - [ ] List of registered passkeys
+      - [ ] Add passkey button
+      - [ ] Remove passkey button
+
+  - [ ] **Notification Preferences Section** *(Placeholder for future)*
+    - [ ] Email notifications toggle
+    - [ ] In-app notifications toggle
+
+  - [ ] **Display Settings Section**
+    - [ ] Theme selection (Light/Dark/System)
+
+---
+
+## Phase 11: Exception Handling
+
+### 11.1 Error Views (bakery-ui)
+
+- [ ] **NotFoundView** (404)
+  - [ ] Error icon
+  - [ ] "Page Not Found" heading
+  - [ ] Helpful message
+  - [ ] Home link
+
+- [ ] **AccessDeniedView** (403)
+  - [ ] Lock icon
+  - [ ] "Access Denied" heading
+  - [ ] Message
+  - [ ] Home link
+  - [ ] Contact admin suggestion
+
+- [ ] **SystemErrorView** (500)
+  - [ ] Error icon
+  - [ ] "Something Went Wrong" heading
+  - [ ] Message
+  - [ ] Error reference ID
+  - [ ] Home link
+  - [ ] Retry option
+
+- [ ] **InvalidParametersView** (400)
+  - [ ] Warning icon
+  - [ ] "Invalid Request" heading
+  - [ ] Validation error details (when safe)
+  - [ ] Back/home link
+
+### 11.2 Logging
+
+- [ ] Error logging with correlation IDs
+- [ ] User ID and request details in logs
+- [ ] Stack traces for 500 errors
+
+---
+
+## Phase 12: Responsive Design
+
+### 12.1 Desktop Layout (> 768px)
+
+- [ ] Top horizontal navigation bar
+- [ ] Multi-column layouts
+- [ ] Hover states and tooltips
+
+### 12.2 Tablet Layout (768px)
+
+- [ ] Condensed top navigation
+- [ ] Adapted layouts
+
+### 12.3 Phone Layout (< 768px)
+
+- [ ] Bottom tab bar with overflow menu
+- [ ] Single-column layouts
+- [ ] Full-screen dialogs
+- [ ] Native mobile controls (date/time pickers)
+- [ ] Touch-optimized targets
+
+### 12.4 Transitions
+
+- [ ] Smooth layout transitions on resize
+- [ ] Active view preserved during resize
+- [ ] Auto-close overflow menu on navigation
+
+---
+
+## Phase 13: Data Seeding
+
+### 13.1 Default Locations
+
+- [ ] Store (code: "STORE", active, sortOrder: 1)
+- [ ] Bakery (code: "BAKERY", active, sortOrder: 2)
+
+### 13.2 Default Admin User
+
+- [ ] Email: admin@cafe-sunshine.com
+- [ ] Password: (configured via environment variable or prompt)
+- [ ] Role: ADMIN
+
+### 13.3 Demo Products
+
+- [ ] Princess Cake (12 ppl, $39.90)
+- [ ] Strawberry Cake (12 ppl, $29.90)
+- [ ] Salami Pastry (individual, $7.90)
+- [ ] Blueberry Cheese Cake
+- [ ] Vanilla Bun
+- [ ] Bacon Tart
+- [ ] Bacon Cheese Cake
+- [ ] Bacon Cracker
+
+### 13.4 Demo Customers
+
+- [ ] Sample customers with varied names and phone numbers
+
+### 13.5 Demo Orders
+
+- [ ] Orders across various statuses (NEW, VERIFIED, IN_PROGRESS, etc.)
+- [ ] Orders due today, tomorrow, this week, and upcoming
+- [ ] Mix of paid and unpaid orders
+- [ ] Some orders with multiple items
+
+---
+
+## Phase 14: Testing
+
+### 14.1 Unit Tests (bakery-jpaservice)
+
+- [ ] Repository tests
+- [ ] Service tests with actual repositories
+- [ ] MapStruct mapper tests
+
+### 14.2 UI Unit Tests (bakery-ui)
+
+- [ ] TestBench UI Unit tests for views
+- [ ] Component behavior tests
+
+### 14.3 Integration Tests (bakery-app)
+
+- [ ] Playwright end-to-end tests
+- [ ] Authentication flow tests
+- [ ] Order creation flow tests
+- [ ] Admin CRUD tests
+
+### 14.4 Security Tests
+
+- [ ] Role-based access tests
+- [ ] Method security tests
+- [ ] Session management tests
+
+---
+
+## Implementation Notes
+
+### Priority Order
+
+1. **Foundation** (Phases 1-4): Domain model, persistence, services
+2. **Security** (Phase 5): Must work before UI
+3. **Core UI** (Phase 6): Login and navigation framework
+4. **Admin Views** (Phase 7): Simpler CRUD patterns first
+5. **Storefront** (Phase 8): Main business functionality
+6. **Dashboard** (Phase 9): Analytics and KPIs
+7. **User Menu** (Phase 10): Notifications and preferences
+8. **Error Handling** (Phase 11): Polished error experience
+9. **Responsive** (Phase 12): Mobile optimization
+10. **Data & Testing** (Phases 13-14): Seed data and quality assurance
+
+### Dependencies
+
+- Entities must be created before projections
+- Projections must be created before repositories use them
+- Repositories must be created before services
+- Services must be created before UI views
+- Login must work before protected views can be tested
+- Admin views (Users, Products, Locations) can be developed in parallel
+- Storefront depends on Products, Locations, Customers
+- Dashboard depends on Orders and Products
+
+### Images
+
+Screenshots from `docs/originals/images/` are available for:
+- Dashboard view
+- Storefront view (order list, filters, new order dialog)
+- User menu (notifications)
+- Users view (CRUD, new/edit dialog)
+- Admin view (phone overflow menu)
+
+Missing screenshots will require creative interpretation based on documentation.
