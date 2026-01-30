@@ -5,10 +5,10 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
@@ -50,15 +50,23 @@ public class UsersView extends VerticalLayout {
 
         addClassName("users-view");
         setSizeFull();
+        setPadding(false);
+        setSpacing(false);
 
         // Header with title, search, and add button
         searchField = createSearchField();
         var header = createHeader();
 
-        // Grid
-        grid = createGrid();
+        // Grid container with padding
+        var gridContainer = new Div();
+        gridContainer.addClassNames(LumoUtility.Padding.MEDIUM);
+        gridContainer.setSizeFull();
 
-        add(header, grid);
+        grid = createGrid();
+        gridContainer.add(grid);
+
+        add(header, gridContainer);
+        setFlexGrow(1, gridContainer);
         refreshGrid();
     }
 
@@ -72,11 +80,9 @@ public class UsersView extends VerticalLayout {
         return field;
     }
 
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
+    private Div createHeader() {
+        var header = new Div();
+        header.addClassName("view-header");
 
         var title = new Span("Users");
         title.addClassNames(
@@ -84,14 +90,19 @@ public class UsersView extends VerticalLayout {
                 LumoUtility.FontWeight.SEMIBOLD
         );
 
-        var spacer = new Span();
-        spacer.addClassNames(LumoUtility.Flex.GROW);
+        var actions = new Div();
+        actions.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Gap.MEDIUM
+        );
 
         var addButton = new Button("New user", new Icon(VaadinIcon.PLUS));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addButton.addClickListener(e -> openDialog(null));
 
-        header.add(title, spacer, searchField, addButton);
+        actions.add(searchField, addButton);
+        header.add(title, actions);
         return header;
     }
 

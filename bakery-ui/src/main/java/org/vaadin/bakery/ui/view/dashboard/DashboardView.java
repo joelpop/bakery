@@ -96,11 +96,9 @@ public class DashboardView extends VerticalLayout {
         refreshData();
     }
 
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Vertical.SMALL);
+    private Div createHeader() {
+        var header = new Div();
+        header.addClassName("view-header");
 
         var title = new Span("Dashboard");
         title.addClassNames(

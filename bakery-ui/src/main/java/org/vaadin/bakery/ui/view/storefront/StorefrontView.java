@@ -7,7 +7,6 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
@@ -87,11 +86,9 @@ public class StorefrontView extends VerticalLayout {
         refreshOrders();
     }
 
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Vertical.SMALL);
+    private Div createHeader() {
+        var header = new Div();
+        header.addClassName("view-header");
 
         var title = new Span("Storefront");
         title.addClassNames(
@@ -99,14 +96,11 @@ public class StorefrontView extends VerticalLayout {
                 LumoUtility.FontWeight.SEMIBOLD
         );
 
-        var spacer = new Span();
-        spacer.addClassNames(LumoUtility.Flex.GROW);
-
         var newOrderButton = new Button("New Order", new Icon(VaadinIcon.PLUS));
         newOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newOrderButton.addClickListener(e -> openNewOrderDialog());
 
-        header.add(title, spacer, newOrderButton);
+        header.add(title, newOrderButton);
         return header;
     }
 

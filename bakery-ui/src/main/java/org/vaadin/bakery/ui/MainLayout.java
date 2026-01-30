@@ -90,7 +90,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     private Component createAppBranding() {
         var sunIcon = new Icon(VaadinIcon.SUN_O);
-        sunIcon.addClassNames(LumoUtility.TextColor.PRIMARY);
+        sunIcon.getStyle().set("color", "#F5A623"); // Warm golden yellow
 
         var appName = new H1("Café Sunshine");
         appName.addClassNames(
@@ -102,7 +102,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         var brandingContainer = new HorizontalLayout(sunIcon, appName);
         brandingContainer.setAlignItems(FlexComponent.Alignment.CENTER);
         brandingContainer.setSpacing(false);
-        brandingContainer.addClassNames(LumoUtility.Gap.SMALL);
+        brandingContainer.addClassNames(LumoUtility.Gap.SMALL, "app-branding");
 
         return brandingContainer;
     }
@@ -281,13 +281,99 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
 
-        // Inject responsive CSS inline to avoid cross-module frontend resource issues
+        // Inject comprehensive CSS for styling
         attachEvent.getUI().getPage().executeJs(
                 "if (!document.getElementById('main-layout-styles')) {" +
                 "  const style = document.createElement('style');" +
                 "  style.id = 'main-layout-styles';" +
                 "  style.textContent = `" +
+                "    /* Header styling with gradient */" +
+                "    .main-layout vaadin-app-layout::part(navbar) {" +
+                "      background: linear-gradient(135deg, #1565C0 0%, #1976D2 50%, #42A5F5 100%);" +
+                "      box-shadow: 0 2px 4px rgba(0,0,0,0.1);" +
+                "    }" +
+                "    .main-layout .app-branding h1 { color: white; }" +
+                "    .main-layout .app-branding vaadin-icon { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }" +
+                "    " +
+                "    /* Navigation tabs styling */" +
                 "    .desktop-navigation { display: flex; }" +
+                "    .desktop-navigation vaadin-tab { color: rgba(255,255,255,0.85); }" +
+                "    .desktop-navigation vaadin-tab[selected] { color: white; }" +
+                "    .desktop-navigation vaadin-tab a { color: inherit !important; }" +
+                "    .desktop-navigation vaadin-tab::before { background: white !important; }" +
+                "    " +
+                "    /* User menu in header */" +
+                "    .main-layout vaadin-avatar { border: 2px solid rgba(255,255,255,0.5); }" +
+                "    " +
+                "    /* Content area styling */" +
+                "    .main-layout [slot=''] { background: #f5f7fa; min-height: calc(100vh - 64px); }" +
+                "    " +
+                "    /* Card styling utility class */" +
+                "    .card {" +
+                "      background: white;" +
+                "      border-radius: var(--lumo-border-radius-l);" +
+                "      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);" +
+                "      padding: var(--lumo-space-m);" +
+                "    }" +
+                "    .card-elevated {" +
+                "      background: white;" +
+                "      border-radius: var(--lumo-border-radius-l);" +
+                "      box-shadow: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);" +
+                "      padding: var(--lumo-space-m);" +
+                "    }" +
+                "    " +
+                "    /* Status badge styling */" +
+                "    .status-badge {" +
+                "      display: inline-flex;" +
+                "      align-items: center;" +
+                "      padding: 2px 8px;" +
+                "      border-radius: 12px;" +
+                "      font-size: var(--lumo-font-size-xs);" +
+                "      font-weight: 500;" +
+                "      text-transform: uppercase;" +
+                "      letter-spacing: 0.5px;" +
+                "    }" +
+                "    .status-new { background: #E3F2FD; color: #1565C0; }" +
+                "    .status-verified { background: #E8F5E9; color: #2E7D32; }" +
+                "    .status-ready { background: #E8F5E9; color: #2E7D32; }" +
+                "    .status-problem { background: #FFEBEE; color: #C62828; }" +
+                "    .status-not-ok { background: #FFEBEE; color: #C62828; }" +
+                "    .status-cancelled { background: #ECEFF1; color: #546E7A; }" +
+                "    .status-in-progress { background: #FFF3E0; color: #E65100; }" +
+                "    .status-baked { background: #FFF8E1; color: #F57C00; }" +
+                "    .status-packaged { background: #E0F7FA; color: #00838F; }" +
+                "    .status-picked-up { background: #ECEFF1; color: #546E7A; }" +
+                "    " +
+                "    /* View header styling */" +
+                "    .view-header {" +
+                "      display: flex;" +
+                "      align-items: center;" +
+                "      justify-content: space-between;" +
+                "      padding: var(--lumo-space-m) var(--lumo-space-l);" +
+                "      background: white;" +
+                "      border-bottom: 1px solid var(--lumo-contrast-10pct);" +
+                "    }" +
+                "    .view-header h1, .view-header h2 {" +
+                "      margin: 0;" +
+                "      font-size: var(--lumo-font-size-xl);" +
+                "      font-weight: 600;" +
+                "      color: var(--lumo-header-text-color);" +
+                "    }" +
+                "    " +
+                "    /* Section headers */" +
+                "    .section-header {" +
+                "      font-size: var(--lumo-font-size-s);" +
+                "      font-weight: 600;" +
+                "      color: var(--lumo-secondary-text-color);" +
+                "      text-transform: uppercase;" +
+                "      letter-spacing: 0.5px;" +
+                "      margin: var(--lumo-space-l) 0 var(--lumo-space-s) 0;" +
+                "    }" +
+                "    " +
+                "    /* Grid/list item hover */" +
+                "    .list-item:hover { background: var(--lumo-contrast-5pct); }" +
+                "    " +
+                "    /* Bottom navigation */" +
                 "    .bottom-navigation { display: none; }" +
                 "    @media (max-width: 768px) {" +
                 "      .desktop-navigation { display: none; }" +
@@ -303,7 +389,6 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 "        padding: var(--lumo-space-xs) 0;" +
                 "      }" +
                 "      .main-layout [slot=''] { padding-bottom: 60px; }" +
-                "      /* Full-screen dialogs on mobile */" +
                 "      vaadin-dialog-overlay[theme~='responsive-dialog'] {" +
                 "        --_vaadin-dialog-content-width: 100vw !important;" +
                 "        --_vaadin-dialog-content-height: 100vh !important;" +
@@ -315,9 +400,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 "        max-height: 100vh !important;" +
                 "        border-radius: 0;" +
                 "      }" +
-                "      /* Touch-optimized tap targets */" +
                 "      vaadin-button { min-height: 44px; min-width: 44px; }" +
-                "      vaadin-text-field, vaadin-combo-box, vaadin-date-picker, vaadin-time-picker { --lumo-text-field-size: var(--lumo-size-l); }" +
                 "    }" +
                 "    .main-layout vaadin-tab a { text-decoration: none; color: inherit; display: flex; align-items: center; }" +
                 "  `;" +

@@ -5,7 +5,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
@@ -91,14 +90,15 @@ public class PreferencesView extends VerticalLayout {
         loadCurrentUser();
     }
 
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Vertical.SMALL);
+    private Div createHeader() {
+        var header = new Div();
+        header.addClassName("view-header");
 
-        var title = new H2("Preferences");
-        title.addClassNames(LumoUtility.Margin.NONE);
+        var title = new Span("Preferences");
+        title.addClassNames(
+                LumoUtility.FontSize.XLARGE,
+                LumoUtility.FontWeight.SEMIBOLD
+        );
 
         header.add(title);
         return header;
@@ -217,9 +217,8 @@ public class PreferencesView extends VerticalLayout {
 
     private Div createSection(String title) {
         var section = new Div();
+        section.addClassName("card");
         section.addClassNames(
-                LumoUtility.Background.CONTRAST_5,
-                LumoUtility.BorderRadius.LARGE,
                 LumoUtility.Padding.LARGE,
                 LumoUtility.Margin.Bottom.MEDIUM
         );

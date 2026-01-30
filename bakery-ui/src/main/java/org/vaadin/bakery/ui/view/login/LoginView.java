@@ -88,7 +88,7 @@ public class LoginView extends Main implements BeforeEnterObserver {
 
         var icon = new Icon(VaadinIcon.SUN_O);
         icon.setSize("64px");
-        icon.addClassNames(LumoUtility.TextColor.PRIMARY);
+        icon.getStyle().set("color", "#F5A623"); // Warm golden yellow
 
         var title = new H1("Café Sunshine");
         title.addClassNames(
