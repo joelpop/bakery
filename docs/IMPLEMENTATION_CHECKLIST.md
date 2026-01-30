@@ -602,42 +602,42 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 11: Exception Handling
+## Phase 11: Exception Handling ✅
 
 ### 11.1 Error Views (bakery-ui)
 
-- [ ] **NotFoundView** (404)
-  - [ ] Error icon
-  - [ ] "Page Not Found" heading
-  - [ ] Helpful message
-  - [ ] Home link
+- [x] **NotFoundView** (404)
+  - [x] Error icon (search icon)
+  - [x] "Page Not Found" heading
+  - [x] Helpful message
+  - [x] Home link
 
-- [ ] **AccessDeniedView** (403)
-  - [ ] Lock icon
-  - [ ] "Access Denied" heading
-  - [ ] Message
-  - [ ] Home link
-  - [ ] Contact admin suggestion
+- [x] **AccessDeniedView** (403)
+  - [x] Displays as 404 for security (search icon, "Page Not Found")
+  - [x] Returns SC_NOT_FOUND to avoid information disclosure
+  - [x] Home link
+  - [ ] ~~Lock icon~~ *(intentionally omitted for security)*
+  - [ ] ~~"Access Denied" heading~~ *(intentionally omitted for security)*
 
-- [ ] **SystemErrorView** (500)
-  - [ ] Error icon
-  - [ ] "Something Went Wrong" heading
-  - [ ] Message
-  - [ ] Error reference ID
-  - [ ] Home link
-  - [ ] Retry option
+- [x] **SystemErrorView** (500)
+  - [x] Error icon (warning)
+  - [x] "Something Went Wrong" heading
+  - [x] Message
+  - [x] Error reference ID (UUID-based)
+  - [x] Home link
+  - [x] Retry option (page reload button)
 
-- [ ] **InvalidParametersView** (400)
-  - [ ] Warning icon
-  - [ ] "Invalid Request" heading
-  - [ ] Validation error details (when safe)
-  - [ ] Back/home link
+- [x] **InvalidParametersView** (400)
+  - [x] Warning icon (exclamation circle)
+  - [x] "Invalid Request" heading
+  - [x] Validation error details (when safe to display)
+  - [x] Home link
 
 ### 11.2 Logging
 
-- [ ] Error logging with correlation IDs
-- [ ] User ID and request details in logs
-- [ ] Stack traces for 500 errors
+- [x] Error logging with correlation IDs (SystemErrorView)
+- [ ] User ID and request details in logs *(deferred)*
+- [x] Stack traces for 500 errors (logged server-side)
 
 ---
 
