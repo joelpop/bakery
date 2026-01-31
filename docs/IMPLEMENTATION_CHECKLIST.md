@@ -348,7 +348,7 @@ The following decisions were made during documentation review to resolve conflic
 ### 6.1 Application Shell (bakery-app)
 
 - [x] **Application.java** updates
-  - [x] @StyleSheet(Aura.STYLESHEET) - Aura theme
+  - [x] @StyleSheet(Lumo.STYLESHEET) and @StyleSheet(Lumo.UTILITY_STYLESHEET) - Lumo theme with utility classes
   - [x] @EnableVaadin for route scanning
 
 ### 6.2 Main Layout (bakery-ui)

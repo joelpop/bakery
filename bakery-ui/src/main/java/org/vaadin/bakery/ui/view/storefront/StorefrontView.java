@@ -9,6 +9,8 @@ import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -44,6 +46,7 @@ public class StorefrontView extends VerticalLayout {
     private final ProductService productService;
     private final Div ordersContainer;
     private FilterBar filterBar;
+    private TextField searchField;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
 
@@ -58,14 +61,13 @@ public class StorefrontView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
-        // Header
-        var header = createHeader();
-        add(header);
+        // Toolbar with search and new order button
+        var toolbar = createToolbar();
+        add(toolbar);
 
-        // Filter bar
+        // Filter bar (expandable filters)
         filterBar = new FilterBar(locationService.listActive());
         filterBar.addFilterChangedListener(e -> refreshOrders());
-        filterBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
         add(filterBar);
 
         // Orders container (scrollable)
@@ -86,22 +88,36 @@ public class StorefrontView extends VerticalLayout {
         refreshOrders();
     }
 
-    private Div createHeader() {
-        var header = new Div();
-        header.addClassName("view-header");
+    private Div createToolbar() {
+        var toolbar = new Div();
+        toolbar.addClassName("view-toolbar");
 
-        var title = new Span("Storefront");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
+        // Left side: search field
+        var leftSection = new Div();
+        leftSection.addClassName("view-toolbar-left");
 
-        var newOrderButton = new Button("New Order", new Icon(VaadinIcon.PLUS));
+        searchField = new TextField();
+        searchField.setPlaceholder("Filter");
+        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        searchField.setClearButtonVisible(true);
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.addValueChangeListener(e -> refreshOrders());
+        searchField.setWidth("300px");
+
+        leftSection.add(searchField);
+
+        // Right side: new order button
+        var rightSection = new Div();
+        rightSection.addClassName("view-toolbar-right");
+
+        var newOrderButton = new Button("New order", new Icon(VaadinIcon.PLUS));
         newOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newOrderButton.addClickListener(e -> openNewOrderDialog());
 
-        header.add(title, newOrderButton);
-        return header;
+        rightSection.add(newOrderButton);
+
+        toolbar.add(leftSection, rightSection);
+        return toolbar;
     }
 
     private void refreshOrders() {
@@ -118,6 +134,15 @@ public class StorefrontView extends VerticalLayout {
         }
 
         var orders = orderService.listByDateRange(fromDate, toDate);
+
+        // Apply search filter (customer name)
+        var searchTerm = searchField.getValue();
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            var lowerSearch = searchTerm.toLowerCase();
+            orders = orders.stream()
+                    .filter(o -> o.getCustomerName().toLowerCase().contains(lowerSearch))
+                    .toList();
+        }
 
         // Apply status filter
         var selectedStatuses = filterBar.getSelectedStatuses();

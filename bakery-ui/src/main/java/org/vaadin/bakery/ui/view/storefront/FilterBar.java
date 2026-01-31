@@ -32,9 +32,10 @@ public class FilterBar extends Div {
                 LumoUtility.FlexWrap.WRAP,
                 LumoUtility.Gap.MEDIUM,
                 LumoUtility.AlignItems.END,
-                LumoUtility.Padding.Vertical.SMALL
+                LumoUtility.Padding.Vertical.SMALL,
+                LumoUtility.Padding.Horizontal.LARGE
         );
-        getStyle().set("background", "var(--lumo-base-color)");
+        getStyle().set("background", "var(--lumo-contrast-5pct)");
         getStyle().set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
 
         // Date range
