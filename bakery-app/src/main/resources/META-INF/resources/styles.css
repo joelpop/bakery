@@ -1,0 +1,146 @@
+/* Bakery Application Styles */
+
+/* =============================================================================
+   Responsive Navigation
+   ============================================================================= */
+
+/* Desktop: show horizontal tabs, hide bottom navigation */
+@media (min-width: 768px) {
+    .desktop-navigation {
+        display: flex !important;
+    }
+
+    .bottom-navigation {
+        display: none !important;
+    }
+}
+
+/* Mobile: hide horizontal tabs, show bottom navigation */
+@media (max-width: 767px) {
+    .desktop-navigation {
+        display: none !important;
+    }
+
+    .bottom-navigation {
+        display: flex !important;
+    }
+
+    /* Adjust branding for mobile */
+    .app-branding h1 {
+        font-size: var(--lumo-font-size-m);
+    }
+}
+
+/* =============================================================================
+   View Toolbar (secondary toolbar for action buttons)
+   ============================================================================= */
+
+.view-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--lumo-space-s) var(--lumo-space-m);
+    background: var(--lumo-contrast-5pct);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+    flex-shrink: 0;
+}
+
+.view-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--lumo-space-s);
+}
+
+.view-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--lumo-space-s);
+}
+
+/* Mobile adjustments for toolbar */
+@media (max-width: 767px) {
+    .view-toolbar {
+        flex-wrap: wrap;
+        gap: var(--lumo-space-s);
+    }
+
+    .view-toolbar-left {
+        flex: 1 1 100%;
+        order: 2;
+    }
+
+    .view-toolbar-right {
+        flex: 1 1 100%;
+        order: 1;
+        justify-content: flex-end;
+    }
+
+    .view-toolbar-left vaadin-text-field {
+        width: 100% !important;
+    }
+}
+
+/* =============================================================================
+   Main Layout Adjustments
+   ============================================================================= */
+
+.main-layout {
+    --vaadin-app-layout-navbar-background: var(--lumo-base-color);
+}
+
+/* Navigation tabs styling */
+.main-layout vaadin-tabs[theme~="minimal"] {
+    margin: 0 var(--lumo-space-m);
+}
+
+/* Bottom navigation styling */
+.bottom-navigation {
+    background: var(--lumo-base-color);
+    border-top: 1px solid var(--lumo-contrast-10pct);
+    padding: var(--lumo-space-xs) 0;
+}
+
+.bottom-navigation vaadin-tab {
+    padding: var(--lumo-space-xs);
+}
+
+.bottom-navigation vaadin-tab a {
+    padding: var(--lumo-space-xs);
+    min-height: 48px; /* Touch-friendly */
+}
+
+/* =============================================================================
+   Filter Bar
+   ============================================================================= */
+
+.filter-bar {
+    padding: var(--lumo-space-s) var(--lumo-space-m);
+    background: var(--lumo-base-color);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+}
+
+/* =============================================================================
+   Order Cards
+   ============================================================================= */
+
+.order-card {
+    background: var(--lumo-base-color);
+    border-radius: var(--lumo-border-radius-l);
+    box-shadow: var(--lumo-box-shadow-xs);
+    padding: var(--lumo-space-m);
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.order-card:hover {
+    box-shadow: var(--lumo-box-shadow-s);
+    transform: translateY(-2px);
+}
+
+/* =============================================================================
+   Storefront View
+   ============================================================================= */
+
+.storefront-view {
+    background: var(--lumo-contrast-5pct);
+}

@@ -470,9 +470,9 @@ The following decisions were made during documentation review to resolve conflic
   - [ ] "Clear filters" link *(deferred)*
   - [ ] Filter chips for applied filters *(deferred)*
 
-### 8.3 New Order Dialog
+### 8.3 Edit Order Dialog
 
-- [x] **NewOrderDialog** - Two-step order creation wizard
+- [x] **EditOrderDialog** - Two-step order creation/edit wizard
   - [x] Step 1: Order Details
     - [x] Customer name field
     - [x] Phone number field

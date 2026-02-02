@@ -112,7 +112,7 @@ public class StorefrontView extends VerticalLayout {
 
         var newOrderButton = new Button("New order", new Icon(VaadinIcon.PLUS));
         newOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newOrderButton.addClickListener(e -> openNewOrderDialog());
+        newOrderButton.addClickListener(e -> openEditOrderDialog());
 
         rightSection.add(newOrderButton);
 
@@ -235,8 +235,8 @@ public class StorefrontView extends VerticalLayout {
         }
     }
 
-    private void openNewOrderDialog() {
-        var dialog = new NewOrderDialog(
+    private void openEditOrderDialog() {
+        var dialog = new EditOrderDialog(
                 orderService,
                 locationService,
                 () -> refreshOrders()
