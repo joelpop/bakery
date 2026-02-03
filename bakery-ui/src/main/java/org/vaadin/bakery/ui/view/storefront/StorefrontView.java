@@ -12,6 +12,7 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
@@ -32,7 +33,8 @@ import java.util.stream.Collectors;
 /**
  * Storefront view showing orders as cards grouped by date.
  */
-@Route("storefront")
+@Route("orders")
+@RouteAlias("")
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
 @RolesAllowed({"ADMIN", "BARISTA"})

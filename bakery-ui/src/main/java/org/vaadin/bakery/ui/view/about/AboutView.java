@@ -12,23 +12,21 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.Version;
 import com.vaadin.flow.server.WebBrowser;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.ui.component.ViewHeader;
-import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 /**
  * About view showing application and environment information.
+ * Accessible only to Admin users via the avatar menu.
  */
-@Route("")
+@Route("about")
 @PageTitle("About")
-@Menu(order = 0, icon = LineAwesomeIconUrl.INFO_CIRCLE_SOLID)
-@PermitAll
+@RolesAllowed("ADMIN")
 public class AboutView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     public AboutView() {
@@ -60,24 +58,31 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
 
     private Div createInfoCard(String title, VaadinIcon iconType, Div info) {
         var card = new Div();
-        card.addClassName("card");
+        card.addClassNames(
+                LumoUtility.Background.BASE,
+                LumoUtility.BorderRadius.LARGE,
+                LumoUtility.BoxShadow.SMALL,
+                LumoUtility.Padding.MEDIUM,
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.SMALL
+        );
 
         // Card header with icon
         var icon = new Icon(iconType);
-        icon.getStyle()
-                .set("color", "var(--lumo-primary-color)")
-                .set("width", "20px")
-                .set("height", "20px");
+        icon.addClassNames(LumoUtility.TextColor.PRIMARY);
+        icon.setSize("20px");
 
-        var header = new Span(title);
-        header.addClassNames(
-                LumoUtility.FontSize.MEDIUM,
+        var headerSpan = new Span(title);
+        headerSpan.addClassNames(
+                LumoUtility.FontSize.SMALL,
+                LumoUtility.TextColor.SECONDARY,
                 LumoUtility.FontWeight.SEMIBOLD
         );
 
-        var headerRow = new HorizontalLayout(icon, header);
+        var headerRow = new HorizontalLayout(icon, headerSpan);
         headerRow.setAlignItems(FlexComponent.Alignment.CENTER);
-        headerRow.addClassNames(LumoUtility.Gap.SMALL, LumoUtility.Margin.Bottom.MEDIUM);
+        headerRow.addClassNames(LumoUtility.Gap.SMALL);
 
         card.add(headerRow, info);
         return card;

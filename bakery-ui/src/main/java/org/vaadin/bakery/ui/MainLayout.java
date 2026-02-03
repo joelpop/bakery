@@ -287,6 +287,12 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         subMenu.addItem("Preferences", _ ->
                 UI.getCurrent().navigate("preferences"));
 
+        // About link (Admin only)
+        if (currentUserService.isAdmin()) {
+            subMenu.addItem("About", _ ->
+                    UI.getCurrent().navigate("about"));
+        }
+
         // Logout
         subMenu.addItem(createLogoutLink());
 
