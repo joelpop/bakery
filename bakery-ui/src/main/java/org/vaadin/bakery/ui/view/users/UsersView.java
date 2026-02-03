@@ -1,14 +1,12 @@
 package org.vaadin.bakery.ui.view.users;
 
 import com.vaadin.flow.component.avatar.Avatar;
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
@@ -20,6 +18,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.UserService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.data.UserSummary;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
@@ -50,15 +49,25 @@ public class UsersView extends VerticalLayout {
 
         addClassName("users-view");
         setSizeFull();
+        setPadding(false);
+        setSpacing(false);
 
         // Header with title, search, and add button
         searchField = createSearchField();
-        var header = createHeader();
+        var header = new ViewHeader("Users")
+                .withFilters(searchField)
+                .withAction("New user", () -> openDialog(null));
 
-        // Grid
+        // Grid container with padding
+        var gridContainer = new Div();
+        gridContainer.addClassNames(LumoUtility.Padding.MEDIUM, LumoUtility.BoxSizing.BORDER);
+        gridContainer.setSizeFull();
+
         grid = createGrid();
+        gridContainer.add(grid);
 
-        add(header, grid);
+        add(header, gridContainer);
+        setFlexGrow(1, gridContainer);
         refreshGrid();
     }
 
@@ -70,29 +79,6 @@ public class UsersView extends VerticalLayout {
         field.addValueChangeListener(e -> filterGrid(e.getValue()));
         field.setWidth("300px");
         return field;
-    }
-
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
-
-        var title = new Span("Users");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        var spacer = new Span();
-        spacer.addClassNames(LumoUtility.Flex.GROW);
-
-        var addButton = new Button("New user", new Icon(VaadinIcon.PLUS));
-        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addButton.addClickListener(e -> openDialog(null));
-
-        header.add(title, spacer, searchField, addButton);
-        return header;
     }
 
     private Grid<UserSummary> createGrid() {
@@ -120,9 +106,9 @@ public class UsersView extends VerticalLayout {
             String badgeColor = switch (user.getRole()) {
                 case ADMIN -> "primary";
                 case BAKER -> "success";
-                case BARISTA -> "contrast";
+                case BARISTA -> "warning";
             };
-            badge.getElement().getThemeList().add("badge " + badgeColor);
+            badge.getElement().getThemeList().add("badge pill " + badgeColor);
             return badge;
         }).setHeader("Role").setFlexGrow(0).setAutoWidth(true);
 

@@ -74,9 +74,9 @@ public class UpcomingOrdersPanel extends Div {
                 LumoUtility.Display.FLEX,
                 LumoUtility.Gap.SMALL,
                 LumoUtility.AlignItems.CENTER,
-                LumoUtility.Padding.Vertical.XSMALL
+                LumoUtility.Padding.Vertical.XSMALL,
+                LumoUtility.Border.BOTTOM
         );
-        row.getStyle().set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
 
         // Status badge
         var statusBadge = createStatusBadge(order.getStatus());

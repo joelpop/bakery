@@ -3,6 +3,7 @@ package org.vaadin.bakery.jpaservice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.bakery.jpaclient.repository.ProductRepository;
+import org.vaadin.bakery.jpamodel.projection.ProductSelectProjection;
 import org.vaadin.bakery.jpaservice.mapper.ProductMapper;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.uimodel.data.ProductSelect;
@@ -35,7 +36,7 @@ public class JpaProductService implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductSelect> listAvailable() {
-        return productMapper.toSelectList(productRepository.findByAvailableTrueOrderByNameAsc(null));
+        return productMapper.toSelectList(productRepository.findByAvailableTrueOrderByNameAsc(ProductSelectProjection.class));
     }
 
     @Override

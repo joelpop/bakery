@@ -4,7 +4,6 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
@@ -13,13 +12,12 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.DashboardService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 
 /**
  * Dashboard view showing business analytics and KPIs.
@@ -54,7 +52,7 @@ public class DashboardView extends VerticalLayout {
         setSpacing(false);
 
         // Header
-        var header = createHeader();
+        var header = new ViewHeader("Dashboard");
         add(header);
 
         // Main content (scrollable)
@@ -94,22 +92,6 @@ public class DashboardView extends VerticalLayout {
 
         // Load data
         refreshData();
-    }
-
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Vertical.SMALL);
-
-        var title = new Span("Dashboard");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        header.add(title);
-        return header;
     }
 
     private Div createKpiRow() {
@@ -177,7 +159,7 @@ public class DashboardView extends VerticalLayout {
         var row = new Div();
         row.getStyle()
                 .set("display", "grid")
-                .set("grid-template-columns", "1fr 1fr")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
                 .set("gap", "var(--lumo-space-m)");
 
         // Upcoming orders panel

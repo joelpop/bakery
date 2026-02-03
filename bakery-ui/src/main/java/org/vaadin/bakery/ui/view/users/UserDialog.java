@@ -72,7 +72,10 @@ public class UserDialog extends Dialog {
         setHeaderTitle(isNew ? "New User" : "Edit User");
         setModal(true);
         setCloseOnOutsideClick(false);
-        setWidth("600px");
+        // Responsive sizing: max-width on desktop, full-screen on mobile via CSS theme
+        getElement().getThemeList().add("responsive-dialog");
+        setWidth("100%");
+        setMaxWidth("600px");
 
         configureFields();
         configureBinder();

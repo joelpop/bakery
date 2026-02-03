@@ -1,5 +1,7 @@
 package org.vaadin.bakery.ui.view.storefront;
 
+import com.vaadin.flow.component.ComponentEvent;
+import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -8,7 +10,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -21,6 +23,7 @@ import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.timepicker.TimePicker;
+import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
@@ -40,21 +43,17 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Dialog for creating a new order.
- * Step 1: Customer info, location, date/time
- * Step 2: Add items
+ * Dialog for creating or editing an order.
  */
-public class NewOrderDialog extends Dialog {
+public class EditOrderDialog extends Dialog {
 
     private final OrderService orderService;
     private final LocationService locationService;
-    private final Runnable onSaveCallback;
 
-    private final List<ProductSelect> availableProducts = new ArrayList<>();
     private final List<OrderItemDetail> orderItems = new ArrayList<>();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
-    // Step 1 fields
+    // Order fields
     private final TextField customerNameField = new TextField("Customer Name");
     private final TextField customerPhoneField = new TextField("Phone Number");
     private final ComboBox<LocationSummary> locationComboBox = new ComboBox<>("Pickup Location");
@@ -62,76 +61,80 @@ public class NewOrderDialog extends Dialog {
     private final TimePicker dueTimePicker = new TimePicker("Due Time");
     private final TextArea additionalDetailsField = new TextArea("Additional Details");
 
-    // Step 2 components
+    // Item entry fields
     private final ComboBox<ProductSelect> productComboBox = new ComboBox<>("Product");
-    private final IntegerField quantityField = new IntegerField("Quantity");
-    private final TextField itemDetailsField = new TextField("Item Notes");
+    private final IntegerField quantityField = new IntegerField("Qty");
+    private final TextField itemDetailsField = new TextField("Notes");
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
     private final Span totalLabel = new Span("$0.00");
 
-    private int currentStep = 1;
-    private final Div step1Content;
-    private final Div step2Content;
-    private final Button nextButton;
-    private final Button backButton;
-    private final Button saveButton;
-    private final Span stepIndicator;
-
-    public NewOrderDialog(OrderService orderService, LocationService locationService,
-                          Runnable onSaveCallback) {
+    public EditOrderDialog(OrderService orderService, LocationService locationService) {
         this.orderService = orderService;
         this.locationService = locationService;
-        this.onSaveCallback = onSaveCallback;
 
         setHeaderTitle("New Order");
-        setModal(true);
         setCloseOnOutsideClick(false);
         setWidth("700px");
-        setHeight("600px");
+        setMaxWidth("95vw");
 
-        // Step indicator
-        stepIndicator = new Span("Step 1 of 2: Order Details");
-        stepIndicator.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
-
-        var headerContent = new HorizontalLayout(stepIndicator);
-        headerContent.setWidthFull();
-        getHeader().add(headerContent);
-
-        // Create step content
-        step1Content = createStep1Content();
-        step2Content = createStep2Content();
-        step2Content.setVisible(false);
-
-        var content = new Div(step1Content, step2Content);
-        content.setSizeFull();
-        add(content);
+        add(createContent());
 
         // Footer buttons
-        backButton = new Button("Back", e -> goBack());
-        backButton.setVisible(false);
+        var cancelButton = new Button("Cancel", e -> {
+            fireEvent(new CancelClickEvent(this));
+            close();
+        });
+        var saveButton = new Button("Save", e -> save());
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        nextButton = new Button("Next", e -> goNext());
-        nextButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-        saveButton = new Button("Create Order", e -> save());
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
-        saveButton.setVisible(false);
-
-        var cancelButton = new Button("Cancel", e -> close());
-
-        var footer = new HorizontalLayout(cancelButton, new Span(), backButton, nextButton, saveButton);
-        footer.setWidthFull();
-        footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-        footer.setSpacing(true);
-        getFooter().add(footer);
+        getFooter().add(cancelButton, saveButton);
 
         loadData();
     }
 
-    private Div createStep1Content() {
-        var content = new Div();
-        content.setSizeFull();
+    // ========== Event Classes ==========
 
+    public static class SaveClickEvent extends ComponentEvent<EditOrderDialog> {
+        private final OrderDetail order;
+
+        public SaveClickEvent(EditOrderDialog source, OrderDetail order) {
+            super(source, false);
+            this.order = order;
+        }
+
+        public OrderDetail getOrder() {
+            return order;
+        }
+
+        public boolean isNewCustomerCreated() {
+            return order != null && order.isNewCustomerCreated();
+        }
+    }
+
+    public static class CancelClickEvent extends ComponentEvent<EditOrderDialog> {
+        public CancelClickEvent(EditOrderDialog source) {
+            super(source, false);
+        }
+    }
+
+    // ========== Event Registration ==========
+
+    public Registration addSaveClickListener(ComponentEventListener<SaveClickEvent> listener) {
+        return addListener(SaveClickEvent.class, listener);
+    }
+
+    public Registration addCancelClickListener(ComponentEventListener<CancelClickEvent> listener) {
+        return addListener(CancelClickEvent.class, listener);
+    }
+
+    // ========== UI Creation ==========
+
+    private VerticalLayout createContent() {
+        var content = new VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(false);
+
+        // Order details form
         var form = new FormLayout();
         form.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
@@ -139,111 +142,82 @@ public class NewOrderDialog extends Dialog {
         );
 
         customerNameField.setRequired(true);
-        customerNameField.setWidthFull();
-
-        customerPhoneField.setWidthFull();
         customerPhoneField.setPlaceholder("(555) 123-4567");
-
         locationComboBox.setRequired(true);
-        locationComboBox.setWidthFull();
         locationComboBox.setItemLabelGenerator(LocationSummary::getName);
-
         dueDatePicker.setRequired(true);
         dueDatePicker.setValue(LocalDate.now());
         dueDatePicker.setMin(LocalDate.now());
-
         dueTimePicker.setRequired(true);
         dueTimePicker.setValue(LocalTime.of(12, 0));
         dueTimePicker.setStep(Duration.ofMinutes(15));
 
-        additionalDetailsField.setWidthFull();
-        additionalDetailsField.setMinHeight("80px");
-
-        form.add(customerNameField, 2);
-        form.add(customerPhoneField, 2);
+        form.add(customerNameField, customerPhoneField);
         form.add(locationComboBox, 2);
-        form.add(dueDatePicker, 1);
-        form.add(dueTimePicker, 1);
+        form.add(dueDatePicker, dueTimePicker);
         form.add(additionalDetailsField, 2);
 
         content.add(form);
+        content.add(new Hr());
+
+        // Items section
+        content.add(createItemsSection());
+
         return content;
     }
 
-    private Div createStep2Content() {
-        var content = new Div();
-        content.addClassNames(
+    private Div createItemsSection() {
+        var section = new Div();
+        section.addClassNames(
                 LumoUtility.Display.FLEX,
                 LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Gap.MEDIUM
-        );
-        content.setSizeFull();
-
-        // Add item section
-        var addItemSection = new Div();
-        addItemSection.addClassNames(
-                LumoUtility.Background.CONTRAST_5,
-                LumoUtility.BorderRadius.MEDIUM,
-                LumoUtility.Padding.MEDIUM
+                LumoUtility.Gap.SMALL
         );
 
-        var addItemHeader = new H4("Add Items");
-        addItemHeader.addClassNames(LumoUtility.Margin.NONE, LumoUtility.Margin.Bottom.SMALL);
-
-        productComboBox.setWidthFull();
+        // Add item row
         productComboBox.setItemLabelGenerator(ProductSelect::getDisplayName);
-        productComboBox.addValueChangeListener(e -> {
-            if (e.getValue() != null) {
-                quantityField.setValue(1);
-            }
-        });
+        productComboBox.setWidth("200px");
 
         quantityField.setValue(1);
         quantityField.setMin(1);
         quantityField.setMax(99);
         quantityField.setStepButtonsVisible(true);
-        quantityField.setWidth("100px");
+        quantityField.setWidth("80px");
 
         itemDetailsField.setPlaceholder("Special instructions");
-        itemDetailsField.setWidth("200px");
+        itemDetailsField.setWidth("150px");
 
         var addButton = new Button(new Icon(VaadinIcon.PLUS));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addButton.addClickListener(e -> addItem());
 
         var addItemRow = new HorizontalLayout(productComboBox, quantityField, itemDetailsField, addButton);
-        addItemRow.setWidthFull();
         addItemRow.setAlignItems(FlexComponent.Alignment.END);
         addItemRow.setFlexGrow(1, productComboBox);
-
-        addItemSection.add(addItemHeader, addItemRow);
-        content.add(addItemSection);
+        section.add(addItemRow);
 
         // Items grid
         configureItemsGrid();
-        var gridContainer = new Div(itemsGrid);
-        gridContainer.getStyle().set("flex-grow", "1").set("min-height", "150px");
-        content.add(gridContainer);
+        itemsGrid.setMaxHeight("200px");
+        section.add(itemsGrid);
 
-        // Total section
-        var totalSection = new HorizontalLayout();
-        totalSection.setWidthFull();
-        totalSection.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-        totalSection.setAlignItems(FlexComponent.Alignment.CENTER);
+        // Total
+        var totalRow = new HorizontalLayout();
+        totalRow.setWidthFull();
+        totalRow.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+        totalRow.setAlignItems(FlexComponent.Alignment.CENTER);
 
-        var totalText = new Span("Order Total: ");
+        var totalText = new Span("Total: ");
         totalText.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
-        totalLabel.addClassNames(LumoUtility.FontSize.XLARGE, LumoUtility.FontWeight.BOLD);
+        totalLabel.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
+        totalRow.add(totalText, totalLabel);
+        section.add(totalRow);
 
-        totalSection.add(totalText, totalLabel);
-        content.add(totalSection);
-
-        return content;
+        return section;
     }
 
     private void configureItemsGrid() {
         itemsGrid.setAllRowsVisible(true);
-        itemsGrid.setMaxHeight("200px");
 
         itemsGrid.addColumn(OrderItemDetail::getProductName)
                 .setHeader("Product")
@@ -252,39 +226,33 @@ public class NewOrderDialog extends Dialog {
         itemsGrid.addColumn(OrderItemDetail::getQuantity)
                 .setHeader("Qty")
                 .setFlexGrow(0)
-                .setWidth("60px");
-
-        itemsGrid.addColumn(item -> currencyFormat.format(item.getUnitPrice()))
-                .setHeader("Price")
-                .setFlexGrow(0)
-                .setWidth("80px");
+                .setWidth("50px");
 
         itemsGrid.addColumn(item -> currencyFormat.format(item.getLineTotal()))
                 .setHeader("Total")
                 .setFlexGrow(0)
                 .setWidth("80px");
 
-        itemsGrid.addColumn(OrderItemDetail::getDetails)
-                .setHeader("Notes")
-                .setFlexGrow(1);
-
         itemsGrid.addComponentColumn(item -> {
             var removeButton = new Button(new Icon(VaadinIcon.TRASH));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             removeButton.addClickListener(e -> removeItem(item));
             return removeButton;
-        }).setFlexGrow(0).setWidth("60px");
+        }).setFlexGrow(0).setWidth("50px");
     }
+
+    // ========== Data Operations ==========
 
     private void loadData() {
         var locations = locationService.listActive();
         locationComboBox.setItems(locations);
         if (locations.size() == 1) {
-            locationComboBox.setValue(locations.get(0));
+            locationComboBox.setValue(locations.getFirst());
         }
+    }
 
-        // Load products - we need to get them from somewhere
-        // For now, we'll need to add ProductService to the dialog
+    public void setAvailableProducts(List<ProductSelect> products) {
+        productComboBox.setItems(products);
     }
 
     private void addItem() {
@@ -292,13 +260,13 @@ public class NewOrderDialog extends Dialog {
         var quantity = quantityField.getValue();
 
         if (product == null) {
-            Notification.show("Please select a product", 3000, Notification.Position.BOTTOM_START)
+            Notification.show("Select a product", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_WARNING);
             return;
         }
 
         if (quantity == null || quantity < 1) {
-            Notification.show("Please enter a valid quantity", 3000, Notification.Position.BOTTOM_START)
+            Notification.show("Enter a valid quantity", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_WARNING);
             return;
         }
@@ -315,7 +283,6 @@ public class NewOrderDialog extends Dialog {
         orderItems.add(item);
         refreshItemsGrid();
 
-        // Clear fields
         productComboBox.clear();
         quantityField.setValue(1);
         itemDetailsField.clear();
@@ -339,12 +306,15 @@ public class NewOrderDialog extends Dialog {
         totalLabel.setText(currencyFormat.format(total));
     }
 
-    private boolean validateStep1() {
+    // ========== Validation and Save ==========
+
+    private boolean validate() {
         var valid = true;
+        var requiredMessage = "Required";
 
         if (customerNameField.getValue() == null || customerNameField.getValue().isBlank()) {
             customerNameField.setInvalid(true);
-            customerNameField.setErrorMessage("Customer name is required");
+            customerNameField.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             customerNameField.setInvalid(false);
@@ -352,7 +322,7 @@ public class NewOrderDialog extends Dialog {
 
         if (locationComboBox.getValue() == null) {
             locationComboBox.setInvalid(true);
-            locationComboBox.setErrorMessage("Location is required");
+            locationComboBox.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             locationComboBox.setInvalid(false);
@@ -360,7 +330,7 @@ public class NewOrderDialog extends Dialog {
 
         if (dueDatePicker.getValue() == null) {
             dueDatePicker.setInvalid(true);
-            dueDatePicker.setErrorMessage("Due date is required");
+            dueDatePicker.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             dueDatePicker.setInvalid(false);
@@ -368,43 +338,23 @@ public class NewOrderDialog extends Dialog {
 
         if (dueTimePicker.getValue() == null) {
             dueTimePicker.setInvalid(true);
-            dueTimePicker.setErrorMessage("Due time is required");
+            dueTimePicker.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             dueTimePicker.setInvalid(false);
         }
 
+        if (orderItems.isEmpty()) {
+            Notification.show("Add at least one item", 2000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+            valid = false;
+        }
+
         return valid;
     }
 
-    private void goNext() {
-        if (currentStep == 1 && validateStep1()) {
-            currentStep = 2;
-            step1Content.setVisible(false);
-            step2Content.setVisible(true);
-            stepIndicator.setText("Step 2 of 2: Add Items");
-            backButton.setVisible(true);
-            nextButton.setVisible(false);
-            saveButton.setVisible(true);
-        }
-    }
-
-    private void goBack() {
-        if (currentStep == 2) {
-            currentStep = 1;
-            step2Content.setVisible(false);
-            step1Content.setVisible(true);
-            stepIndicator.setText("Step 1 of 2: Order Details");
-            backButton.setVisible(false);
-            nextButton.setVisible(true);
-            saveButton.setVisible(false);
-        }
-    }
-
     private void save() {
-        if (orderItems.isEmpty()) {
-            Notification.show("Please add at least one item", 3000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+        if (!validate()) {
             return;
         }
 
@@ -422,27 +372,16 @@ public class NewOrderDialog extends Dialog {
             order.calculateTotal();
             order.setPaid(false);
 
-            orderService.create(order);
+            var savedOrder = orderService.create(order);
 
-            Notification.show("Order created successfully", 3000, Notification.Position.BOTTOM_START)
+            Notification.show("Order created", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
-            if (onSaveCallback != null) {
-                onSaveCallback.run();
-            }
+            fireEvent(new SaveClickEvent(this, savedOrder));
             close();
         } catch (Exception e) {
-            Notification.show("Failed to create order: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
+            Notification.show("Failed: " + e.getMessage(), 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
-    }
-
-    /**
-     * Set available products for the order items.
-     */
-    public void setAvailableProducts(List<ProductSelect> products) {
-        availableProducts.clear();
-        availableProducts.addAll(products);
-        productComboBox.setItems(products);
     }
 }

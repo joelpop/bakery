@@ -158,7 +158,7 @@ The Java code is organized into the following packages (object `User` and its de
 - `org.vaadin.bakery.ui` - Shared UI components (e.g., `MainLayout`, `ViewToolbar`)
 - `org.vaadin.bakery.ui.component` - Shared UI components
 - `org.vaadin.bakery.ui.view` - Views and their related classes (each view within its own package)
-- `org.vaadin.bakery.app` - Main Application class
+- `org.vaadin.bakery` - Main Application class (in root package so UI subpackages are auto-scanned)
 - `org.vaadin.bakery.app.config` - Application configuration
 - `org.vaadin.bakery.app.config.security` - Application security configuration
 
@@ -202,8 +202,8 @@ spring-boot-starter-parent
     - Contains only UI layer code (no application infrastructure)
     - Pure UI library module with no direct persistence dependencies
 - **bakery-app** - Spring Boot application entry point (main executable JAR) (depends on: `bakery-ui` & `bakery-jpaservice`)
-    - Contains `Application.java` (Spring Boot main class with `@EnableVaadin` for route scanning in UI packages)
-    - Contains `BakeryBase` marker interface for type-safe component scanning
+    - Contains `Application.java` in root package (`org.vaadin.bakery`) so UI subpackages are auto-scanned
+    - Contains `BakeryBase` marker interface in root package
     - Contains security configuration
     - Contains `application.properties`
     - Contains frontend resources
@@ -256,9 +256,9 @@ This guarantees proper layering and prevents accidental coupling between UI and 
 
 - **Application Layer** (`bakery-app`)
     - Spring Boot application entry point
-    - Contains `Application.java` with `@SpringBootApplication` and `@EnableVaadin("org.vaadin.bakery.ui")`
-    - The `@EnableVaadin` annotation is required because UI classes are in a sibling package (`org.vaadin.bakery.ui`), not a descendant of the application package (`org.vaadin.bakery.app`)
-    - Uses `scanBasePackageClasses` with marker interface `BakeryBase` for type-safe component scanning
+    - Contains `Application.java` in root package (`org.vaadin.bakery`) with `@SpringBootApplication`
+    - Application is in root package so `org.vaadin.bakery.ui` is a subpackage and automatically scanned for Vaadin routes
+    - Contains `BakeryBase` marker interface in root package
     - Contains `application.properties`
     - Contains frontend resources
     - **Runtime-only dependency on `bakery-jpaservice`** - enforces compile-time separation
@@ -268,13 +268,12 @@ This guarantees proper layering and prevents accidental coupling between UI and 
 
 ### Route Scanning
 
-The `Application.java` class uses the `@EnableVaadin` annotation because Vaadin views are in a sibling package (`org.vaadin.bakery.ui`) rather than a descendant package of where the Application class resides (`org.vaadin.bakery.app`):
+The `Application.java` class is in the root package (`org.vaadin.bakery`) so that Vaadin automatically scans the `org.vaadin.bakery.ui` subpackage for `@Route` annotated views:
 
 ```java
-@SpringBootApplication(scanBasePackageClasses = BakeryBase.class)
-// @EnableVaadin allows the UI classes to not have to be in a descendant package of the application class
-@EnableVaadin("org.vaadin.bakery.ui")
-@StyleSheet(Aura.STYLESHEET)
+@SpringBootApplication
+@StyleSheet(Lumo.STYLESHEET)
+@StyleSheet(Lumo.UTILITY_STYLESHEET)
 public class Application implements AppShellConfigurator {
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -282,9 +281,7 @@ public class Application implements AppShellConfigurator {
 }
 ```
 
-The `@EnableVaadin("org.vaadin.bakery.ui")` annotation explicitly tells Vaadin to scan the `org.vaadin.bakery.ui` package for `@Route` annotated views and components.
-
-The `scanBasePackageClasses = BakeryBase.class` uses a marker interface for type-safe component scanning instead of string-based package names.
+By placing `Application.java` in the root package (`org.vaadin.bakery`), Vaadin automatically scans all subpackages including `org.vaadin.bakery.ui` for `@Route` annotated views. This avoids the need for `@EnableVaadin` which can interfere with theme loading.
 
 ### Allowed Packages
 
@@ -447,11 +444,59 @@ For routing of views in the main navigation menu, use the `@Menu` annotation.
 
 ### Theming and Styling
 
-Use the "Aura" theme.
+Use the "Lumo" theme with Lumo Utility Classes. Note: `LumoUtility` classes are only compatible with the Lumo theme, not the Aura theme.
 
 Use component theme variants where available to achieve desired styling.
 
-For simple styling adjustments to components, prefer using `addClassNames()` with `LumoUtility` class names over using CSS.
+For simple styling adjustments to components, prefer using `addClassNames()` with `LumoUtility` class names over writing custom CSS. The `LumoUtility` class provides constants for common styling needs including padding, margins, colors, flexbox, and box-sizing—use these Java constants rather than adding CSS rules.
+
+When elements with padding cause horizontal overflow (e.g., 100% width + padding exceeds container), apply `LumoUtility.BoxSizing.BORDER` to include padding within the element's declared width. This is the preferred approach over other overflow fixes.
+
+### Dialogs
+
+Dialogs should use the **listener pattern** for dismiss actions rather than constructor callbacks. Each dialog should:
+
+1. **Define event classes** for each dismiss action (e.g., `SaveClickEvent`, `CancelClickEvent`)
+2. **Provide registration methods** (e.g., `addSaveClickListener()`, `addCancelClickListener()`)
+3. **Include getters in save events** to return the data entered/created in the dialog
+
+Example pattern:
+```java
+public class EditOrderDialog extends Dialog {
+
+    // Event classes
+    public static class SaveClickEvent extends ComponentEvent<EditOrderDialog> {
+        private final OrderDetail order;
+        private final boolean newCustomerCreated;
+
+        public SaveClickEvent(EditOrderDialog source, OrderDetail order, boolean newCustomerCreated) {
+            super(source, false);
+            this.order = order;
+            this.newCustomerCreated = newCustomerCreated;
+        }
+
+        public OrderDetail getOrder() { return order; }
+        public boolean isNewCustomerCreated() { return newCustomerCreated; }
+    }
+
+    public static class CancelClickEvent extends ComponentEvent<EditOrderDialog> {
+        public CancelClickEvent(EditOrderDialog source) {
+            super(source, false);
+        }
+    }
+
+    // Registration methods
+    public Registration addSaveClickListener(ComponentEventListener<SaveClickEvent> listener) {
+        return addListener(SaveClickEvent.class, listener);
+    }
+
+    public Registration addCancelClickListener(ComponentEventListener<CancelClickEvent> listener) {
+        return addListener(CancelClickEvent.class, listener);
+    }
+}
+```
+
+The code that instantiates the dialog is responsible for attaching listeners and handling the events appropriately.
 
 ## Testing
 

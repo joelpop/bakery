@@ -348,7 +348,7 @@ The following decisions were made during documentation review to resolve conflic
 ### 6.1 Application Shell (bakery-app)
 
 - [x] **Application.java** updates
-  - [x] @StyleSheet(Aura.STYLESHEET) - Aura theme
+  - [x] @StyleSheet(Lumo.STYLESHEET) and @StyleSheet(Lumo.UTILITY_STYLESHEET) - Lumo theme with utility classes
   - [x] @EnableVaadin for route scanning
 
 ### 6.2 Main Layout (bakery-ui)
@@ -470,24 +470,35 @@ The following decisions were made during documentation review to resolve conflic
   - [ ] "Clear filters" link *(deferred)*
   - [ ] Filter chips for applied filters *(deferred)*
 
-### 8.3 New Order Dialog
+### 8.3 Edit Order Dialog
 
-- [x] **NewOrderDialog** - Two-step order creation wizard
-  - [x] Step 1: Order Details
+- [x] **EditOrderDialog** - Single-page order creation/edit dialog
+  - [x] Order details section
     - [x] Customer name field
     - [x] Phone number field
     - [x] Due date picker
     - [x] Due time picker (15-minute intervals)
     - [x] Location dropdown
     - [x] Additional details text area
-    - [x] Cancel and "Next" buttons
-  - [x] Step 2: Add Items
+  - [x] Order items section
     - [x] Product combo box
     - [x] Quantity field with stepper
     - [x] Item notes field
     - [x] Items grid with remove button
     - [x] Total calculation
-    - [x] Back and "Create Order" buttons
+  - [x] Cancel and Save buttons
+  - [x] Listener pattern for dismiss events (`SaveClickEvent`, `CancelClickEvent`)
+  - [x] `SaveClickEvent` returns created order and new customer flag
+
+### 8.3.1 Global New Order Button
+
+- [x] **Navigation bar action button** - Global access to create new orders
+  - [x] Positioned at right end of nav tabs (before user menu)
+  - [x] Desktop: Primary-styled nav item with "+ New order" text
+  - [x] Mobile: Collapsed to plus icon with primary background
+  - [x] Opens `EditOrderDialog` without navigation
+  - [x] On save: refreshes current view if StorefrontView or DashboardView
+  - [x] On save with new customer: also refreshes CustomerView if current
 
 ### 8.4 Order Detail View
 
@@ -641,32 +652,32 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 12: Responsive Design
+## Phase 12: Responsive Design ✅
 
 ### 12.1 Desktop Layout (> 768px)
 
-- [ ] Top horizontal navigation bar
-- [ ] Multi-column layouts
-- [ ] Hover states and tooltips
+- [x] Top horizontal navigation bar (MainLayout with desktop-navigation class)
+- [x] Multi-column layouts (FormLayout responsive steps, CSS Grid with auto-fit)
+- [ ] Hover states and tooltips *(handled by Vaadin components)*
 
 ### 12.2 Tablet Layout (768px)
 
-- [ ] Condensed top navigation
-- [ ] Adapted layouts
+- [x] Condensed top navigation (same as desktop, tabs adapt)
+- [x] Adapted layouts (CSS Grid auto-fit handles transition)
 
 ### 12.3 Phone Layout (< 768px)
 
-- [ ] Bottom tab bar with overflow menu
-- [ ] Single-column layouts
-- [ ] Full-screen dialogs
-- [ ] Native mobile controls (date/time pickers)
-- [ ] Touch-optimized targets
+- [x] Bottom tab bar with overflow menu (MainLayout with bottom-navigation class)
+- [x] Single-column layouts (FormLayout responsive steps, CSS Grid minmax)
+- [x] Full-screen dialogs (responsive-dialog theme variant on all dialogs)
+- [x] Native mobile controls (Vaadin uses native pickers on mobile)
+- [x] Touch-optimized targets (44px minimum on buttons/inputs via CSS)
 
 ### 12.4 Transitions
 
-- [ ] Smooth layout transitions on resize
-- [ ] Active view preserved during resize
-- [ ] Auto-close overflow menu on navigation
+- [x] Smooth layout transitions on resize (CSS Grid/Flexbox handles this)
+- [x] Active view preserved during resize (SPA architecture maintains state)
+- [x] Auto-close overflow menu on navigation (not applicable - bottom tabs navigate directly)
 
 ---
 

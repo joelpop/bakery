@@ -5,8 +5,9 @@ import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.shared.Registration;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
 
@@ -17,7 +18,7 @@ import java.util.Set;
 /**
  * Filter bar for the storefront view.
  */
-public class FilterBar extends HorizontalLayout {
+public class FilterBar extends Div {
 
     private final DatePicker fromDate;
     private final DatePicker toDate;
@@ -26,26 +27,33 @@ public class FilterBar extends HorizontalLayout {
 
     public FilterBar(List<LocationSummary> locations) {
         addClassName("filter-bar");
-        setWidthFull();
-        setAlignItems(Alignment.END);
-        setSpacing(true);
+        addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexWrap.WRAP,
+                LumoUtility.Gap.MEDIUM,
+                LumoUtility.AlignItems.END,
+                LumoUtility.Padding.Vertical.SMALL,
+                LumoUtility.Padding.Horizontal.LARGE
+        );
+        getStyle().set("background", "var(--lumo-contrast-5pct)");
+        getStyle().set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
 
         // Date range
         fromDate = new DatePicker("From");
         fromDate.setValue(LocalDate.now());
-        fromDate.setWidth("150px");
+        fromDate.setWidth("140px");
         fromDate.addValueChangeListener(e -> fireFilterChanged());
 
         toDate = new DatePicker("To");
         toDate.setValue(LocalDate.now().plusDays(7));
-        toDate.setWidth("150px");
+        toDate.setWidth("140px");
         toDate.addValueChangeListener(e -> fireFilterChanged());
 
         // Status filter
         statusFilter = new MultiSelectComboBox<>("Status");
         statusFilter.setItems(OrderStatus.values());
         statusFilter.setItemLabelGenerator(OrderStatus::getDisplayName);
-        statusFilter.setWidth("250px");
+        statusFilter.setWidth("200px");
         statusFilter.setPlaceholder("All statuses");
         statusFilter.addValueChangeListener(e -> fireFilterChanged());
 
@@ -53,7 +61,7 @@ public class FilterBar extends HorizontalLayout {
         locationFilter = new ComboBox<>("Location");
         locationFilter.setItems(locations);
         locationFilter.setItemLabelGenerator(LocationSummary::getName);
-        locationFilter.setWidth("200px");
+        locationFilter.setWidth("180px");
         locationFilter.setPlaceholder("All locations");
         locationFilter.setClearButtonVisible(true);
         locationFilter.addValueChangeListener(e -> fireFilterChanged());

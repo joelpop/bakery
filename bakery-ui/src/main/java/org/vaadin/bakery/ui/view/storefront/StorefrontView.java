@@ -1,28 +1,27 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteAlias;
+import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.OrderList;
-import org.vaadin.bakery.uimodel.type.OrderStatus;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
-
-import com.vaadin.flow.router.RouteParameters;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -34,7 +33,8 @@ import java.util.stream.Collectors;
 /**
  * Storefront view showing orders as cards grouped by date.
  */
-@Route("storefront")
+@Route("orders")
+@RouteAlias("")
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
 @RolesAllowed({"ADMIN", "BARISTA"})
@@ -45,6 +45,7 @@ public class StorefrontView extends VerticalLayout {
     private final ProductService productService;
     private final Div ordersContainer;
     private FilterBar filterBar;
+    private TextField searchField;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
 
@@ -59,14 +60,16 @@ public class StorefrontView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
-        // Header
-        var header = createHeader();
+        // View header with title, search, and new order button
+        searchField = createSearchField();
+        var header = new ViewHeader("Storefront")
+                .withFilters(searchField)
+                .withAction("New order", this::openNewOrderDialog);
         add(header);
 
         // Filter bar
         filterBar = new FilterBar(locationService.listActive());
-        filterBar.addFilterChangedListener(e -> refreshOrders());
-        filterBar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
+        filterBar.addFilterChangedListener(e -> refresh());
         add(filterBar);
 
         // Orders container (scrollable)
@@ -84,33 +87,31 @@ public class StorefrontView extends VerticalLayout {
         add(scroller);
         setFlexGrow(1, scroller);
 
-        refreshOrders();
+        refresh();
     }
 
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Vertical.SMALL);
-
-        var title = new Span("Storefront");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        var spacer = new Span();
-        spacer.addClassNames(LumoUtility.Flex.GROW);
-
-        var newOrderButton = new Button("New Order", new Icon(VaadinIcon.PLUS));
-        newOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newOrderButton.addClickListener(e -> openNewOrderDialog());
-
-        header.add(title, spacer, newOrderButton);
-        return header;
+    private TextField createSearchField() {
+        var field = new TextField();
+        field.setPlaceholder("Filter orders");
+        field.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        field.setClearButtonVisible(true);
+        field.setValueChangeMode(ValueChangeMode.LAZY);
+        field.addValueChangeListener(e -> refresh());
+        field.setWidth("300px");
+        return field;
     }
 
-    private void refreshOrders() {
+    private void openNewOrderDialog() {
+        var dialog = new EditOrderDialog(orderService, locationService);
+        dialog.setAvailableProducts(productService.listAvailable());
+        dialog.addSaveClickListener(event -> refresh());
+        dialog.open();
+    }
+
+    /**
+     * Refresh the orders display. Called by MainLayout after order creation.
+     */
+    public void refresh() {
         ordersContainer.removeAll();
 
         var fromDate = filterBar.getFromDate();
@@ -124,6 +125,15 @@ public class StorefrontView extends VerticalLayout {
         }
 
         var orders = orderService.listByDateRange(fromDate, toDate);
+
+        // Apply search filter (customer name)
+        var searchTerm = searchField.getValue();
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            var lowerSearch = searchTerm.toLowerCase();
+            orders = orders.stream()
+                    .filter(o -> o.getCustomerName().toLowerCase().contains(lowerSearch))
+                    .toList();
+        }
 
         // Apply status filter
         var selectedStatuses = filterBar.getSelectedStatuses();
@@ -214,16 +224,6 @@ public class StorefrontView extends VerticalLayout {
         } else {
             return DATE_FORMATTER.format(date);
         }
-    }
-
-    private void openNewOrderDialog() {
-        var dialog = new NewOrderDialog(
-                orderService,
-                locationService,
-                () -> refreshOrders()
-        );
-        dialog.setAvailableProducts(productService.listAvailable());
-        dialog.open();
     }
 
     private void openOrderDetail(Long orderId) {

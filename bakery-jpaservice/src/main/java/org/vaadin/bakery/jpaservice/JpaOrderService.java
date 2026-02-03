@@ -3,6 +3,7 @@ package org.vaadin.bakery.jpaservice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.bakery.jpamodel.code.OrderStatusCode;
+import org.vaadin.bakery.jpamodel.entity.CustomerEntity;
 import org.vaadin.bakery.jpamodel.entity.OrderEntity;
 import org.vaadin.bakery.jpamodel.entity.OrderItemEntity;
 import org.vaadin.bakery.jpaclient.repository.CustomerRepository;
@@ -89,8 +90,28 @@ public class JpaOrderService implements OrderService {
     public OrderDetail create(OrderDetail order) {
         var entity = orderMapper.toNewEntity(order);
 
-        var customer = customerRepository.findById(order.getCustomerId())
-                .orElseThrow(() -> new IllegalArgumentException("Customer not found: " + order.getCustomerId()));
+        // Find or create customer
+        CustomerEntity customer;
+        var newCustomerCreated = false;
+        if (order.getCustomerId() != null) {
+            customer = customerRepository.findById(order.getCustomerId())
+                    .orElseThrow(() -> new IllegalArgumentException("Customer not found: " + order.getCustomerId()));
+        } else if (order.getCustomerPhone() != null && !order.getCustomerPhone().isBlank()) {
+            // Try to find existing customer by phone, or create new one
+            var existingCustomer = customerRepository.findByPhoneNumber(order.getCustomerPhone());
+            if (existingCustomer.isPresent()) {
+                customer = existingCustomer.get();
+            } else {
+                var newCustomer = new CustomerEntity();
+                newCustomer.setName(order.getCustomerName());
+                newCustomer.setPhoneNumber(order.getCustomerPhone());
+                newCustomer.setActive(true);
+                customer = customerRepository.save(newCustomer);
+                newCustomerCreated = true;
+            }
+        } else {
+            throw new IllegalArgumentException("Either customerId or customerPhone must be provided");
+        }
         entity.setCustomer(customer);
 
         var location = locationRepository.findById(order.getLocationId())
@@ -111,7 +132,9 @@ public class JpaOrderService implements OrderService {
         }
 
         var saved = orderRepository.save(entity);
-        return orderMapper.toDetail(saved);
+        var result = orderMapper.toDetail(saved);
+        result.setNewCustomerCreated(newCustomerCreated);
+        return result;
     }
 
     @Override

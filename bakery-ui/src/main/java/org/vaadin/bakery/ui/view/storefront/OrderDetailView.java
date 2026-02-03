@@ -65,12 +65,17 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         addClassName("order-detail-view");
         setSizeFull();
-        setPadding(true);
+        setPadding(false);
+        setSpacing(false);
 
         // Header
         add(createHeader());
 
-        // Main content
+        // Main content with padding
+        var contentWrapper = new Div();
+        contentWrapper.addClassNames(LumoUtility.Padding.MEDIUM);
+        contentWrapper.setSizeFull();
+
         var content = new HorizontalLayout();
         content.setSizeFull();
         content.setSpacing(true);
@@ -81,7 +86,9 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         // Right: Items
         content.add(createItemsSection());
 
-        add(content);
+        contentWrapper.add(content);
+        add(contentWrapper);
+        setFlexGrow(1, contentWrapper);
 
         // Actions
         add(createActionsSection());
@@ -111,24 +118,31 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         }
     }
 
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
+    private Div createHeader() {
+        var header = new Div();
+        header.addClassName("view-header");
+
+        var leftSection = new Div();
+        leftSection.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Gap.SMALL
+        );
 
         var backButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
         backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         backButton.addClickListener(e -> navigateBack());
 
-        var title = new H3("Order Details");
-        title.addClassNames(LumoUtility.Margin.NONE);
+        var title = new Span("Order Details");
+        title.addClassNames(
+                LumoUtility.FontSize.XLARGE,
+                LumoUtility.FontWeight.SEMIBOLD
+        );
 
         orderIdLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
 
-        var spacer = new Span();
-        spacer.addClassNames(LumoUtility.Flex.GROW);
-
-        header.add(backButton, title, orderIdLabel, spacer, statusBadge);
+        leftSection.add(backButton, title, orderIdLabel);
+        header.add(leftSection, statusBadge);
         return header;
     }
 
@@ -149,12 +163,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     private Div createInfoCard(String title, Span... content) {
         var card = new Div();
-        card.addClassNames(
-                LumoUtility.Background.CONTRAST_5,
-                LumoUtility.BorderRadius.MEDIUM,
-                LumoUtility.Padding.MEDIUM,
-                LumoUtility.Margin.Bottom.SMALL
-        );
+        card.addClassName("card");
+        card.addClassNames(LumoUtility.Margin.Bottom.SMALL);
 
         var titleSpan = new Span(title);
         titleSpan.addClassNames(

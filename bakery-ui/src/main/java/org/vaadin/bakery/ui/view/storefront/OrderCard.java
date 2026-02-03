@@ -27,13 +27,20 @@ public class OrderCard extends Div {
         this.order = order;
 
         addClassName("order-card");
+        addClassName("card");
         getStyle()
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-s)")
-                .set("padding", "var(--lumo-space-m)")
                 .set("cursor", "pointer")
-                .set("transition", "box-shadow 0.2s");
+                .set("transition", "box-shadow 0.2s, transform 0.2s");
+
+        // Add hover effect
+        getElement().addEventListener("mouseenter", e ->
+                getStyle()
+                        .set("box-shadow", "0 4px 12px rgba(0,0,0,0.15)")
+                        .set("transform", "translateY(-2px)"));
+        getElement().addEventListener("mouseleave", e ->
+                getStyle()
+                        .set("box-shadow", "")
+                        .set("transform", ""));
 
         addClassNames(
                 LumoUtility.Display.FLEX,
@@ -67,11 +74,11 @@ public class OrderCard extends Div {
         var items = new Span(order.getItemsSummary());
         items.addClassNames(
                 LumoUtility.FontSize.SMALL,
-                LumoUtility.TextColor.SECONDARY
+                LumoUtility.TextColor.SECONDARY,
+                LumoUtility.Whitespace.NOWRAP,
+                LumoUtility.Overflow.HIDDEN
         );
-        items.getStyle().set("white-space", "nowrap")
-                .set("overflow", "hidden")
-                .set("text-overflow", "ellipsis");
+        items.getStyle().set("text-overflow", "ellipsis");
         add(items);
 
         // Footer: total + paid indicator

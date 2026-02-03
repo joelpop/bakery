@@ -46,7 +46,10 @@ public class LocationDialog extends Dialog {
         setHeaderTitle(isNew ? "New Location" : "Edit Location");
         setModal(true);
         setCloseOnOutsideClick(false);
-        setWidth("500px");
+        // Responsive sizing: max-width on desktop, full-screen on mobile via CSS theme
+        getElement().getThemeList().add("responsive-dialog");
+        setWidth("100%");
+        setMaxWidth("500px");
 
         configureFields();
         configureBinder();

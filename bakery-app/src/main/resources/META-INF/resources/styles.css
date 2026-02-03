@@ -1,0 +1,202 @@
+/* Bakery Application Styles */
+
+/* =============================================================================
+   Main Layout - Responsive Navigation
+   ============================================================================= */
+
+.main-layout {
+    --vaadin-app-layout-navbar-background: var(--lumo-base-color);
+}
+
+/* Main navbar container */
+.main-navbar {
+    gap: var(--lumo-space-m);
+}
+
+/* Navigation tabs */
+.main-nav-tabs {
+    --lumo-primary-text-color: var(--lumo-primary-color);
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+    /* Navbar at top */
+    .main-layout::part(navbar) {
+        border-bottom: 1px solid var(--lumo-contrast-10pct);
+    }
+
+    /* Show button text on desktop */
+    .new-order-button .button-text,
+    .view-action-button .button-text {
+        display: inline;
+        margin-left: var(--lumo-space-xs);
+    }
+}
+
+/* Mobile styles */
+@media (max-width: 767px) {
+    /* Move navbar to bottom */
+    .main-layout::part(navbar) {
+        top: auto !important;
+        bottom: 0 !important;
+        border-top: 1px solid var(--lumo-contrast-10pct);
+        border-bottom: none;
+    }
+
+    /* Remove the top padding and add bottom padding for navbar */
+    .main-layout {
+        padding-top: 0 !important;
+        padding-bottom: 65px !important;
+    }
+
+    /* Hide branding on mobile */
+    .app-branding {
+        display: none !important;
+    }
+
+    /* Hide nav text labels on mobile */
+    .nav-label {
+        display: none !important;
+    }
+
+    /* Larger touch-friendly icons on mobile */
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Center tabs and make equal width */
+    .main-nav-tabs {
+        flex: 1;
+    }
+
+    .main-nav-tabs vaadin-tab {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .main-nav-tabs vaadin-tab a {
+        justify-content: center;
+        min-height: 48px;
+    }
+
+    /* Hide button text on mobile */
+    .new-order-button .button-text,
+    .view-action-button .button-text {
+        display: none !important;
+    }
+
+    /* Compact action buttons on mobile */
+    .new-order-button,
+    .view-action-button {
+        min-width: 44px;
+        padding: 0 var(--lumo-space-s);
+    }
+
+    /* Compact user menu on mobile */
+    .user-menu vaadin-avatar {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* =============================================================================
+   View Header (consistent header across all views)
+   ============================================================================= */
+
+.view-header {
+    background: var(--lumo-base-color);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+    flex-shrink: 0;
+    min-height: 56px;
+}
+
+/* Mobile adjustments for view header */
+@media (max-width: 767px) {
+    .view-header {
+        flex-wrap: wrap;
+        gap: var(--lumo-space-s);
+        padding-top: var(--lumo-space-s);
+        padding-bottom: var(--lumo-space-s);
+        min-height: auto;
+    }
+
+    /* Hide view header title on mobile */
+    .view-header h2 {
+        display: none !important;
+    }
+
+    /* Adjust layout for filters/actions only */
+    .view-header {
+        justify-content: flex-end;
+    }
+
+    /* Hide view header completely on mobile when title-only (no filters/actions) */
+    .view-header.title-only {
+        display: none;
+    }
+}
+
+/* =============================================================================
+   Custom Badge Variants
+   ============================================================================= */
+
+/* Warning badge (amber/orange) for roles like Barista */
+[theme~="badge"][theme~="warning"] {
+    color: hsl(35, 100%, 30%);
+    background-color: hsl(40, 100%, 90%);
+}
+
+/* =============================================================================
+   Filter Bar
+   ============================================================================= */
+
+.filter-bar {
+    padding: var(--lumo-space-s) var(--lumo-space-m);
+    background: var(--lumo-base-color);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+}
+
+/* =============================================================================
+   Order Cards
+   ============================================================================= */
+
+.order-card {
+    background: var(--lumo-base-color);
+    border-radius: var(--lumo-border-radius-l);
+    box-shadow: var(--lumo-box-shadow-xs);
+    padding: var(--lumo-space-m);
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.order-card:hover {
+    box-shadow: var(--lumo-box-shadow-s);
+    transform: translateY(-2px);
+}
+
+/* =============================================================================
+   Storefront View
+   ============================================================================= */
+
+.storefront-view {
+    background: var(--lumo-contrast-5pct);
+}
+
+/* =============================================================================
+   About View
+   ============================================================================= */
+
+.about-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--lumo-space-l);
+    max-width: 1200px;
+}
+
+/* Mobile: stack cards vertically */
+@media (max-width: 767px) {
+    .about-cards-grid {
+        grid-template-columns: 1fr;
+    }
+}

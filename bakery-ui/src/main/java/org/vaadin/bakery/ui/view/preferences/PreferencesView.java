@@ -5,9 +5,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -24,6 +22,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.UserService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 
 import java.io.ByteArrayInputStream;
@@ -60,7 +59,7 @@ public class PreferencesView extends VerticalLayout {
         setSpacing(false);
 
         // Header
-        var header = createHeader();
+        var header = new ViewHeader("Preferences");
         add(header);
 
         // Main content (scrollable)
@@ -89,19 +88,6 @@ public class PreferencesView extends VerticalLayout {
 
         // Load current user data
         loadCurrentUser();
-    }
-
-    private HorizontalLayout createHeader() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(Alignment.CENTER);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, LumoUtility.Padding.Vertical.SMALL);
-
-        var title = new H2("Preferences");
-        title.addClassNames(LumoUtility.Margin.NONE);
-
-        header.add(title);
-        return header;
     }
 
     private Div createProfileSection() {
@@ -217,9 +203,8 @@ public class PreferencesView extends VerticalLayout {
 
     private Div createSection(String title) {
         var section = new Div();
+        section.addClassName("card");
         section.addClassNames(
-                LumoUtility.Background.CONTRAST_5,
-                LumoUtility.BorderRadius.LARGE,
                 LumoUtility.Padding.LARGE,
                 LumoUtility.Margin.Bottom.MEDIUM
         );

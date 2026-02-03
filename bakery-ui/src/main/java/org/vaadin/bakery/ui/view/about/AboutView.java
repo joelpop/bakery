@@ -5,56 +5,82 @@ import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.Version;
 import com.vaadin.flow.server.WebBrowser;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import jakarta.annotation.security.PermitAll;
-import org.vaadin.lineawesome.LineAwesomeIconUrl;
+import jakarta.annotation.security.RolesAllowed;
+import org.vaadin.bakery.ui.component.ViewHeader;
 
 /**
  * About view showing application and environment information.
+ * Accessible only to Admin users via the avatar menu.
  */
-@Route("")
+@Route("about")
 @PageTitle("About")
-@Menu(order = 0, icon = LineAwesomeIconUrl.INFO_CIRCLE_SOLID)
-@PermitAll
+@RolesAllowed("ADMIN")
 public class AboutView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     public AboutView() {
         var content = getContent();
-        content.addClassNames(LumoUtility.Padding.LARGE);
+        content.setPadding(false);
+        content.setSpacing(false);
 
-        var title = new H2("Café Sunshine");
-        title.addClassNames(LumoUtility.Margin.Bottom.MEDIUM);
-        content.add(title);
+        // Header
+        var header = new ViewHeader("About");
+        content.add(header);
 
-        content.add(createInfoSection("Application", createApplicationInfo()));
-        content.add(createInfoSection("Dependencies", createDependencyInfo()));
-        content.add(createInfoSection("Runtime", createRuntimeInfo()));
-        content.add(createInfoSection("Database", createDatabaseInfo()));
-        content.add(createInfoSection("Browser", createBrowserInfo()));
+        // Main content area
+        var main = new Div();
+        main.addClassNames(LumoUtility.Padding.LARGE, "about-cards-grid");
+
+        main.add(createInfoCard("Application", VaadinIcon.INFO_CIRCLE, createApplicationInfo()));
+        main.add(createInfoCard("Dependencies", VaadinIcon.PACKAGE, createDependencyInfo()));
+        main.add(createInfoCard("Runtime", VaadinIcon.COG, createRuntimeInfo()));
+        main.add(createInfoCard("Database", VaadinIcon.DATABASE, createDatabaseInfo()));
+        main.add(createInfoCard("Browser", VaadinIcon.GLOBE, createBrowserInfo()));
+
+        content.add(main);
     }
 
-    private Div createInfoSection(String title, Div info) {
-        var section = new Div();
-        section.addClassNames(LumoUtility.Margin.Bottom.LARGE);
-
-        var header = new H2(title);
-        header.addClassNames(
-                LumoUtility.FontSize.MEDIUM,
-                LumoUtility.FontWeight.SEMIBOLD,
-                LumoUtility.Margin.Bottom.SMALL
+    private Div createInfoCard(String title, VaadinIcon iconType, Div info) {
+        var card = new Div();
+        card.addClassNames(
+                LumoUtility.Background.BASE,
+                LumoUtility.BorderRadius.LARGE,
+                LumoUtility.BoxShadow.SMALL,
+                LumoUtility.Padding.MEDIUM,
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.SMALL
         );
 
-        section.add(header, info);
-        return section;
+        // Card header with icon
+        var icon = new Icon(iconType);
+        icon.addClassNames(LumoUtility.TextColor.PRIMARY);
+        icon.setSize("20px");
+
+        var headerSpan = new Span(title);
+        headerSpan.addClassNames(
+                LumoUtility.FontSize.SMALL,
+                LumoUtility.TextColor.SECONDARY,
+                LumoUtility.FontWeight.SEMIBOLD
+        );
+
+        var headerRow = new HorizontalLayout(icon, headerSpan);
+        headerRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        headerRow.addClassNames(LumoUtility.Gap.SMALL);
+
+        card.add(headerRow, info);
+        return card;
     }
 
     private Div createApplicationInfo() {
@@ -77,7 +103,7 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
         var runtime = Runtime.getRuntime();
         info.add(createInfoRow("JVM", System.getProperty("java.vm.name") + " " + System.getProperty("java.vm.version")));
         info.add(createInfoRow("OS", System.getProperty("os.name") + " " + System.getProperty("os.version")));
-        info.add(createInfoRow("Available Processors", String.valueOf(runtime.availableProcessors())));
+        info.add(createInfoRow("Processors", String.valueOf(runtime.availableProcessors())));
         info.add(createInfoRow("Max Memory", formatBytes(runtime.maxMemory())));
         return info;
     }
@@ -85,7 +111,7 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
     private Div createDatabaseInfo() {
         var info = new Div();
         info.add(createInfoRow("Type", "H2"));
-        info.add(createInfoRow("Mode", "In-Memory (Development)"));
+        info.add(createInfoRow("Mode", "In-Memory"));
         info.add(createInfoRow("DDL Auto", "create-drop"));
         return info;
     }
@@ -109,14 +135,20 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
         return "Unknown";
     }
 
-    private Paragraph createInfoRow(String label, String value) {
-        var row = new Paragraph();
-        row.addClassNames(LumoUtility.Margin.Vertical.XSMALL);
+    private Div createInfoRow(String label, String value) {
+        var row = new Div();
+        row.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.JustifyContent.BETWEEN,
+                LumoUtility.Padding.Vertical.XSMALL,
+                LumoUtility.Border.BOTTOM
+        );
 
-        var labelSpan = new Span(label + ": ");
-        labelSpan.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
+        var labelSpan = new Span(label);
+        labelSpan.addClassNames(LumoUtility.TextColor.SECONDARY);
 
         var valueSpan = new Span(value);
+        valueSpan.addClassNames(LumoUtility.FontWeight.MEDIUM);
 
         row.add(labelSpan, valueSpan);
         return row;
