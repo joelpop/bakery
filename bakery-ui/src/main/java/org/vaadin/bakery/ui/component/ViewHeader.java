@@ -27,6 +27,7 @@ public class ViewHeader extends HorizontalLayout {
      */
     public ViewHeader(String titleText) {
         addClassName("view-header");
+        addClassName("title-only"); // Will be removed when filters/actions added
         setWidthFull();
         setAlignItems(FlexComponent.Alignment.CENTER);
         setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
@@ -57,6 +58,7 @@ public class ViewHeader extends HorizontalLayout {
      * @return this header for method chaining
      */
     public ViewHeader withFilters(Component... components) {
+        removeClassName("title-only");
         filterArea.add(components);
         return this;
     }
@@ -69,6 +71,7 @@ public class ViewHeader extends HorizontalLayout {
      * @return this header for method chaining
      */
     public ViewHeader withAction(String buttonText, Runnable clickHandler) {
+        removeClassName("title-only");
         actionButton = new Button(buttonText, new Icon(VaadinIcon.PLUS));
         actionButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         actionButton.addClickListener(e -> clickHandler.run());
@@ -83,6 +86,7 @@ public class ViewHeader extends HorizontalLayout {
      * @return this header for method chaining
      */
     public ViewHeader withAction(Button button) {
+        removeClassName("title-only");
         this.actionButton = button;
         add(button);
         return this;

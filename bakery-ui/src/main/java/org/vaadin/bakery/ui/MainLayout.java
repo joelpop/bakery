@@ -41,11 +41,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Main application layout with horizontal navigation.
+ * Main application layout with responsive navigation.
  * Features:
  * - App branding (Café Sunshine)
- * - Desktop: Top horizontal navigation tabs
- * - Mobile: Bottom tab bar with touch optimization
+ * - Desktop: Top navigation bar with icons + text
+ * - Mobile: Bottom navigation bar with icons only
  * - Global "+ New order" action button
  * - User menu with avatar
  * - Role-based navigation item visibility
@@ -61,9 +61,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient ProductService productService;
 
     private Tabs navigationTabs;
-    private Tabs bottomNavigationTabs;
     private final Map<String, Tab> routeToTab = new HashMap<>();
-    private final Map<String, Tab> routeToBottomTab = new HashMap<>();
 
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
                       OrderService orderService, LocationService locationService,
@@ -77,41 +75,37 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
 
-        addHeaderContent();
-        addBottomNavigation();
+        addNavbarContent();
     }
 
-    private void addHeaderContent() {
-        var header = new HorizontalLayout();
-        header.setWidthFull();
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
-        header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
-        header.addClassName("main-header");
+    private void addNavbarContent() {
+        var navbar = new HorizontalLayout();
+        navbar.setWidthFull();
+        navbar.setAlignItems(FlexComponent.Alignment.CENTER);
+        navbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        navbar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, "main-navbar");
 
-        // App branding
-        var appName = createAppBranding();
+        // App branding (hidden on mobile)
+        var branding = createAppBranding();
 
-        // Navigation group: tabs + new order button (grouped together)
+        // Navigation tabs
         navigationTabs = createNavigationTabs();
-        var newOrderButton = createNewOrderButton();
 
-        var navGroup = new HorizontalLayout(navigationTabs, newOrderButton);
-        navGroup.setAlignItems(FlexComponent.Alignment.CENTER);
-        navGroup.setSpacing(false);
-        navGroup.addClassNames(LumoUtility.Gap.SMALL, "nav-group");
+        // New order button
+        var newOrderButton = createNewOrderButton();
 
         // User menu
         var userMenu = createUserMenu();
 
-        header.add(appName, navGroup, userMenu);
+        navbar.add(branding, navigationTabs, newOrderButton, userMenu);
+        navbar.setFlexGrow(1, navigationTabs);
 
-        addToNavbar(header);
+        addToNavbar(navbar);
     }
 
     private Component createAppBranding() {
         var sunIcon = new Icon(VaadinIcon.SUN_O);
-        sunIcon.getStyle().set("color", "#F5A623"); // Warm golden yellow
+        sunIcon.getStyle().set("color", "#F5A623");
 
         var appName = new H1("Café Sunshine");
         appName.addClassNames(
@@ -120,24 +114,23 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 LumoUtility.Whitespace.NOWRAP
         );
 
-        var brandingContainer = new HorizontalLayout(sunIcon, appName);
-        brandingContainer.setAlignItems(FlexComponent.Alignment.CENTER);
-        brandingContainer.setSpacing(false);
-        brandingContainer.addClassNames(LumoUtility.Gap.SMALL, "app-branding");
+        var container = new HorizontalLayout(sunIcon, appName);
+        container.setAlignItems(FlexComponent.Alignment.CENTER);
+        container.setSpacing(false);
+        container.addClassNames(LumoUtility.Gap.SMALL, "app-branding");
 
-        return brandingContainer;
+        return container;
     }
 
     private Tabs createNavigationTabs() {
         var tabs = new Tabs();
         tabs.addThemeVariants(TabsVariant.LUMO_MINIMAL);
-        tabs.addClassNames("desktop-navigation");
-        tabs.getStyle().set("--lumo-primary-text-color", "var(--lumo-primary-color)");
+        tabs.addClassName("main-nav-tabs");
 
         MenuConfiguration.getMenuEntries().stream()
                 .filter(this::isAccessible)
                 .forEach(entry -> {
-                    var tab = createTab(entry);
+                    var tab = createNavTab(entry);
                     tabs.add(tab);
                     routeToTab.put(normalizePathForLookup(entry.path()), tab);
                 });
@@ -145,106 +138,59 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         return tabs;
     }
 
-    private Component createNewOrderButton() {
-        // Desktop button with text
-        var button = new Button("New order", new Icon(VaadinIcon.PLUS));
-        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
-        button.addClassName("new-order-button");
-        button.addClickListener(_ -> openNewOrderDialog());
-        return button;
-    }
-
-    private String normalizePathForLookup(String path) {
-        // Normalize path for consistent map lookups (empty string for root)
-        if (path.isEmpty() || path.equals("/")) {
-            return "";
-        }
-        // Strip leading slash if present for consistent matching
-        return path.startsWith("/") ? path.substring(1) : path;
-    }
-
-    private String buildHref(String path) {
-        // Build proper href, avoiding double slashes
-        if (path.isEmpty() || path.equals("/")) {
-            return "/";
-        }
-        return path.startsWith("/") ? path : "/" + path;
-    }
-
-    private Tab createTab(MenuEntry entry) {
+    private Tab createNavTab(MenuEntry entry) {
         var link = new Anchor(buildHref(entry.path()));
         link.addClassNames(
                 LumoUtility.Display.FLEX,
                 LumoUtility.AlignItems.CENTER,
-                LumoUtility.TextColor.BODY
+                LumoUtility.Gap.SMALL
         );
         link.getStyle().set("text-decoration", "none");
 
-        if (entry.icon() != null) {
-            var icon = new Icon(entry.icon());
-            icon.addClassNames(LumoUtility.Margin.End.SMALL);
-            link.add(icon);
-        }
-        link.add(new Span(entry.title()));
+        // Icon (always visible)
+        var icon = new Icon(getIconForRoute(entry.path()));
+        icon.addClassName("nav-icon");
+        link.add(icon);
 
-        var tab = new Tab(link);
-        tab.addClassNames(LumoUtility.Padding.Horizontal.SMALL);
-        return tab;
-    }
-
-    private void addBottomNavigation() {
-        var bottomNav = new HorizontalLayout();
-        bottomNav.setWidthFull();
-        bottomNav.setAlignItems(FlexComponent.Alignment.CENTER);
-        bottomNav.addClassName("bottom-navigation");
-
-        bottomNavigationTabs = new Tabs();
-        bottomNavigationTabs.addThemeVariants(TabsVariant.LUMO_EQUAL_WIDTH_TABS);
-
-        MenuConfiguration.getMenuEntries().stream()
-                .filter(this::isAccessible)
-                .forEach(entry -> {
-                    var tab = createBottomTab(entry);
-                    bottomNavigationTabs.add(tab);
-                    routeToBottomTab.put(normalizePathForLookup(entry.path()), tab);
-                });
-
-        // Mobile new order button (icon only)
-        var mobileNewOrderButton = new Button(new Icon(VaadinIcon.PLUS));
-        mobileNewOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        mobileNewOrderButton.addClassName("new-order-button-mobile");
-        mobileNewOrderButton.addClickListener(_ -> openNewOrderDialog());
-
-        bottomNav.add(bottomNavigationTabs, mobileNewOrderButton);
-        bottomNav.setFlexGrow(1, bottomNavigationTabs);
-
-        // Add to touch-optimized navbar slot for mobile
-        addToNavbar(true, bottomNav);
-    }
-
-    private Tab createBottomTab(MenuEntry entry) {
-        var link = new Anchor(buildHref(entry.path()));
-        link.addClassNames(
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.FontSize.XSMALL,
-                LumoUtility.TextColor.BODY
-        );
-        link.getStyle().set("text-decoration", "none");
-
-        if (entry.icon() != null) {
-            var icon = new Icon(entry.icon());
-            link.add(icon);
-        }
-        link.add(new Span(entry.title()));
+        // Text label (hidden on mobile via CSS)
+        var label = new Span(entry.title());
+        label.addClassName("nav-label");
+        link.add(label);
 
         return new Tab(link);
+    }
+
+    private VaadinIcon getIconForRoute(String path) {
+        var normalizedPath = normalizePathForLookup(path);
+        return switch (normalizedPath) {
+            case "dashboard" -> VaadinIcon.DASHBOARD;
+            case "", "orders" -> VaadinIcon.CART;
+            case "products" -> VaadinIcon.PACKAGE;
+            case "locations" -> VaadinIcon.MAP_MARKER;
+            case "users" -> VaadinIcon.USERS;
+            default -> VaadinIcon.CIRCLE;
+        };
+    }
+
+    private Component createNewOrderButton() {
+        // Create button with icon, text added via suffix component
+        var icon = new Icon(VaadinIcon.PLUS);
+        var text = new Span("New order");
+        text.addClassName("button-text");
+
+        var button = new Button(icon);
+        button.setSuffixComponent(text);
+        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        button.addClassName("new-order-button");
+        button.addClickListener(_ -> openNewOrderDialog());
+
+        return button;
     }
 
     private Component createUserMenu() {
         var menuBar = new MenuBar();
         menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+        menuBar.addClassName("user-menu");
 
         Optional<UserDetail> currentUser = currentUserService.getCurrentUser();
 
@@ -294,12 +240,6 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         }
 
         // Logout
-        subMenu.addItem(createLogoutLink());
-
-        return menuBar;
-    }
-
-    private Component createLogoutLink() {
         var logoutIcon = new Icon(VaadinIcon.SIGN_OUT);
         logoutIcon.addClassNames(LumoUtility.Margin.End.SMALL);
 
@@ -310,11 +250,26 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         );
         logoutLink.getElement().insertChild(0, logoutIcon.getElement());
 
-        return logoutLink;
+        subMenu.addItem(logoutLink);
+
+        return menuBar;
+    }
+
+    private String normalizePathForLookup(String path) {
+        if (path.isEmpty() || path.equals("/")) {
+            return "";
+        }
+        return path.startsWith("/") ? path.substring(1) : path;
+    }
+
+    private String buildHref(String path) {
+        if (path.isEmpty() || path.equals("/")) {
+            return "/";
+        }
+        return path.startsWith("/") ? path : "/" + path;
     }
 
     private boolean isAccessible(MenuEntry entry) {
-        // Use the access checker to determine if the current user can access the view
         try {
             var viewClass = Class.forName(entry.menuClass().getName());
             return accessChecker.hasAccess(viewClass);
@@ -323,14 +278,10 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         }
     }
 
-    // ========== New Order Dialog ==========
-
     private void openNewOrderDialog() {
         var dialog = new EditOrderDialog(orderService, locationService);
         dialog.setAvailableProducts(productService.listAvailable());
-
         dialog.addSaveClickListener(_ -> refreshCurrentViewIfNeeded());
-
         dialog.open();
     }
 
@@ -343,11 +294,6 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
         var path = normalizePathForLookup(event.getLocation().getPath());
-
-        // Update desktop tabs selection
         navigationTabs.setSelectedTab(routeToTab.get(path));
-
-        // Update mobile bottom tabs selection
-        bottomNavigationTabs.setSelectedTab(routeToBottomTab.get(path));
     }
 }

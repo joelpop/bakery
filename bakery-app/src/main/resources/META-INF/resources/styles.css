@@ -1,33 +1,99 @@
 /* Bakery Application Styles */
 
 /* =============================================================================
-   Responsive Navigation
+   Main Layout - Responsive Navigation
    ============================================================================= */
 
-/* Desktop: show horizontal tabs, hide bottom navigation */
+.main-layout {
+    --vaadin-app-layout-navbar-background: var(--lumo-base-color);
+}
+
+/* Main navbar container */
+.main-navbar {
+    gap: var(--lumo-space-m);
+}
+
+/* Navigation tabs */
+.main-nav-tabs {
+    --lumo-primary-text-color: var(--lumo-primary-color);
+}
+
+/* Desktop styles */
 @media (min-width: 768px) {
-    .desktop-navigation {
-        display: flex !important;
+    /* Navbar at top */
+    .main-layout::part(navbar) {
+        border-bottom: 1px solid var(--lumo-contrast-10pct);
     }
 
-    .bottom-navigation {
-        display: none !important;
+    /* Show button text on desktop */
+    .new-order-button .button-text {
+        display: inline;
+        margin-left: var(--lumo-space-xs);
     }
 }
 
-/* Mobile: hide horizontal tabs, show bottom navigation */
+/* Mobile styles */
 @media (max-width: 767px) {
-    .desktop-navigation {
+    /* Move navbar to bottom */
+    .main-layout::part(navbar) {
+        top: auto !important;
+        bottom: 0 !important;
+        border-top: 1px solid var(--lumo-contrast-10pct);
+        border-bottom: none;
+    }
+
+    /* Remove the top padding and add bottom padding for navbar */
+    .main-layout {
+        padding-top: 0 !important;
+        padding-bottom: 65px !important;
+    }
+
+    /* Hide branding on mobile */
+    .app-branding {
         display: none !important;
     }
 
-    .bottom-navigation {
-        display: flex !important;
+    /* Hide nav text labels on mobile */
+    .nav-label {
+        display: none !important;
     }
 
-    /* Adjust branding for mobile */
-    .app-branding h1 {
-        font-size: var(--lumo-font-size-m);
+    /* Larger touch-friendly icons on mobile */
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Center tabs and make equal width */
+    .main-nav-tabs {
+        flex: 1;
+    }
+
+    .main-nav-tabs vaadin-tab {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .main-nav-tabs vaadin-tab a {
+        justify-content: center;
+        min-height: 48px;
+    }
+
+    /* Hide button text on mobile */
+    .new-order-button .button-text {
+        display: none !important;
+    }
+
+    /* Compact button on mobile */
+    .new-order-button {
+        min-width: 44px;
+        padding: 0 var(--lumo-space-s);
+    }
+
+    /* Compact user menu on mobile */
+    .user-menu vaadin-avatar {
+        width: 32px;
+        height: 32px;
     }
 }
 
@@ -49,69 +115,23 @@
         gap: var(--lumo-space-s);
         padding-top: var(--lumo-space-s);
         padding-bottom: var(--lumo-space-s);
+        min-height: auto;
     }
 
+    /* Hide view header title on mobile */
     .view-header h2 {
-        flex: 1 1 100%;
-    }
-}
-
-/* =============================================================================
-   Main Layout Adjustments
-   ============================================================================= */
-
-.main-layout {
-    --vaadin-app-layout-navbar-background: var(--lumo-base-color);
-}
-
-/* Main header - responsive wrapping */
-.main-header {
-    flex-wrap: wrap;
-    row-gap: var(--lumo-space-xs);
-}
-
-/* Navigation group (tabs + new order button) */
-.nav-group {
-    flex-wrap: nowrap;
-}
-
-/* Navigation tabs styling */
-.main-layout vaadin-tabs[theme~="minimal"] {
-    margin: 0;
-}
-
-/* Medium screens: nav wraps below branding */
-@media (max-width: 1100px) {
-    .main-header {
-        padding-top: var(--lumo-space-s);
-        padding-bottom: var(--lumo-space-s);
+        display: none !important;
     }
 
-    .main-header .app-branding {
-        flex: 0 0 auto;
+    /* Adjust layout for filters/actions only */
+    .view-header {
+        justify-content: flex-end;
     }
 
-    .main-header .nav-group {
-        order: 3;
-        flex: 1 1 100%;
-        justify-content: center;
+    /* Hide view header completely on mobile when title-only (no filters/actions) */
+    .view-header.title-only {
+        display: none;
     }
-}
-
-/* Bottom navigation styling */
-.bottom-navigation {
-    background: var(--lumo-base-color);
-    border-top: 1px solid var(--lumo-contrast-10pct);
-    padding: var(--lumo-space-xs) 0;
-}
-
-.bottom-navigation vaadin-tab {
-    padding: var(--lumo-space-xs);
-}
-
-.bottom-navigation vaadin-tab a {
-    padding: var(--lumo-space-xs);
-    min-height: 48px; /* Touch-friendly */
 }
 
 /* =============================================================================
@@ -161,36 +181,19 @@
 }
 
 /* =============================================================================
-   Global New Order Button
+   About View
    ============================================================================= */
 
-/* Desktop: shown in header navbar, adjacent to tabs */
-.new-order-button {
-    white-space: nowrap;
-    flex-shrink: 0;
+.about-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--lumo-space-l);
+    max-width: 1200px;
 }
 
-/* Mobile: hidden in header, shown in bottom nav */
-@media (min-width: 768px) {
-    .new-order-button {
-        display: inline-flex !important;
-    }
-
-    .new-order-button-mobile {
-        display: none !important;
-    }
-}
-
+/* Mobile: stack cards vertically */
 @media (max-width: 767px) {
-    .new-order-button {
-        display: none !important;
-    }
-
-    .new-order-button-mobile {
-        display: inline-flex !important;
-        min-width: 48px;
-        min-height: 48px;
-        margin-left: var(--lumo-space-s);
-        flex-shrink: 0;
+    .about-cards-grid {
+        grid-template-columns: 1fr;
     }
 }

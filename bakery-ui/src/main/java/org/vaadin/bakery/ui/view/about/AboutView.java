@@ -40,12 +40,7 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
 
         // Main content area
         var main = new Div();
-        main.addClassNames(LumoUtility.Padding.LARGE);
-        main.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fit, minmax(280px, 1fr))")
-                .set("gap", "var(--lumo-space-l)")
-                .set("max-width", "1200px");
+        main.addClassNames(LumoUtility.Padding.LARGE, "about-cards-grid");
 
         main.add(createInfoCard("Application", VaadinIcon.INFO_CIRCLE, createApplicationInfo()));
         main.add(createInfoCard("Dependencies", VaadinIcon.PACKAGE, createDependencyInfo()));
