@@ -88,17 +88,19 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         // App branding (hidden on mobile)
         var branding = createAppBranding();
 
-        // Navigation tabs
+        // Navigation group: tabs + new order button
         navigationTabs = createNavigationTabs();
-
-        // New order button
         var newOrderButton = createNewOrderButton();
+
+        var navGroup = new HorizontalLayout(navigationTabs, newOrderButton);
+        navGroup.setAlignItems(FlexComponent.Alignment.CENTER);
+        navGroup.addClassNames(LumoUtility.Gap.MEDIUM, "nav-group");
+        navGroup.setSpacing(false);
 
         // User menu
         var userMenu = createUserMenu();
 
-        navbar.add(branding, navigationTabs, newOrderButton, userMenu);
-        navbar.setFlexGrow(1, navigationTabs);
+        navbar.add(branding, navGroup, userMenu);
 
         addToNavbar(navbar);
     }
@@ -180,7 +182,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
         var button = new Button(icon);
         button.setSuffixComponent(text);
-        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
         button.addClassName("new-order-button");
         button.addClickListener(_ -> openNewOrderDialog());
 
@@ -295,5 +297,12 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     public void afterNavigation(AfterNavigationEvent event) {
         var path = normalizePathForLookup(event.getLocation().getPath());
         navigationTabs.setSelectedTab(routeToTab.get(path));
+
+        // Toggle class for storefront-specific styling (hides duplicate new order button on desktop)
+        if (path.isEmpty() || path.equals("orders")) {
+            addClassName("on-storefront");
+        } else {
+            removeClassName("on-storefront");
+        }
     }
 }
