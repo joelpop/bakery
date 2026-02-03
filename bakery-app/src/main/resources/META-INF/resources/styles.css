@@ -31,10 +31,48 @@
         display: inline;
         margin-left: var(--lumo-space-xs);
     }
+
+    /* Hide header new-order button on storefront (view has its own) */
+    .main-layout.on-storefront .new-order-button {
+        display: none;
+    }
 }
 
-/* Mobile styles */
+/* Mobile styles (tablets and phones) */
 @media (max-width: 767px) {
+    /* Larger touch-friendly icons */
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Touch-friendly tab targets */
+    .main-nav-tabs vaadin-tab a {
+        min-height: 48px;
+    }
+
+    /* Hide button text */
+    .new-order-button .button-text,
+    .view-action-button .button-text {
+        display: none !important;
+    }
+
+    /* Compact action buttons */
+    .new-order-button,
+    .view-action-button {
+        min-width: 44px;
+        padding: 0 var(--lumo-space-s);
+    }
+
+    /* Compact user menu */
+    .user-menu vaadin-avatar {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* Phone styles (bottom navigation on touch devices) */
+@media (max-width: 480px) and (pointer: coarse) {
     /* Move navbar to bottom */
     .main-layout::part(navbar) {
         top: auto !important;
@@ -43,29 +81,29 @@
         border-bottom: none;
     }
 
-    /* Remove the top padding and add bottom padding for navbar */
+    /* Adjust padding for bottom navbar */
     .main-layout {
         padding-top: 0 !important;
         padding-bottom: 65px !important;
     }
 
-    /* Hide branding on mobile */
+    /* Hide branding on phone */
     .app-branding {
         display: none !important;
     }
 
-    /* Hide nav text labels on mobile */
+    /* Hide nav text labels on phone */
     .nav-label {
         display: none !important;
     }
 
-    /* Larger touch-friendly icons on mobile */
-    .nav-icon {
-        width: 24px;
-        height: 24px;
+    /* Expand nav group to fill space */
+    .nav-group {
+        flex: 1;
+        justify-content: center;
     }
 
-    /* Center tabs and make equal width */
+    /* Equal-width centered tabs */
     .main-nav-tabs {
         flex: 1;
     }
@@ -77,26 +115,6 @@
 
     .main-nav-tabs vaadin-tab a {
         justify-content: center;
-        min-height: 48px;
-    }
-
-    /* Hide button text on mobile */
-    .new-order-button .button-text,
-    .view-action-button .button-text {
-        display: none !important;
-    }
-
-    /* Compact action buttons on mobile */
-    .new-order-button,
-    .view-action-button {
-        min-width: 44px;
-        padding: 0 var(--lumo-space-s);
-    }
-
-    /* Compact user menu on mobile */
-    .user-menu vaadin-avatar {
-        width: 32px;
-        height: 32px;
     }
 }
 
@@ -120,8 +138,11 @@
         padding-bottom: var(--lumo-space-s);
         min-height: auto;
     }
+}
 
-    /* Hide view header title on mobile */
+/* Phone adjustments for view header */
+@media (max-width: 480px) and (pointer: coarse) {
+    /* Hide view header title on phone */
     .view-header h2 {
         display: none !important;
     }
@@ -131,7 +152,7 @@
         justify-content: flex-end;
     }
 
-    /* Hide view header completely on mobile when title-only (no filters/actions) */
+    /* Hide view header completely on phone when title-only (no filters/actions) */
     .view-header.title-only {
         display: none;
     }
