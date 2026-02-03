@@ -91,16 +91,17 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         // App branding (hidden on mobile)
         var branding = createAppBranding();
 
-        // Navigation group: tabs + new order button
+        // Navigation group: tabs + new order button + mobile menu
         navigationTabs = createNavigationTabs();
         var newOrderButton = createNewOrderButton();
+        var mobileMenu = createMobileMenu();
 
-        var navGroup = new HorizontalLayout(navigationTabs, newOrderButton);
+        var navGroup = new HorizontalLayout(navigationTabs, newOrderButton, mobileMenu);
         navGroup.setAlignItems(FlexComponent.Alignment.CENTER);
         navGroup.addClassNames(LumoUtility.Gap.MEDIUM, "nav-group");
         navGroup.setSpacing(false);
 
-        // User menu
+        // User menu (desktop/tablet)
         var userMenu = createUserMenu();
 
         navbar.add(branding, navGroup, userMenu);
@@ -162,7 +163,21 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         label.addClassName("nav-label");
         link.add(label);
 
-        return new Tab(link);
+        var tab = new Tab(link);
+
+        // Mark admin nav tabs to hide on mobile (they move to hamburger menu)
+        if (isAdminNavRoute(entry.path())) {
+            tab.addClassName("admin-nav-tab");
+        }
+
+        return tab;
+    }
+
+    private boolean isAdminNavRoute(String path) {
+        var normalized = normalizePathForLookup(path);
+        return normalized.equals("products") ||
+               normalized.equals("locations") ||
+               normalized.equals("users");
     }
 
     private VaadinIcon getIconForRoute(String path) {
@@ -258,6 +273,103 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         subMenu.addItem(logoutLink);
 
         return menuBar;
+    }
+
+    private Component createMobileMenu() {
+        var menuBar = new MenuBar();
+        menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
+        menuBar.addClassName("mobile-menu");
+
+        var menuIcon = new Icon(VaadinIcon.MENU);
+        var menuItem = menuBar.addItem(menuIcon);
+        var subMenu = menuItem.getSubMenu();
+
+        // Navigation section - admin routes that are hidden in mobile nav
+        if (accessChecker.hasAccess(getViewClass("products"))) {
+            subMenu.addItem(createMenuItemContent(VaadinIcon.PACKAGE, "Products"),
+                    _ -> UI.getCurrent().navigate("products"));
+        }
+
+        if (accessChecker.hasAccess(getViewClass("locations"))) {
+            subMenu.addItem(createMenuItemContent(VaadinIcon.MAP_MARKER, "Locations"),
+                    _ -> UI.getCurrent().navigate("locations"));
+        }
+
+        if (accessChecker.hasAccess(getViewClass("users"))) {
+            subMenu.addItem(createMenuItemContent(VaadinIcon.USERS, "Users"),
+                    _ -> UI.getCurrent().navigate("users"));
+        }
+
+        // User info section (same as desktop user menu)
+        Optional<UserDetail> currentUser = currentUserService.getCurrentUser();
+        currentUser.ifPresent(user -> {
+            var userInfo = new Div();
+            userInfo.addClassNames(
+                    LumoUtility.Padding.MEDIUM,
+                    LumoUtility.Border.TOP,
+                    LumoUtility.Border.BOTTOM
+            );
+
+            var userName = new Div(user.getFirstName() + " " + user.getLastName());
+            userName.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
+
+            var userEmail = new Div(user.getEmail());
+            userEmail.addClassNames(
+                    LumoUtility.FontSize.SMALL,
+                    LumoUtility.TextColor.SECONDARY
+            );
+
+            var userRole = new Div(user.getRole().getDisplayName());
+            userRole.addClassNames(
+                    LumoUtility.FontSize.XSMALL,
+                    LumoUtility.TextColor.TERTIARY
+            );
+
+            userInfo.add(userName, userEmail, userRole);
+            subMenu.addItem(userInfo);
+        });
+
+        // Preferences link
+        subMenu.addItem("Preferences", _ -> UI.getCurrent().navigate("preferences"));
+
+        // About link (Admin only)
+        if (currentUserService.isAdmin()) {
+            subMenu.addItem("About", _ -> UI.getCurrent().navigate("about"));
+        }
+
+        // Logout
+        var logoutIcon = new Icon(VaadinIcon.SIGN_OUT);
+        logoutIcon.addClassNames(LumoUtility.Margin.End.SMALL);
+
+        var logoutLink = new Anchor("/logout", "Log out");
+        logoutLink.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.AlignItems.CENTER
+        );
+        logoutLink.getElement().insertChild(0, logoutIcon.getElement());
+
+        subMenu.addItem(logoutLink);
+
+        return menuBar;
+    }
+
+    private Class<?> getViewClass(String route) {
+        return switch (route) {
+            case "products" -> org.vaadin.bakery.ui.view.products.ProductsView.class;
+            case "locations" -> org.vaadin.bakery.ui.view.locations.LocationsView.class;
+            case "users" -> org.vaadin.bakery.ui.view.users.UsersView.class;
+            default -> null;
+        };
+    }
+
+    private Component createMenuItemContent(VaadinIcon iconType, String text) {
+        var icon = new Icon(iconType);
+        icon.addClassNames(LumoUtility.Margin.End.SMALL);
+        var label = new Span(text);
+        var container = new HorizontalLayout(icon, label);
+        container.setAlignItems(FlexComponent.Alignment.CENTER);
+        container.setSpacing(false);
+        return container;
     }
 
     private String normalizePathForLookup(String path) {

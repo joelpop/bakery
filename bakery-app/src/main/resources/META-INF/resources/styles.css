@@ -18,6 +18,11 @@
     --lumo-primary-text-color: var(--lumo-primary-color);
 }
 
+/* Mobile menu - hidden by default, shown on phone */
+.mobile-menu {
+    display: none;
+}
+
 /* Desktop styles */
 @media (min-width: 751px) {
     /* Navbar at top */
@@ -96,9 +101,10 @@
 
 /* Phone styles (bottom navigation on touch devices) */
 @media (max-width: 480px) and (pointer: coarse) {
-    /* Disable wrapping on phone - single row bottom nav */
+    /* Single row bottom nav */
     .main-navbar {
         flex-wrap: nowrap !important;
+        gap: 0 !important;
     }
 
     /* Larger touch-friendly icons */
@@ -116,13 +122,6 @@
     .new-order-button .button-text,
     .view-action-button .button-text {
         display: none !important;
-    }
-
-    /* Compact action buttons */
-    .new-order-button,
-    .view-action-button {
-        min-width: 44px;
-        padding: 0 var(--lumo-space-s);
     }
 
     /* Compact user menu */
@@ -155,25 +154,42 @@
         display: none !important;
     }
 
-    /* Expand nav group to fill space, reset min-width */
+    /* Hide admin nav tabs on phone (moved to hamburger menu) */
+    .admin-nav-tab {
+        display: none !important;
+    }
+
+    /* Hide desktop user menu on phone (replaced by hamburger) */
+    .user-menu {
+        display: none !important;
+    }
+
+    /* Nav group: fill width, even gaps between all items */
     .nav-group {
         flex: 1;
-        justify-content: center;
+        justify-content: space-between !important;
         min-width: 0;
+        padding: 0 var(--lumo-space-l) !important;
     }
 
-    /* Equal-width centered tabs */
-    .main-nav-tabs {
-        flex: 1;
-    }
-
+    /* Tabs: add space only between tabs, not on outer edges */
     .main-nav-tabs vaadin-tab {
-        flex: 1;
-        justify-content: center;
+        flex: none;
     }
 
-    .main-nav-tabs vaadin-tab a {
-        justify-content: center;
+    .main-nav-tabs vaadin-tab:not(:first-child) {
+        margin-left: var(--lumo-space-xl);
+    }
+
+    /* Button: natural size */
+    .new-order-button {
+        flex: none;
+    }
+
+    /* Show mobile hamburger menu on phone */
+    .mobile-menu {
+        display: flex !important;
+        flex: none;
     }
 }
 
