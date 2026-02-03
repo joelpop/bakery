@@ -60,7 +60,7 @@ public class UsersView extends VerticalLayout {
 
         // Grid container with padding
         var gridContainer = new Div();
-        gridContainer.addClassNames(LumoUtility.Padding.MEDIUM);
+        gridContainer.addClassNames(LumoUtility.Padding.MEDIUM, LumoUtility.BoxSizing.BORDER);
         gridContainer.setSizeFull();
 
         grid = createGrid();
