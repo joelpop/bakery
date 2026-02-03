@@ -1,8 +1,6 @@
 package org.vaadin.bakery.ui.view.users;
 
 import com.vaadin.flow.component.avatar.Avatar;
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -20,6 +18,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.UserService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.data.UserSummary;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
@@ -55,7 +54,9 @@ public class UsersView extends VerticalLayout {
 
         // Header with title, search, and add button
         searchField = createSearchField();
-        var header = createHeader();
+        var header = new ViewHeader("Users")
+                .withFilters(searchField)
+                .withAction("New user", () -> openDialog(null));
 
         // Grid container with padding
         var gridContainer = new Div();
@@ -78,32 +79,6 @@ public class UsersView extends VerticalLayout {
         field.addValueChangeListener(e -> filterGrid(e.getValue()));
         field.setWidth("300px");
         return field;
-    }
-
-    private Div createHeader() {
-        var header = new Div();
-        header.addClassName("view-header");
-
-        var title = new Span("Users");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        var actions = new Div();
-        actions.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Gap.MEDIUM
-        );
-
-        var addButton = new Button("New user", new Icon(VaadinIcon.PLUS));
-        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addButton.addClickListener(e -> openDialog(null));
-
-        actions.add(searchField, addButton);
-        header.add(title, actions);
-        return header;
     }
 
     private Grid<UserSummary> createGrid() {

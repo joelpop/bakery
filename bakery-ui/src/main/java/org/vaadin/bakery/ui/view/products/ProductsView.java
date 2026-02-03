@@ -1,7 +1,5 @@
 package org.vaadin.bakery.ui.view.products;
 
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -20,6 +18,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.ProductSummary;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
@@ -58,9 +57,13 @@ public class ProductsView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
-        // Header with title, search, and add button
+        // Header with title, search, and add button (admin only)
         searchField = createSearchField();
-        var header = createHeader();
+        var header = new ViewHeader("Products")
+                .withFilters(searchField);
+        if (isAdmin) {
+            header.withAction("New product", () -> openDialog(new ProductSummary()));
+        }
 
         // Grid container with padding
         var gridContainer = new Div();
@@ -83,36 +86,6 @@ public class ProductsView extends VerticalLayout {
         field.addValueChangeListener(e -> filterGrid(e.getValue()));
         field.setWidth("300px");
         return field;
-    }
-
-    private Div createHeader() {
-        var header = new Div();
-        header.addClassName("view-header");
-
-        var title = new Span("Products");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        var actions = new Div();
-        actions.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Gap.MEDIUM
-        );
-
-        actions.add(searchField);
-
-        if (isAdmin) {
-            var addButton = new Button("New product", new Icon(VaadinIcon.PLUS));
-            addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-            addButton.addClickListener(e -> openDialog(new ProductSummary()));
-            actions.add(addButton);
-        }
-
-        header.add(title, actions);
-        return header;
     }
 
     private Grid<ProductSummary> createGrid() {

@@ -1,14 +1,10 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -22,6 +18,7 @@ import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.OrderList;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
@@ -61,8 +58,12 @@ public class StorefrontView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
-        // Toolbar with search field
-        add(createToolbar());
+        // View header with title, search, and new order button
+        searchField = createSearchField();
+        var header = new ViewHeader("Storefront")
+                .withFilters(searchField)
+                .withAction("New order", this::openNewOrderDialog);
+        add(header);
 
         // Filter bar
         filterBar = new FilterBar(locationService.listActive());
@@ -87,27 +88,15 @@ public class StorefrontView extends VerticalLayout {
         refresh();
     }
 
-    private HorizontalLayout createToolbar() {
-        var toolbar = new HorizontalLayout();
-        toolbar.addClassName("view-toolbar");
-        toolbar.setWidthFull();
-        toolbar.setAlignItems(FlexComponent.Alignment.CENTER);
-        toolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-
-        searchField = new TextField();
-        searchField.setPlaceholder("Filter orders");
-        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
-        searchField.setClearButtonVisible(true);
-        searchField.setValueChangeMode(ValueChangeMode.LAZY);
-        searchField.addValueChangeListener(e -> refresh());
-        searchField.setWidth("300px");
-
-        var newOrderButton = new Button("New order", new Icon(VaadinIcon.PLUS));
-        newOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newOrderButton.addClickListener(e -> openNewOrderDialog());
-
-        toolbar.add(searchField, newOrderButton);
-        return toolbar;
+    private TextField createSearchField() {
+        var field = new TextField();
+        field.setPlaceholder("Filter orders");
+        field.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        field.setClearButtonVisible(true);
+        field.setValueChangeMode(ValueChangeMode.LAZY);
+        field.addValueChangeListener(e -> refresh());
+        field.setWidth("300px");
+        return field;
     }
 
     private void openNewOrderDialog() {

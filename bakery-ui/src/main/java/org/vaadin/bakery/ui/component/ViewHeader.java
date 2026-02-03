@@ -1,0 +1,111 @@
+package org.vaadin.bakery.ui.component;
+
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.theme.lumo.LumoUtility;
+
+/**
+ * Reusable view header component providing consistent styling across views.
+ * Layout: [Title] [Filter components...] [Action button]
+ */
+public class ViewHeader extends HorizontalLayout {
+
+    private final H2 title;
+    private final HorizontalLayout filterArea;
+    private Button actionButton;
+
+    /**
+     * Creates a view header with just a title.
+     *
+     * @param titleText the view title
+     */
+    public ViewHeader(String titleText) {
+        addClassName("view-header");
+        setWidthFull();
+        setAlignItems(FlexComponent.Alignment.CENTER);
+        setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        addClassNames(
+                LumoUtility.Padding.Horizontal.MEDIUM,
+                LumoUtility.Padding.Vertical.SMALL
+        );
+
+        title = new H2(titleText);
+        title.addClassNames(
+                LumoUtility.FontSize.LARGE,
+                LumoUtility.Margin.NONE,
+                LumoUtility.Whitespace.NOWRAP
+        );
+
+        filterArea = new HorizontalLayout();
+        filterArea.setAlignItems(FlexComponent.Alignment.CENTER);
+        filterArea.addClassNames(LumoUtility.Gap.MEDIUM);
+        filterArea.setSpacing(false);
+
+        add(title, filterArea);
+    }
+
+    /**
+     * Adds filter components to the header.
+     *
+     * @param components the filter components to add
+     * @return this header for method chaining
+     */
+    public ViewHeader withFilters(Component... components) {
+        filterArea.add(components);
+        return this;
+    }
+
+    /**
+     * Adds a primary action button to the header.
+     *
+     * @param buttonText the button text (without the "+")
+     * @param clickHandler the click handler
+     * @return this header for method chaining
+     */
+    public ViewHeader withAction(String buttonText, Runnable clickHandler) {
+        actionButton = new Button(buttonText, new Icon(VaadinIcon.PLUS));
+        actionButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        actionButton.addClickListener(e -> clickHandler.run());
+        add(actionButton);
+        return this;
+    }
+
+    /**
+     * Adds a custom action button to the header.
+     *
+     * @param button the button to add
+     * @return this header for method chaining
+     */
+    public ViewHeader withAction(Button button) {
+        this.actionButton = button;
+        add(button);
+        return this;
+    }
+
+    /**
+     * Gets the title component for customization.
+     */
+    public H2 getTitle() {
+        return title;
+    }
+
+    /**
+     * Gets the filter area for direct manipulation.
+     */
+    public HorizontalLayout getFilterArea() {
+        return filterArea;
+    }
+
+    /**
+     * Gets the action button if one was added.
+     */
+    public Button getActionButton() {
+        return actionButton;
+    }
+}

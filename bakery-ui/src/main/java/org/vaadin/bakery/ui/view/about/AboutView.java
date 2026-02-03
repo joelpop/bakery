@@ -5,7 +5,6 @@ import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -20,6 +19,7 @@ import com.vaadin.flow.server.Version;
 import com.vaadin.flow.server.WebBrowser;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 /**
@@ -36,20 +36,8 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
         content.setPadding(false);
         content.setSpacing(false);
 
-        // Header section
-        var header = new Div();
-        header.addClassNames("view-header");
-
-        var sunIcon = new Icon(VaadinIcon.SUN_O);
-        sunIcon.getStyle().set("color", "#F5A623");
-
-        var title = new H2("Café Sunshine");
-        title.addClassNames(LumoUtility.Margin.NONE);
-
-        var headerContent = new HorizontalLayout(sunIcon, title);
-        headerContent.setAlignItems(FlexComponent.Alignment.CENTER);
-        headerContent.addClassNames(LumoUtility.Gap.SMALL);
-        header.add(headerContent);
+        // Header
+        var header = new ViewHeader("About");
         content.add(header);
 
         // Main content area

@@ -1,13 +1,9 @@
 package org.vaadin.bakery.ui.view.locations;
 
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
@@ -15,6 +11,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.LocationService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
@@ -40,7 +37,8 @@ public class LocationsView extends VerticalLayout {
         setSpacing(false);
 
         // Header with title and add button
-        var header = createHeader();
+        var header = new ViewHeader("Locations")
+                .withAction("New location", () -> openDialog(new LocationSummary()));
 
         // Grid container with padding
         var gridContainer = new Div();
@@ -53,24 +51,6 @@ public class LocationsView extends VerticalLayout {
         add(header, gridContainer);
         setFlexGrow(1, gridContainer);
         refreshGrid();
-    }
-
-    private Div createHeader() {
-        var header = new Div();
-        header.addClassName("view-header");
-
-        var title = new Span("Locations");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        var addButton = new Button("New location", new Icon(VaadinIcon.PLUS));
-        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addButton.addClickListener(e -> openDialog(new LocationSummary()));
-
-        header.add(title, addButton);
-        return header;
     }
 
     private Grid<LocationSummary> createGrid() {

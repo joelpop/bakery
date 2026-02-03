@@ -13,6 +13,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.DashboardService;
+import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.Duration;
@@ -54,7 +55,7 @@ public class DashboardView extends VerticalLayout {
         setSpacing(false);
 
         // Header
-        var header = createHeader();
+        var header = new ViewHeader("Dashboard");
         add(header);
 
         // Main content (scrollable)
@@ -94,20 +95,6 @@ public class DashboardView extends VerticalLayout {
 
         // Load data
         refreshData();
-    }
-
-    private Div createHeader() {
-        var header = new Div();
-        header.addClassName("view-header");
-
-        var title = new Span("Dashboard");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        header.add(title);
-        return header;
     }
 
     private Div createKpiRow() {
