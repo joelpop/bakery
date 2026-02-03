@@ -4,6 +4,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
@@ -65,6 +66,7 @@ public class ViewHeader extends HorizontalLayout {
 
     /**
      * Adds a primary action button to the header.
+     * On mobile, only the icon is shown; on desktop, both icon and text are visible.
      *
      * @param buttonText the button text (without the "+")
      * @param clickHandler the click handler
@@ -72,8 +74,15 @@ public class ViewHeader extends HorizontalLayout {
      */
     public ViewHeader withAction(String buttonText, Runnable clickHandler) {
         removeClassName("title-only");
-        actionButton = new Button(buttonText, new Icon(VaadinIcon.PLUS));
+
+        var icon = new Icon(VaadinIcon.PLUS);
+        var text = new Span(buttonText);
+        text.addClassName("button-text");
+
+        actionButton = new Button(icon);
+        actionButton.setSuffixComponent(text);
         actionButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        actionButton.addClassName("view-action-button");
         actionButton.addClickListener(e -> clickHandler.run());
         add(actionButton);
         return this;

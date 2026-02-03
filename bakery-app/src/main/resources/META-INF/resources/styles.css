@@ -26,7 +26,8 @@
     }
 
     /* Show button text on desktop */
-    .new-order-button .button-text {
+    .new-order-button .button-text,
+    .view-action-button .button-text {
         display: inline;
         margin-left: var(--lumo-space-xs);
     }
@@ -80,12 +81,14 @@
     }
 
     /* Hide button text on mobile */
-    .new-order-button .button-text {
+    .new-order-button .button-text,
+    .view-action-button .button-text {
         display: none !important;
     }
 
-    /* Compact button on mobile */
-    .new-order-button {
+    /* Compact action buttons on mobile */
+    .new-order-button,
+    .view-action-button {
         min-width: 44px;
         padding: 0 var(--lumo-space-s);
     }
