@@ -1,5 +1,7 @@
 package org.vaadin.bakery.ui.view.storefront;
 
+import com.vaadin.flow.component.ComponentEvent;
+import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -21,6 +23,7 @@ import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.timepicker.TimePicker;
+import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
@@ -46,7 +49,6 @@ public class EditOrderDialog extends Dialog {
 
     private final OrderService orderService;
     private final LocationService locationService;
-    private final Runnable onSaveCallback;
 
     private final List<OrderItemDetail> orderItems = new ArrayList<>();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
@@ -66,11 +68,9 @@ public class EditOrderDialog extends Dialog {
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
     private final Span totalLabel = new Span("$0.00");
 
-    public EditOrderDialog(OrderService orderService, LocationService locationService,
-                           Runnable onSaveCallback) {
+    public EditOrderDialog(OrderService orderService, LocationService locationService) {
         this.orderService = orderService;
         this.locationService = locationService;
-        this.onSaveCallback = onSaveCallback;
 
         setHeaderTitle("New Order");
         setCloseOnOutsideClick(false);
@@ -80,7 +80,10 @@ public class EditOrderDialog extends Dialog {
         add(createContent());
 
         // Footer buttons
-        var cancelButton = new Button("Cancel", e -> close());
+        var cancelButton = new Button("Cancel", e -> {
+            fireEvent(new CancelClickEvent(this));
+            close();
+        });
         var saveButton = new Button("Save", e -> save());
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
@@ -88,6 +91,43 @@ public class EditOrderDialog extends Dialog {
 
         loadData();
     }
+
+    // ========== Event Classes ==========
+
+    public static class SaveClickEvent extends ComponentEvent<EditOrderDialog> {
+        private final OrderDetail order;
+
+        public SaveClickEvent(EditOrderDialog source, OrderDetail order) {
+            super(source, false);
+            this.order = order;
+        }
+
+        public OrderDetail getOrder() {
+            return order;
+        }
+
+        public boolean isNewCustomerCreated() {
+            return order != null && order.isNewCustomerCreated();
+        }
+    }
+
+    public static class CancelClickEvent extends ComponentEvent<EditOrderDialog> {
+        public CancelClickEvent(EditOrderDialog source) {
+            super(source, false);
+        }
+    }
+
+    // ========== Event Registration ==========
+
+    public Registration addSaveClickListener(ComponentEventListener<SaveClickEvent> listener) {
+        return addListener(SaveClickEvent.class, listener);
+    }
+
+    public Registration addCancelClickListener(ComponentEventListener<CancelClickEvent> listener) {
+        return addListener(CancelClickEvent.class, listener);
+    }
+
+    // ========== UI Creation ==========
 
     private VerticalLayout createContent() {
         var content = new VerticalLayout();
@@ -201,12 +241,18 @@ public class EditOrderDialog extends Dialog {
         }).setFlexGrow(0).setWidth("50px");
     }
 
+    // ========== Data Operations ==========
+
     private void loadData() {
         var locations = locationService.listActive();
         locationComboBox.setItems(locations);
         if (locations.size() == 1) {
-            locationComboBox.setValue(locations.get(0));
+            locationComboBox.setValue(locations.getFirst());
         }
+    }
+
+    public void setAvailableProducts(List<ProductSelect> products) {
+        productComboBox.setItems(products);
     }
 
     private void addItem() {
@@ -260,12 +306,15 @@ public class EditOrderDialog extends Dialog {
         totalLabel.setText(currencyFormat.format(total));
     }
 
+    // ========== Validation and Save ==========
+
     private boolean validate() {
         var valid = true;
+        var requiredMessage = "Required";
 
         if (customerNameField.getValue() == null || customerNameField.getValue().isBlank()) {
             customerNameField.setInvalid(true);
-            customerNameField.setErrorMessage("Required");
+            customerNameField.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             customerNameField.setInvalid(false);
@@ -273,7 +322,7 @@ public class EditOrderDialog extends Dialog {
 
         if (locationComboBox.getValue() == null) {
             locationComboBox.setInvalid(true);
-            locationComboBox.setErrorMessage("Required");
+            locationComboBox.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             locationComboBox.setInvalid(false);
@@ -281,7 +330,7 @@ public class EditOrderDialog extends Dialog {
 
         if (dueDatePicker.getValue() == null) {
             dueDatePicker.setInvalid(true);
-            dueDatePicker.setErrorMessage("Required");
+            dueDatePicker.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             dueDatePicker.setInvalid(false);
@@ -289,7 +338,7 @@ public class EditOrderDialog extends Dialog {
 
         if (dueTimePicker.getValue() == null) {
             dueTimePicker.setInvalid(true);
-            dueTimePicker.setErrorMessage("Required");
+            dueTimePicker.setErrorMessage(requiredMessage);
             valid = false;
         } else {
             dueTimePicker.setInvalid(false);
@@ -323,22 +372,16 @@ public class EditOrderDialog extends Dialog {
             order.calculateTotal();
             order.setPaid(false);
 
-            orderService.create(order);
+            var savedOrder = orderService.create(order);
 
             Notification.show("Order created", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
-            if (onSaveCallback != null) {
-                onSaveCallback.run();
-            }
+            fireEvent(new SaveClickEvent(this, savedOrder));
             close();
         } catch (Exception e) {
             Notification.show("Failed: " + e.getMessage(), 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
-    }
-
-    public void setAvailableProducts(List<ProductSelect> products) {
-        productComboBox.setItems(products);
     }
 }

@@ -88,9 +88,38 @@
     --vaadin-app-layout-navbar-background: var(--lumo-base-color);
 }
 
+/* Main header - responsive wrapping */
+.main-header {
+    flex-wrap: wrap;
+    row-gap: var(--lumo-space-xs);
+}
+
+/* Navigation group (tabs + new order button) */
+.nav-group {
+    flex-wrap: nowrap;
+}
+
 /* Navigation tabs styling */
 .main-layout vaadin-tabs[theme~="minimal"] {
-    margin: 0 var(--lumo-space-m);
+    margin: 0;
+}
+
+/* Medium screens: nav wraps below branding */
+@media (max-width: 1100px) {
+    .main-header {
+        padding-top: var(--lumo-space-s);
+        padding-bottom: var(--lumo-space-s);
+    }
+
+    .main-header .app-branding {
+        flex: 0 0 auto;
+    }
+
+    .main-header .nav-group {
+        order: 3;
+        flex: 1 1 100%;
+        justify-content: center;
+    }
 }
 
 /* Bottom navigation styling */
@@ -143,4 +172,39 @@
 
 .storefront-view {
     background: var(--lumo-contrast-5pct);
+}
+
+/* =============================================================================
+   Global New Order Button
+   ============================================================================= */
+
+/* Desktop: shown in header navbar, adjacent to tabs */
+.new-order-button {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Mobile: hidden in header, shown in bottom nav */
+@media (min-width: 768px) {
+    .new-order-button {
+        display: inline-flex !important;
+    }
+
+    .new-order-button-mobile {
+        display: none !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .new-order-button {
+        display: none !important;
+    }
+
+    .new-order-button-mobile {
+        display: inline-flex !important;
+        min-width: 48px;
+        min-height: 48px;
+        margin-left: var(--lumo-space-s);
+        flex-shrink: 0;
+    }
 }

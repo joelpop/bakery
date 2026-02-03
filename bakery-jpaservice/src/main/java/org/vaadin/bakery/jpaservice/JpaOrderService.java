@@ -92,19 +92,23 @@ public class JpaOrderService implements OrderService {
 
         // Find or create customer
         CustomerEntity customer;
+        var newCustomerCreated = false;
         if (order.getCustomerId() != null) {
             customer = customerRepository.findById(order.getCustomerId())
                     .orElseThrow(() -> new IllegalArgumentException("Customer not found: " + order.getCustomerId()));
         } else if (order.getCustomerPhone() != null && !order.getCustomerPhone().isBlank()) {
             // Try to find existing customer by phone, or create new one
-            customer = customerRepository.findByPhoneNumber(order.getCustomerPhone())
-                    .orElseGet(() -> {
-                        var newCustomer = new CustomerEntity();
-                        newCustomer.setName(order.getCustomerName());
-                        newCustomer.setPhoneNumber(order.getCustomerPhone());
-                        newCustomer.setActive(true);
-                        return customerRepository.save(newCustomer);
-                    });
+            var existingCustomer = customerRepository.findByPhoneNumber(order.getCustomerPhone());
+            if (existingCustomer.isPresent()) {
+                customer = existingCustomer.get();
+            } else {
+                var newCustomer = new CustomerEntity();
+                newCustomer.setName(order.getCustomerName());
+                newCustomer.setPhoneNumber(order.getCustomerPhone());
+                newCustomer.setActive(true);
+                customer = customerRepository.save(newCustomer);
+                newCustomerCreated = true;
+            }
         } else {
             throw new IllegalArgumentException("Either customerId or customerPhone must be provided");
         }
@@ -128,7 +132,9 @@ public class JpaOrderService implements OrderService {
         }
 
         var saved = orderRepository.save(entity);
-        return orderMapper.toDetail(saved);
+        var result = orderMapper.toDetail(saved);
+        result.setNewCustomerCreated(newCustomerCreated);
+        return result;
     }
 
     @Override

@@ -450,6 +450,52 @@ Use component theme variants where available to achieve desired styling.
 
 For simple styling adjustments to components, prefer using `addClassNames()` with `LumoUtility` class names over using CSS.
 
+### Dialogs
+
+Dialogs should use the **listener pattern** for dismiss actions rather than constructor callbacks. Each dialog should:
+
+1. **Define event classes** for each dismiss action (e.g., `SaveClickEvent`, `CancelClickEvent`)
+2. **Provide registration methods** (e.g., `addSaveClickListener()`, `addCancelClickListener()`)
+3. **Include getters in save events** to return the data entered/created in the dialog
+
+Example pattern:
+```java
+public class EditOrderDialog extends Dialog {
+
+    // Event classes
+    public static class SaveClickEvent extends ComponentEvent<EditOrderDialog> {
+        private final OrderDetail order;
+        private final boolean newCustomerCreated;
+
+        public SaveClickEvent(EditOrderDialog source, OrderDetail order, boolean newCustomerCreated) {
+            super(source, false);
+            this.order = order;
+            this.newCustomerCreated = newCustomerCreated;
+        }
+
+        public OrderDetail getOrder() { return order; }
+        public boolean isNewCustomerCreated() { return newCustomerCreated; }
+    }
+
+    public static class CancelClickEvent extends ComponentEvent<EditOrderDialog> {
+        public CancelClickEvent(EditOrderDialog source) {
+            super(source, false);
+        }
+    }
+
+    // Registration methods
+    public Registration addSaveClickListener(ComponentEventListener<SaveClickEvent> listener) {
+        return addListener(SaveClickEvent.class, listener);
+    }
+
+    public Registration addCancelClickListener(ComponentEventListener<CancelClickEvent> listener) {
+        return addListener(CancelClickEvent.class, listener);
+    }
+}
+```
+
+The code that instantiates the dialog is responsible for attaching listeners and handling the events appropriately.
+
 ## Testing
 
 ### Unit Tests

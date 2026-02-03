@@ -472,22 +472,33 @@ The following decisions were made during documentation review to resolve conflic
 
 ### 8.3 Edit Order Dialog
 
-- [x] **EditOrderDialog** - Two-step order creation/edit wizard
-  - [x] Step 1: Order Details
+- [x] **EditOrderDialog** - Single-page order creation/edit dialog
+  - [x] Order details section
     - [x] Customer name field
     - [x] Phone number field
     - [x] Due date picker
     - [x] Due time picker (15-minute intervals)
     - [x] Location dropdown
     - [x] Additional details text area
-    - [x] Cancel and "Next" buttons
-  - [x] Step 2: Add Items
+  - [x] Order items section
     - [x] Product combo box
     - [x] Quantity field with stepper
     - [x] Item notes field
     - [x] Items grid with remove button
     - [x] Total calculation
-    - [x] Back and "Create Order" buttons
+  - [x] Cancel and Save buttons
+  - [x] Listener pattern for dismiss events (`SaveClickEvent`, `CancelClickEvent`)
+  - [x] `SaveClickEvent` returns created order and new customer flag
+
+### 8.3.1 Global New Order Button
+
+- [x] **Navigation bar action button** - Global access to create new orders
+  - [x] Positioned at right end of nav tabs (before user menu)
+  - [x] Desktop: Primary-styled nav item with "+ New order" text
+  - [x] Mobile: Collapsed to plus icon with primary background
+  - [x] Opens `EditOrderDialog` without navigation
+  - [x] On save: refreshes current view if StorefrontView or DashboardView
+  - [x] On save with new customer: also refreshes CustomerView if current
 
 ### 8.4 Order Detail View
 

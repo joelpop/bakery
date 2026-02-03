@@ -33,6 +33,9 @@ public class OrderDetail {
     private String createdByName;
     private String updatedByName;
 
+    // Transient field set during create to indicate if a new customer was created
+    private boolean newCustomerCreated;
+
     public Long getId() {
         return id;
     }
@@ -179,6 +182,14 @@ public class OrderDetail {
 
     public boolean isNew() {
         return id == null;
+    }
+
+    public boolean isNewCustomerCreated() {
+        return newCustomerCreated;
+    }
+
+    public void setNewCustomerCreated(boolean newCustomerCreated) {
+        this.newCustomerCreated = newCustomerCreated;
     }
 
     public void calculateTotal() {

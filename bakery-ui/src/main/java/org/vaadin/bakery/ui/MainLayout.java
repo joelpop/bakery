@@ -4,16 +4,18 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.avatar.Avatar;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.menubar.MenuBarVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.tabs.TabsVariant;
@@ -27,8 +29,12 @@ import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.CurrentUserService;
+import org.vaadin.bakery.service.LocationService;
+import org.vaadin.bakery.service.OrderService;
+import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.ui.view.storefront.EditOrderDialog;
+import org.vaadin.bakery.ui.view.storefront.StorefrontView;
 import org.vaadin.bakery.uimodel.data.UserDetail;
-
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +46,7 @@ import java.util.Optional;
  * - App branding (Café Sunshine)
  * - Desktop: Top horizontal navigation tabs
  * - Mobile: Bottom tab bar with touch optimization
+ * - Global "+ New order" action button
  * - User menu with avatar
  * - Role-based navigation item visibility
  */
@@ -49,15 +56,23 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     private final CurrentUserService currentUserService;
     private final AccessAnnotationChecker accessChecker;
+    private final OrderService orderService;
+    private final LocationService locationService;
+    private final ProductService productService;
 
     private Tabs navigationTabs;
     private Tabs bottomNavigationTabs;
     private final Map<String, Tab> routeToTab = new HashMap<>();
     private final Map<String, Tab> routeToBottomTab = new HashMap<>();
 
-    public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker) {
+    public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
+                      OrderService orderService, LocationService locationService,
+                      ProductService productService) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
+        this.orderService = orderService;
+        this.locationService = locationService;
+        this.productService = productService;
 
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
@@ -70,19 +85,26 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         var header = new HorizontalLayout();
         header.setWidthFull();
         header.setAlignItems(FlexComponent.Alignment.CENTER);
+        header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         header.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM);
+        header.addClassName("main-header");
 
         // App branding
         var appName = createAppBranding();
 
-        // Navigation tabs
+        // Navigation group: tabs + new order button (grouped together)
         navigationTabs = createNavigationTabs();
+        var newOrderButton = createNewOrderButton();
 
-        // User menu (will be pushed to the right by expand on tabs)
+        var navGroup = new HorizontalLayout(navigationTabs, newOrderButton);
+        navGroup.setAlignItems(FlexComponent.Alignment.CENTER);
+        navGroup.setSpacing(false);
+        navGroup.addClassNames(LumoUtility.Gap.SMALL, "nav-group");
+
+        // User menu
         var userMenu = createUserMenu();
 
-        header.add(appName, navigationTabs, userMenu);
-        header.expand(navigationTabs);
+        header.add(appName, navGroup, userMenu);
 
         addToNavbar(header);
     }
@@ -123,12 +145,22 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         return tabs;
     }
 
+    private Component createNewOrderButton() {
+        // Desktop button with text
+        var button = new Button("New order", new Icon(VaadinIcon.PLUS));
+        button.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        button.addClassName("new-order-button");
+        button.addClickListener(e -> openNewOrderDialog());
+        return button;
+    }
+
     private String normalizePathForLookup(String path) {
         // Normalize path for consistent map lookups (empty string for root)
-        if (path == null || path.equals("/")) {
+        if (path == null || path.isEmpty() || path.equals("/")) {
             return "";
         }
-        return path;
+        // Strip leading slash if present for consistent matching
+        return path.startsWith("/") ? path.substring(1) : path;
     }
 
     private String buildHref(String path) {
@@ -161,9 +193,13 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private void addBottomNavigation() {
+        var bottomNav = new HorizontalLayout();
+        bottomNav.setWidthFull();
+        bottomNav.setAlignItems(FlexComponent.Alignment.CENTER);
+        bottomNav.addClassName("bottom-navigation");
+
         bottomNavigationTabs = new Tabs();
         bottomNavigationTabs.addThemeVariants(TabsVariant.LUMO_EQUAL_WIDTH_TABS);
-        bottomNavigationTabs.addClassNames("bottom-navigation");
 
         MenuConfiguration.getMenuEntries().stream()
                 .filter(this::isAccessible)
@@ -173,8 +209,17 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                     routeToBottomTab.put(normalizePathForLookup(entry.path()), tab);
                 });
 
+        // Mobile new order button (icon only)
+        var mobileNewOrderButton = new Button(new Icon(VaadinIcon.PLUS));
+        mobileNewOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        mobileNewOrderButton.addClassName("new-order-button-mobile");
+        mobileNewOrderButton.addClickListener(e -> openNewOrderDialog());
+
+        bottomNav.add(bottomNavigationTabs, mobileNewOrderButton);
+        bottomNav.setFlexGrow(1, bottomNavigationTabs);
+
         // Add to touch-optimized navbar slot for mobile
-        addToNavbar(true, bottomNavigationTabs);
+        addToNavbar(true, bottomNav);
     }
 
     private Tab createBottomTab(MenuEntry entry) {
@@ -194,8 +239,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         }
         link.add(new Span(entry.title()));
 
-        var tab = new Tab(link);
-        return tab;
+        return new Tab(link);
     }
 
     private Component createUserMenu() {
@@ -274,6 +318,35 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         } catch (ClassNotFoundException e) {
             return false;
         }
+    }
+
+    // ========== New Order Dialog ==========
+
+    private void openNewOrderDialog() {
+        var dialog = new EditOrderDialog(orderService, locationService);
+        dialog.setAvailableProducts(productService.listAvailable());
+
+        dialog.addSaveClickListener(event -> {
+            refreshCurrentViewIfNeeded(event.isNewCustomerCreated());
+        });
+
+        dialog.open();
+    }
+
+    private void refreshCurrentViewIfNeeded(boolean newCustomerCreated) {
+        var content = getContent();
+
+        if (content instanceof StorefrontView view) {
+            view.refresh();
+        }
+        // TODO: Add DashboardView refresh when implemented
+        // else if (content instanceof DashboardView view) {
+        //     view.refresh();
+        // }
+        // TODO: Add CustomerView refresh when implemented
+        // else if (newCustomerCreated && content instanceof CustomerView view) {
+        //     view.refresh();
+        // }
     }
 
     @Override

@@ -7,6 +7,8 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -14,16 +16,14 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.uimodel.data.OrderList;
-import org.vaadin.bakery.uimodel.type.OrderStatus;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
-
-import com.vaadin.flow.router.RouteParameters;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -61,13 +61,12 @@ public class StorefrontView extends VerticalLayout {
         setPadding(false);
         setSpacing(false);
 
-        // Toolbar with search and new order button
-        var toolbar = createToolbar();
-        add(toolbar);
+        // Toolbar with search field
+        add(createToolbar());
 
-        // Filter bar (expandable filters)
+        // Filter bar
         filterBar = new FilterBar(locationService.listActive());
-        filterBar.addFilterChangedListener(e -> refreshOrders());
+        filterBar.addFilterChangedListener(e -> refresh());
         add(filterBar);
 
         // Orders container (scrollable)
@@ -85,42 +84,43 @@ public class StorefrontView extends VerticalLayout {
         add(scroller);
         setFlexGrow(1, scroller);
 
-        refreshOrders();
+        refresh();
     }
 
-    private Div createToolbar() {
-        var toolbar = new Div();
+    private HorizontalLayout createToolbar() {
+        var toolbar = new HorizontalLayout();
         toolbar.addClassName("view-toolbar");
-
-        // Left side: search field
-        var leftSection = new Div();
-        leftSection.addClassName("view-toolbar-left");
+        toolbar.setWidthFull();
+        toolbar.setAlignItems(FlexComponent.Alignment.CENTER);
+        toolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
         searchField = new TextField();
-        searchField.setPlaceholder("Filter");
+        searchField.setPlaceholder("Filter orders");
         searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         searchField.setClearButtonVisible(true);
         searchField.setValueChangeMode(ValueChangeMode.LAZY);
-        searchField.addValueChangeListener(e -> refreshOrders());
+        searchField.addValueChangeListener(e -> refresh());
         searchField.setWidth("300px");
-
-        leftSection.add(searchField);
-
-        // Right side: new order button
-        var rightSection = new Div();
-        rightSection.addClassName("view-toolbar-right");
 
         var newOrderButton = new Button("New order", new Icon(VaadinIcon.PLUS));
         newOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newOrderButton.addClickListener(e -> openEditOrderDialog());
+        newOrderButton.addClickListener(e -> openNewOrderDialog());
 
-        rightSection.add(newOrderButton);
-
-        toolbar.add(leftSection, rightSection);
+        toolbar.add(searchField, newOrderButton);
         return toolbar;
     }
 
-    private void refreshOrders() {
+    private void openNewOrderDialog() {
+        var dialog = new EditOrderDialog(orderService, locationService);
+        dialog.setAvailableProducts(productService.listAvailable());
+        dialog.addSaveClickListener(event -> refresh());
+        dialog.open();
+    }
+
+    /**
+     * Refresh the orders display. Called by MainLayout after order creation.
+     */
+    public void refresh() {
         ordersContainer.removeAll();
 
         var fromDate = filterBar.getFromDate();
@@ -233,16 +233,6 @@ public class StorefrontView extends VerticalLayout {
         } else {
             return DATE_FORMATTER.format(date);
         }
-    }
-
-    private void openEditOrderDialog() {
-        var dialog = new EditOrderDialog(
-                orderService,
-                locationService,
-                () -> refreshOrders()
-        );
-        dialog.setAvailableProducts(productService.listAvailable());
-        dialog.open();
     }
 
     private void openOrderDetail(Long orderId) {
