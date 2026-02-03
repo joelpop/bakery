@@ -106,9 +106,9 @@ public class UsersView extends VerticalLayout {
             String badgeColor = switch (user.getRole()) {
                 case ADMIN -> "primary";
                 case BAKER -> "success";
-                case BARISTA -> "contrast";
+                case BARISTA -> "warning";
             };
-            badge.getElement().getThemeList().add("badge " + badgeColor);
+            badge.getElement().getThemeList().add("badge pill " + badgeColor);
             return badge;
         }).setHeader("Role").setFlexGrow(0).setAutoWidth(true);
 
