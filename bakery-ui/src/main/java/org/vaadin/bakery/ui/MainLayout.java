@@ -54,11 +54,11 @@ import java.util.Optional;
 @PermitAll
 public class MainLayout extends AppLayout implements RouterLayout, AfterNavigationObserver {
 
-    private final CurrentUserService currentUserService;
-    private final AccessAnnotationChecker accessChecker;
-    private final OrderService orderService;
-    private final LocationService locationService;
-    private final ProductService productService;
+    private final transient CurrentUserService currentUserService;
+    private final transient AccessAnnotationChecker accessChecker;
+    private final transient OrderService orderService;
+    private final transient LocationService locationService;
+    private final transient ProductService productService;
 
     private Tabs navigationTabs;
     private Tabs bottomNavigationTabs;
@@ -150,13 +150,13 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         var button = new Button("New order", new Icon(VaadinIcon.PLUS));
         button.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
         button.addClassName("new-order-button");
-        button.addClickListener(e -> openNewOrderDialog());
+        button.addClickListener(_ -> openNewOrderDialog());
         return button;
     }
 
     private String normalizePathForLookup(String path) {
         // Normalize path for consistent map lookups (empty string for root)
-        if (path == null || path.isEmpty() || path.equals("/")) {
+        if (path.isEmpty() || path.equals("/")) {
             return "";
         }
         // Strip leading slash if present for consistent matching
@@ -165,7 +165,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     private String buildHref(String path) {
         // Build proper href, avoiding double slashes
-        if (path == null || path.isEmpty() || path.equals("/")) {
+        if (path.isEmpty() || path.equals("/")) {
             return "/";
         }
         return path.startsWith("/") ? path : "/" + path;
@@ -213,7 +213,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         var mobileNewOrderButton = new Button(new Icon(VaadinIcon.PLUS));
         mobileNewOrderButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         mobileNewOrderButton.addClassName("new-order-button-mobile");
-        mobileNewOrderButton.addClickListener(e -> openNewOrderDialog());
+        mobileNewOrderButton.addClickListener(_ -> openNewOrderDialog());
 
         bottomNav.add(bottomNavigationTabs, mobileNewOrderButton);
         bottomNav.setFlexGrow(1, bottomNavigationTabs);
@@ -249,12 +249,9 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         Optional<UserDetail> currentUser = currentUserService.getCurrentUser();
 
         var avatar = new Avatar();
-        currentUser.ifPresent(user -> {
-            avatar.setName(user.getFirstName() + " " + user.getLastName());
-            if (user.getPhoto() != null && user.getPhoto().length > 0) {
-                // Photo would be set as stream resource in real implementation
-            }
-        });
+        currentUser.ifPresent(user ->
+            avatar.setName(user.getFirstName() + " " + user.getLastName())
+        );
 
         var menuItem = menuBar.addItem(avatar);
         var subMenu = menuItem.getSubMenu();
@@ -287,7 +284,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         });
 
         // Preferences link
-        subMenu.addItem("Preferences", e ->
+        subMenu.addItem("Preferences", _ ->
                 UI.getCurrent().navigate("preferences"));
 
         // Logout
@@ -315,7 +312,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         try {
             var viewClass = Class.forName(entry.menuClass().getName());
             return accessChecker.hasAccess(viewClass);
-        } catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException _) {
             return false;
         }
     }
@@ -326,47 +323,25 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         var dialog = new EditOrderDialog(orderService, locationService);
         dialog.setAvailableProducts(productService.listAvailable());
 
-        dialog.addSaveClickListener(event -> {
-            refreshCurrentViewIfNeeded(event.isNewCustomerCreated());
-        });
+        dialog.addSaveClickListener(_ -> refreshCurrentViewIfNeeded());
 
         dialog.open();
     }
 
-    private void refreshCurrentViewIfNeeded(boolean newCustomerCreated) {
-        var content = getContent();
-
-        if (content instanceof StorefrontView view) {
+    private void refreshCurrentViewIfNeeded() {
+        if (getContent() instanceof StorefrontView view) {
             view.refresh();
         }
-        // TODO: Add DashboardView refresh when implemented
-        // else if (content instanceof DashboardView view) {
-        //     view.refresh();
-        // }
-        // TODO: Add CustomerView refresh when implemented
-        // else if (newCustomerCreated && content instanceof CustomerView view) {
-        //     view.refresh();
-        // }
     }
 
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
-        String path = normalizePathForLookup(event.getLocation().getPath());
+        var path = normalizePathForLookup(event.getLocation().getPath());
 
         // Update desktop tabs selection
-        Tab selectedTab = routeToTab.get(path);
-        if (selectedTab != null) {
-            navigationTabs.setSelectedTab(selectedTab);
-        } else {
-            navigationTabs.setSelectedTab(null);
-        }
+        navigationTabs.setSelectedTab(routeToTab.get(path));
 
         // Update mobile bottom tabs selection
-        Tab selectedBottomTab = routeToBottomTab.get(path);
-        if (selectedBottomTab != null) {
-            bottomNavigationTabs.setSelectedTab(selectedBottomTab);
-        } else {
-            bottomNavigationTabs.setSelectedTab(null);
-        }
+        bottomNavigationTabs.setSelectedTab(routeToBottomTab.get(path));
     }
 }
