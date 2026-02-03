@@ -83,7 +83,10 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         navbar.setWidthFull();
         navbar.setAlignItems(FlexComponent.Alignment.CENTER);
         navbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        navbar.addClassNames(LumoUtility.Padding.Horizontal.MEDIUM, "main-navbar");
+        navbar.addClassNames(
+                LumoUtility.Padding.Horizontal.MEDIUM,
+                "main-navbar"
+        );
 
         // App branding (hidden on mobile)
         var branding = createAppBranding();

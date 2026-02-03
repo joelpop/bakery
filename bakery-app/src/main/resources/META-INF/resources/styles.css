@@ -19,10 +19,16 @@
 }
 
 /* Desktop styles */
-@media (min-width: 768px) {
+@media (min-width: 751px) {
     /* Navbar at top */
     .main-layout::part(navbar) {
         border-bottom: 1px solid var(--lumo-contrast-10pct);
+    }
+
+    /* Smaller nav icons on desktop */
+    .nav-icon {
+        width: 18px;
+        height: 18px;
     }
 
     /* Show button text on desktop */
@@ -38,8 +44,63 @@
     }
 }
 
-/* Mobile styles (tablets and phones) */
-@media (max-width: 767px) {
+/* Tablet/narrow desktop: nav group drops to second row */
+@media (max-width: 1024px) and (min-width: 481px) {
+    .main-navbar {
+        flex-wrap: wrap !important;
+        row-gap: 0;
+        padding-top: var(--lumo-space-s) !important;
+        padding-bottom: var(--lumo-space-s) !important;
+    }
+
+    /* Keep branding and user menu on first row */
+    .app-branding {
+        order: 0;
+    }
+
+    .user-menu {
+        order: 1;
+    }
+
+    /* Nav group drops to second row, full width, centered */
+    .nav-group {
+        order: 2;
+        flex-basis: 100%;
+        justify-content: center;
+    }
+}
+
+/* Text-only nav: hide icons when second row gets pinched (551-750px) */
+@media (max-width: 750px) and (min-width: 551px) {
+    .nav-icon {
+        position: absolute !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+}
+
+/* Icons-only nav: hide text, show icons when more pinched (481-550px) */
+@media (max-width: 550px) and (min-width: 481px) {
+    .nav-label {
+        display: none !important;
+    }
+}
+
+/* Hide button text on narrower screens */
+@media (max-width: 650px) {
+    .new-order-button .button-text,
+    .view-action-button .button-text {
+        display: none !important;
+    }
+}
+
+/* Phone styles (bottom navigation on touch devices) */
+@media (max-width: 480px) and (pointer: coarse) {
+    /* Disable wrapping on phone - single row bottom nav */
+    .main-navbar {
+        flex-wrap: nowrap !important;
+    }
+
     /* Larger touch-friendly icons */
     .nav-icon {
         width: 24px;
@@ -69,10 +130,7 @@
         width: 32px;
         height: 32px;
     }
-}
 
-/* Phone styles (bottom navigation on touch devices) */
-@media (max-width: 480px) and (pointer: coarse) {
     /* Move navbar to bottom */
     .main-layout::part(navbar) {
         top: auto !important;
@@ -97,10 +155,11 @@
         display: none !important;
     }
 
-    /* Expand nav group to fill space */
+    /* Expand nav group to fill space, reset min-width */
     .nav-group {
         flex: 1;
         justify-content: center;
+        min-width: 0;
     }
 
     /* Equal-width centered tabs */
