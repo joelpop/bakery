@@ -136,16 +136,18 @@ public class ProductsView extends VerticalLayout {
             var image = new Image(resource, product.getName());
             image.setWidth("40px");
             image.setHeight("40px");
+            image.addClassNames(LumoUtility.BorderRadius.SMALL);
             image.getStyle().set("object-fit", "cover");
-            image.getStyle().set("border-radius", "var(--lumo-border-radius-s)");
             return image;
         } else {
             var placeholder = new Image("images/placeholder-product.png", "No image");
             placeholder.setWidth("40px");
             placeholder.setHeight("40px");
+            placeholder.addClassNames(
+                    LumoUtility.BorderRadius.SMALL,
+                    LumoUtility.Background.CONTRAST_10
+            );
             placeholder.getStyle().set("object-fit", "cover");
-            placeholder.getStyle().set("border-radius", "var(--lumo-border-radius-s)");
-            placeholder.getStyle().set("background", "var(--lumo-contrast-10pct)");
             return placeholder;
         }
     }

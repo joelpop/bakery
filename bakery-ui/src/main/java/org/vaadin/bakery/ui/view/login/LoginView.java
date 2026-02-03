@@ -135,17 +135,15 @@ public class LoginView extends Main implements BeforeEnterObserver {
         );
 
         var line1 = new Div();
-        line1.addClassNames(LumoUtility.Flex.GROW);
+        line1.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Background.CONTRAST_20);
         line1.getStyle().set("height", "1px");
-        line1.getStyle().set("background", "var(--lumo-contrast-20pct)");
 
         var text = new Paragraph("or");
         text.addClassNames(LumoUtility.TextColor.SECONDARY, LumoUtility.Margin.NONE);
 
         var line2 = new Div();
-        line2.addClassNames(LumoUtility.Flex.GROW);
+        line2.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Background.CONTRAST_20);
         line2.getStyle().set("height", "1px");
-        line2.getStyle().set("background", "var(--lumo-contrast-20pct)");
 
         divider.add(line1, text, line2);
         return divider;

@@ -448,7 +448,9 @@ Use the "Lumo" theme with Lumo Utility Classes. Note: `LumoUtility` classes are 
 
 Use component theme variants where available to achieve desired styling.
 
-For simple styling adjustments to components, prefer using `addClassNames()` with `LumoUtility` class names over using CSS.
+For simple styling adjustments to components, prefer using `addClassNames()` with `LumoUtility` class names over writing custom CSS. The `LumoUtility` class provides constants for common styling needs including padding, margins, colors, flexbox, and box-sizing—use these Java constants rather than adding CSS rules.
+
+When elements with padding cause horizontal overflow (e.g., 100% width + padding exceeds container), apply `LumoUtility.BoxSizing.BORDER` to include padding within the element's declared width. This is the preferred approach over other overflow fixes.
 
 ### Dialogs
 

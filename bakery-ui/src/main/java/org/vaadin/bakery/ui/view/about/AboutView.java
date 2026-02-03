@@ -140,9 +140,9 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
         row.addClassNames(
                 LumoUtility.Display.FLEX,
                 LumoUtility.JustifyContent.BETWEEN,
-                LumoUtility.Padding.Vertical.XSMALL
+                LumoUtility.Padding.Vertical.XSMALL,
+                LumoUtility.Border.BOTTOM
         );
-        row.getStyle().set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
 
         var labelSpan = new Span(label);
         labelSpan.addClassNames(LumoUtility.TextColor.SECONDARY);

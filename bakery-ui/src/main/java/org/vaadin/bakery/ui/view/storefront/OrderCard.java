@@ -74,11 +74,11 @@ public class OrderCard extends Div {
         var items = new Span(order.getItemsSummary());
         items.addClassNames(
                 LumoUtility.FontSize.SMALL,
-                LumoUtility.TextColor.SECONDARY
+                LumoUtility.TextColor.SECONDARY,
+                LumoUtility.Whitespace.NOWRAP,
+                LumoUtility.Overflow.HIDDEN
         );
-        items.getStyle().set("white-space", "nowrap")
-                .set("overflow", "hidden")
-                .set("text-overflow", "ellipsis");
+        items.getStyle().set("text-overflow", "ellipsis");
         add(items);
 
         // Footer: total + paid indicator
