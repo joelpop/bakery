@@ -3,8 +3,8 @@
 The Users view provides CRUD (Create, Read, Update, Delete) functionality for managing staff accounts. This view is typically restricted to Admin users.
 
 ## Screenshots
-- User list: `originals/images/users/Desktop, CRUD (users, products).png`
-- Edit dialog: `originals/images/users/new+edit user dialog/Desktop, CRUD, new+edit.png`
+- User list: `legacy/images/users/Desktop, CRUD (users, products).png`
+- Edit dialog: `legacy/images/users/new+edit user dialog/Desktop, CRUD, new+edit.png`
 
 ## User List
 

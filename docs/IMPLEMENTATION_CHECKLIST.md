@@ -491,19 +491,23 @@ The following decisions were made during documentation review to resolve conflic
 ### 8.3 Edit Order Dialog
 
 - [x] **EditOrderDialog** - Single-page order creation/edit dialog
-  - [x] Order details section
+  - [x] Customer section
     - [x] Customer name field
     - [x] Phone number field
-    - [x] Due date picker
-    - [x] Due time picker (15-minute intervals)
-    - [x] Location dropdown
+    - [ ] Customer autofill from phone number (lookup existing customer)
+  - [x] Pickup section
+    - [x] Location dropdown (auto-selects if only one active)
+    - [x] Due date picker (defaults to today, min: today)
+    - [ ] Due time picker (hourly slots: 08:00, 09:00, etc.)
     - [x] Additional details text area
   - [x] Order items section
-    - [x] Product combo box
-    - [x] Quantity field with stepper
+    - [x] Product combo box with autocomplete
+    - [x] Quantity field with stepper (min: 1)
     - [x] Item notes field
     - [x] Items grid with remove button
-    - [x] Total calculation
+  - [ ] Totals section
+    - [ ] Discount field (currency input)
+    - [x] Total calculation (items minus discount)
   - [x] Cancel and Save buttons
   - [x] Listener pattern for dismiss events (`SaveClickEvent`, `CancelClickEvent`)
   - [x] `SaveClickEvent` returns created order and new customer flag
@@ -820,7 +824,7 @@ The following decisions were made during documentation review to resolve conflic
 
 ### Images
 
-Screenshots from `docs/originals/images/` are available for:
+Screenshots from `docs/legacy/images/` are available for:
 - Dashboard view
 - Storefront view (order list, filters, new order dialog)
 - User menu (notifications)

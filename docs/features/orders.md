@@ -181,34 +181,40 @@ Within each group, orders are sorted by:
 
 ## Creating Orders
 
-### Sell Flow
+### Order Entry Dialog
 
-The order entry flow is optimized for speed and error prevention:
+Orders are created via a single-page dialog accessible from the "+ New order" button. The dialog is designed for speed during customer interactions.
 
-1. **Due date first** - Allows immediate feasibility check (Can we fulfill this order in time?)
-2. **Items and details** - Product selection with quantity and customizations
-3. **Customer** - Autofill based on phone number or name
-4. **Confirm** - Review order summary before placement
+### Field Order
+
+1. **Customer** - Name and phone number (phone triggers autofill for returning customers)
+2. **Pickup details** - Location, date, time, and any special instructions
+3. **Products** - Add items with quantities and per-item notes
+4. **Totals** - Discount (optional) and calculated total
 
 ### Required Fields
 
-- Due date and time
+- Customer name
 - Pickup location
-- Customer name and phone
+- Due date and time
 - At least one product
 
 ### Optional Fields
 
+- Customer phone number
 - Additional details (special instructions)
-- Per-item details/notes
+- Per-item notes
 - Discount
 
 ### Validation
 
 - Due date cannot be in the past
-- Due time should be within business hours
-- Customer phone must be valid format
-- Product quantities must be positive integers
+- Product quantities must be positive integers (minimum 1)
+- At least one item must be added
+
+### Customer Autofill
+
+When entering a phone number that matches an existing customer, the customer name field is automatically populated. This speeds up order entry for returning customers and reduces errors.
 
 ---
 

@@ -7,8 +7,8 @@ The login view provides user authentication for the Bakery application.
 **Access**: Anonymous (unauthenticated users)
 
 ## Screenshots
-- Desktop: `originals/images/login view/Desktop, login form.png` (if available)
-- Phone: `originals/images/login view/Phone, login form.png` (if available)
+- Desktop: `legacy/images/login view/Desktop, login form.png` (if available)
+- Phone: `legacy/images/login view/Phone, login form.png` (if available)
 
 ---
 

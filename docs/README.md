@@ -43,7 +43,7 @@ Café Sunshine is a comprehensive bakery order management system that enables ba
 - [Authorization](security/authorization.md) - Role-based access control
 
 ### Screenshots
-Screenshots of the application are located in the [originals/images](originals/images/) folder, organized by view.
+Screenshots of the application are located in the [legacy/images](legacy/images/) folder, organized by view.
 
 ## Quick Reference
 

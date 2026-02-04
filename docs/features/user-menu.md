@@ -3,8 +3,8 @@
 The User Menu provides access to user profile, preferences, notifications, and logout functionality.
 
 ## Screenshots
-- Desktop: `originals/images/user menu/Desktop, user menu, notifications.png`
-- Phone: `originals/images/user menu/Phone, user menu, notifications.png`
+- Desktop: `legacy/images/user menu/Desktop, user menu, notifications.png`
+- Phone: `legacy/images/user menu/Phone, user menu, notifications.png`
 
 ---
 
