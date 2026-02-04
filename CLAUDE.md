@@ -539,6 +539,85 @@ Tests use:
 
 - Use `var` instead of explicit types whenever possible
 
+## Date/Time Handling
+
+### Storage vs Display Pattern
+
+Use `Instant` for timestamp storage and `LocalDateTime` for display:
+
+- **Storage (JPA Entities)**: Use `java.time.Instant` for all timestamps (`createdAt`, `updatedAt`, etc.)
+  - Stored as UTC in the database
+  - Timezone-safe regardless of server location
+  - Base class `AbstractAuditableEntity` provides standard audit fields
+
+- **Display (UI Models)**: Use `java.time.LocalDateTime` for timestamps shown to users
+  - Converted from `Instant` in the service/mapper layer
+  - Base class `AbstractAuditableModel` provides standard audit fields
+
+- **Conversion**: Use `InstantMapper` (MapStruct) for automatic conversion
+  - Converts using system default timezone (or location-specific timezone when needed)
+  - Include `InstantMapper.class` in mapper's `uses` clause
+
+### Location Timezone
+
+Each `LocationEntity` stores an IANA timezone ID (e.g., `"America/New_York"`) for display conversion:
+- Orders can display times in their pickup location's timezone
+- Future enhancement: Use location timezone instead of system default for display
+
+### Browser Timezone Detection
+
+The browser's timezone must be obtained from the client and stored in a session-scoped service:
+
+1. **Service Interface** (`bakery-service`): `UserTimezoneService`
+   - `setBrowserTimezone(ZoneId)` - called by UI after detecting browser TZ
+   - `getBrowserTimezone()` - returns browser TZ or system default as fallback
+   - `isBrowserTimezoneSet()` - checks if TZ has been set
+
+2. **Session-Scoped Implementation** (`bakery-jpaservice`): `SessionUserTimezoneService`
+   - Uses `@SessionScope` to persist timezone for user's session
+   - Requires `spring-web` dependency for `@SessionScope`
+
+3. **UI Detection** (`MainLayout.onAttach`):
+   ```java
+   @Override
+   protected void onAttach(AttachEvent attachEvent) {
+       super.onAttach(attachEvent);
+       if (!userTimezoneService.isBrowserTimezoneSet()) {
+           attachEvent.getUI().getPage().retrieveExtendedClientDetails(details -> {
+               var timezoneId = details.getTimeZoneId();
+               if (timezoneId != null && !timezoneId.isEmpty()) {
+                   userTimezoneService.setBrowserTimezone(ZoneId.of(timezoneId));
+               }
+           });
+       }
+   }
+   ```
+
+4. **InstantMapper**: Abstract class with injected `UserTimezoneService`
+   - `toBrowserTime(Instant)` - converts UTC to browser-local time
+   - `toServerTime(LocalDateTime)` - converts browser-local to UTC
+
+### Example Usage
+
+```java
+// Entity with Instant timestamps
+@Entity
+public class OrderEntity extends AbstractAuditableEntity {
+    // createdAt and updatedAt are Instant (inherited)
+}
+
+// UI Model with LocalDateTime timestamps
+public class OrderDetail extends AbstractAuditableModel {
+    // createdAt and updatedAt are LocalDateTime (inherited)
+}
+
+// Mapper with InstantMapper for automatic conversion
+@Mapper(componentModel = SPRING, uses = {InstantMapper.class})
+public abstract class OrderMapper {
+    OrderDetail toDetail(OrderEntity entity);
+}
+```
+
 ## Development Guidelines
 
 Do things the Vaadin 25 way.

@@ -31,7 +31,6 @@ public class LocationDialog extends Dialog {
     private final boolean isNew;
 
     private final TextField nameField = new TextField("Name");
-    private final TextField codeField = new TextField("Code");
     private final TextArea addressField = new TextArea("Address");
     private final Checkbox activeCheckbox = new Checkbox("Active");
     private final IntegerField sortOrderField = new IntegerField("Sort Order");
@@ -63,10 +62,6 @@ public class LocationDialog extends Dialog {
         nameField.setRequired(true);
         nameField.setWidthFull();
 
-        codeField.setRequired(true);
-        codeField.setWidthFull();
-        codeField.setHelperText("Short identifier (e.g., STORE, BAKERY)");
-
         addressField.setWidthFull();
         addressField.setMinHeight("100px");
 
@@ -88,14 +83,6 @@ public class LocationDialog extends Dialog {
                         "A location with this name already exists")
                 .bind(LocationSummary::getName, LocationSummary::setName);
 
-        binder.forField(codeField)
-                .asRequired("Code is required")
-                .withValidator(code -> isNew ?
-                                !locationService.codeExists(code) :
-                                !locationService.codeExistsForOtherLocation(code, location.getId()),
-                        "A location with this code already exists")
-                .bind(LocationSummary::getCode, LocationSummary::setCode);
-
         binder.forField(addressField)
                 .bind(LocationSummary::getAddress, LocationSummary::setAddress);
 
@@ -114,7 +101,6 @@ public class LocationDialog extends Dialog {
         );
 
         form.add(nameField, 2);
-        form.add(codeField, 1);
         form.add(sortOrderField, 1);
         form.add(addressField, 2);
         form.add(activeCheckbox, 2);

@@ -14,12 +14,6 @@ import java.util.Optional;
 @Repository
 public interface LocationRepository extends JpaRepository<LocationEntity, Long> {
 
-    Optional<LocationEntity> findByCode(String code);
-
-    boolean existsByCode(String code);
-
-    boolean existsByCodeAndIdNot(String code, Long id);
-
     boolean existsByName(String name);
 
     boolean existsByNameAndIdNot(String name, Long id);

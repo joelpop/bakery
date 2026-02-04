@@ -13,18 +13,17 @@ import org.vaadin.bakery.jpamodel.projection.LocationSummaryProjection;
  */
 @Entity
 @Table(name = "location")
-public class LocationEntity extends AbstractEntity implements LocationSummaryProjection {
+public class LocationEntity extends AbstractAuditableEntity implements LocationSummaryProjection {
 
     @NotBlank
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @NotBlank
-    @Column(name = "code", nullable = false, unique = true)
-    private String code;
-
     @Column(name = "address")
     private String address;
+
+    @Column(name = "timezone")
+    private String timezone;
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
@@ -41,20 +40,20 @@ public class LocationEntity extends AbstractEntity implements LocationSummaryPro
         this.name = name;
     }
 
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
     public String getAddress() {
         return address;
     }
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public boolean isActive() {

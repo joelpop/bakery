@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui;
 
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -28,10 +29,14 @@ import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
+
+import java.time.ZoneId;
+
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.service.UserTimezoneService;
 import org.vaadin.bakery.ui.view.storefront.EditOrderDialog;
 import org.vaadin.bakery.ui.view.storefront.StorefrontView;
 import org.vaadin.bakery.uimodel.data.UserDetail;
@@ -59,23 +64,40 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient OrderService orderService;
     private final transient LocationService locationService;
     private final transient ProductService productService;
+    private final transient UserTimezoneService userTimezoneService;
 
     private Tabs navigationTabs;
     private final Map<String, Tab> routeToTab = new HashMap<>();
 
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
                       OrderService orderService, LocationService locationService,
-                      ProductService productService) {
+                      ProductService productService, UserTimezoneService userTimezoneService) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
         this.orderService = orderService;
         this.locationService = locationService;
         this.productService = productService;
+        this.userTimezoneService = userTimezoneService;
 
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
 
         addNavbarContent();
+    }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+
+        // Retrieve browser timezone on first attach if not already set
+        if (!userTimezoneService.isBrowserTimezoneSet()) {
+            attachEvent.getUI().getPage().retrieveExtendedClientDetails(details -> {
+                var timezoneId = details.getTimeZoneId();
+                if (timezoneId != null && !timezoneId.isEmpty()) {
+                    userTimezoneService.setBrowserTimezone(ZoneId.of(timezoneId));
+                }
+            });
+        }
     }
 
     private void addNavbarContent() {

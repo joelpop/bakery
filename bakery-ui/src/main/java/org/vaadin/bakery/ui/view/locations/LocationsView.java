@@ -63,11 +63,6 @@ public class LocationsView extends VerticalLayout {
                 .setSortable(true)
                 .setFlexGrow(2);
 
-        grid.addColumn(LocationSummary::getCode)
-                .setHeader("Code")
-                .setSortable(true)
-                .setFlexGrow(1);
-
         grid.addColumn(LocationSummary::getAddress)
                 .setHeader("Address")
                 .setSortable(true)

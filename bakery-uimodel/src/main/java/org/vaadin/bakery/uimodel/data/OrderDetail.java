@@ -4,7 +4,6 @@ import org.vaadin.bakery.uimodel.type.OrderStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +11,7 @@ import java.util.List;
 /**
  * UI model for order detail/edit.
  */
-public class OrderDetail {
+public class OrderDetail extends AbstractAuditableModel {
 
     private Long id;
     private OrderStatus status;
@@ -22,16 +21,12 @@ public class OrderDetail {
     private BigDecimal total;
     private BigDecimal discount;
     private boolean paid;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
     private Long customerId;
     private String customerName;
     private String customerPhone;
     private Long locationId;
     private String locationName;
     private List<OrderItemDetail> items = new ArrayList<>();
-    private String createdByName;
-    private String updatedByName;
 
     // Transient field set during create to indicate if a new customer was created
     private boolean newCustomerCreated;
@@ -100,22 +95,6 @@ public class OrderDetail {
         this.paid = paid;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
     public Long getCustomerId() {
         return customerId;
     }
@@ -162,22 +141,6 @@ public class OrderDetail {
 
     public void setItems(List<OrderItemDetail> items) {
         this.items = items;
-    }
-
-    public String getCreatedByName() {
-        return createdByName;
-    }
-
-    public void setCreatedByName(String createdByName) {
-        this.createdByName = createdByName;
-    }
-
-    public String getUpdatedByName() {
-        return updatedByName;
-    }
-
-    public void setUpdatedByName(String updatedByName) {
-        this.updatedByName = updatedByName;
     }
 
     public boolean isNew() {

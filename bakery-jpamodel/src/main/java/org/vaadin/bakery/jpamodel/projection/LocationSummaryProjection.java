@@ -9,9 +9,9 @@ public interface LocationSummaryProjection {
 
     String getName();
 
-    String getCode();
-
     String getAddress();
+
+    String getTimezone();
 
     boolean isActive();
 

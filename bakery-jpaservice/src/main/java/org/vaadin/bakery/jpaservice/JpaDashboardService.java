@@ -9,9 +9,11 @@ import org.vaadin.bakery.jpaservice.mapper.OrderMapper;
 import org.vaadin.bakery.service.DashboardService;
 import org.vaadin.bakery.uimodel.data.OrderDashboard;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +66,8 @@ public class JpaDashboardService implements DashboardService {
         var newOrders = orderRepository.findByStatus(OrderStatusCode.NEW);
         return newOrders.stream()
                 .map(o -> o.getCreatedAt())
-                .max(LocalDateTime::compareTo);
+                .max(Instant::compareTo)
+                .map(instant -> LocalDateTime.ofInstant(instant, ZoneId.systemDefault()));
     }
 
     @Override

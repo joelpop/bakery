@@ -16,17 +16,11 @@ public interface LocationService {
 
     Optional<LocationSummary> get(Long id);
 
-    Optional<LocationSummary> getByCode(String code);
-
     LocationSummary create(LocationSummary location);
 
     LocationSummary update(Long id, LocationSummary location);
 
     void delete(Long id);
-
-    boolean codeExists(String code);
-
-    boolean codeExistsForOtherLocation(String code, Long locationId);
 
     boolean nameExists(String name);
 

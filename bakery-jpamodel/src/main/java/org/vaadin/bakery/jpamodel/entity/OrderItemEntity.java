@@ -2,12 +2,16 @@ package org.vaadin.bakery.jpamodel.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+
+import org.vaadin.bakery.jpamodel.code.OrderItemStatusCode;
 
 import java.math.BigDecimal;
 
@@ -17,6 +21,11 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "order_item")
 public class OrderItemEntity extends AbstractEntity {
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private OrderItemStatusCode status = OrderItemStatusCode.NEW;
 
     @NotNull
     @Positive
@@ -90,6 +99,14 @@ public class OrderItemEntity extends AbstractEntity {
 
     public void setProduct(ProductEntity product) {
         this.product = product;
+    }
+
+    public OrderItemStatusCode getStatus() {
+        return status;
+    }
+
+    public void setStatus(OrderItemStatusCode status) {
+        this.status = status;
     }
 
     /**
