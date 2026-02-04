@@ -4,7 +4,6 @@ import org.vaadin.bakery.uimodel.type.OrderStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +11,7 @@ import java.util.List;
 /**
  * UI model for storefront order list.
  */
-public class OrderList {
+public class OrderList extends AbstractAuditableModel {
 
     private Long id;
     private OrderStatus status;
@@ -20,7 +19,6 @@ public class OrderList {
     private LocalTime dueTime;
     private BigDecimal total;
     private boolean paid;
-    private LocalDateTime createdAt;
     private String customerName;
     private String locationName;
     private List<OrderItemSummary> items = new ArrayList<>();
@@ -71,14 +69,6 @@ public class OrderList {
 
     public void setPaid(boolean paid) {
         this.paid = paid;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 
     public String getCustomerName() {

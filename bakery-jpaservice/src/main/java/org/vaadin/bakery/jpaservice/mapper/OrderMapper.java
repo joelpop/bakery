@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * MapStruct mapper for order entity to UI model conversions.
  */
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, uses = {EnumMapper.class, OrderItemMapper.class})
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, uses = {EnumMapper.class, OrderItemMapper.class, InstantMapper.class})
 public interface OrderMapper {
 
     @Mapping(source = "customer.name", target = "customerName")

@@ -18,7 +18,7 @@ import org.vaadin.bakery.jpamodel.projection.UserSummaryProjection;
  */
 @Entity
 @Table(name = "app_user")
-public class UserEntity extends AbstractEntity implements UserSummaryProjection {
+public class UserEntity extends AbstractAuditableEntity implements UserSummaryProjection {
 
     @NotBlank
     @Email

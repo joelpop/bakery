@@ -18,7 +18,7 @@ import java.math.BigDecimal;
  */
 @Entity
 @Table(name = "product")
-public class ProductEntity extends AbstractEntity implements ProductSummaryProjection, ProductSelectProjection {
+public class ProductEntity extends AbstractAuditableEntity implements ProductSummaryProjection, ProductSelectProjection {
 
     @NotBlank
     @Column(name = "name", nullable = false, unique = true)

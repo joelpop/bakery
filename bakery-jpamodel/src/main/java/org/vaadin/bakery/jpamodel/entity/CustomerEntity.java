@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Entity
 @Table(name = "customer")
-public class CustomerEntity extends AbstractEntity implements CustomerSummaryProjection {
+public class CustomerEntity extends AbstractAuditableEntity implements CustomerSummaryProjection {
 
     @NotBlank
     @Column(name = "name", nullable = false)

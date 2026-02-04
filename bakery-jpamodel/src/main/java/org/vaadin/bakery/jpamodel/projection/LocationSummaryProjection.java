@@ -11,6 +11,8 @@ public interface LocationSummaryProjection {
 
     String getAddress();
 
+    String getTimezone();
+
     boolean isActive();
 
     Integer getSortOrder();

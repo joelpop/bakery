@@ -8,6 +8,7 @@ public class LocationSummary {
     private Long id;
     private String name;
     private String address;
+    private String timezone;
     private boolean active;
     private Integer sortOrder;
 
@@ -33,6 +34,14 @@ public class LocationSummary {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public boolean isActive() {
