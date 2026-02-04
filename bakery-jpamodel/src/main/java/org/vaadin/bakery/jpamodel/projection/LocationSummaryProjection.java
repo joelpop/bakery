@@ -9,8 +9,6 @@ public interface LocationSummaryProjection {
 
     String getName();
 
-    String getCode();
-
     String getAddress();
 
     boolean isActive();

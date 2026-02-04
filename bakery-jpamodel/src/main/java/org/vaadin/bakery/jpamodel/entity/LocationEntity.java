@@ -19,10 +19,6 @@ public class LocationEntity extends AbstractEntity implements LocationSummaryPro
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @NotBlank
-    @Column(name = "code", nullable = false, unique = true)
-    private String code;
-
     @Column(name = "address")
     private String address;
 
@@ -39,14 +35,6 @@ public class LocationEntity extends AbstractEntity implements LocationSummaryPro
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
     }
 
     public String getAddress() {

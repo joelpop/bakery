@@ -44,12 +44,6 @@ public class JpaLocationService implements LocationService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<LocationSummary> getByCode(String code) {
-        return locationRepository.findByCode(code).map(locationMapper::toSummary);
-    }
-
-    @Override
     public LocationSummary create(LocationSummary location) {
         var entity = locationMapper.toNewEntity(location);
         var saved = locationRepository.save(entity);
@@ -67,18 +61,6 @@ public class JpaLocationService implements LocationService {
     @Override
     public void delete(Long id) {
         locationRepository.deleteById(id);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean codeExists(String code) {
-        return locationRepository.existsByCode(code);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean codeExistsForOtherLocation(String code, Long locationId) {
-        return locationRepository.existsByCodeAndIdNot(code, locationId);
     }
 
     @Override
