@@ -16,6 +16,7 @@ import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
@@ -186,6 +187,7 @@ public class EditOrderDialog extends Dialog {
         var content = new VerticalLayout();
         content.setPadding(false);
         content.setSpacing(false);
+        content.addClassName(LumoUtility.BoxSizing.BORDER);
 
         // Order details form
         var form = new FormLayout();
@@ -262,6 +264,7 @@ public class EditOrderDialog extends Dialog {
         addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
         addUpdateButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addUpdateButton.addClickListener(e -> addOrUpdateItem());
+        addUpdateButton.addClickShortcut(Key.ENTER);
 
         var addItemRow1 = new HorizontalLayout(productComboBox, quantityField, addUpdateButton);
         addItemRow1.setWidthFull();
@@ -361,12 +364,19 @@ public class EditOrderDialog extends Dialog {
                 .setFlexGrow(0)
                 .setWidth("60px");
 
+        itemsGrid.addColumn(item -> currencyFormat.format(item.getUnitPrice()))
+                .setHeader("Price")
+                .setPartNameGenerator(item -> "numeric")
+                .setTextAlign(ColumnTextAlign.END)
+                .setFlexGrow(0)
+                .setWidth("90px");
+
         itemsGrid.addColumn(item -> currencyFormat.format(item.getLineTotal()))
                 .setHeader("Total")
                 .setPartNameGenerator(item -> "numeric")
                 .setTextAlign(ColumnTextAlign.END)
                 .setFlexGrow(0)
-                .setWidth("90px");
+                .setWidth("100px");
 
         itemsGrid.addComponentColumn(item -> {
             var removeButton = new Button(new Icon(VaadinIcon.TRASH));
