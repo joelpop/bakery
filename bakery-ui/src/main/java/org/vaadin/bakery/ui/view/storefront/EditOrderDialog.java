@@ -68,8 +68,8 @@ public class EditOrderDialog extends Dialog {
     private final ComboBox<CustomerSummary> customerPhoneComboBox = new ComboBox<>("Phone Number");
     private final TextField customerNameField = new TextField("Customer Name");
     private final ComboBox<LocationSummary> locationComboBox = new ComboBox<>("Pickup Location");
-    private final DatePicker dueDatePicker = new DatePicker("Due Date");
-    private final TimePicker dueTimePicker = new TimePicker("Due Time");
+    private final DatePicker dueDatePicker = new DatePicker("Pickup Date");
+    private final TimePicker dueTimePicker = new TimePicker("Pickup Time");
     private final TextArea additionalDetailsField = new TextArea("Additional Details");
 
     // Item entry fields
