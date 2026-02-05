@@ -20,4 +20,6 @@ public interface UserSummaryProjection {
     byte[] getPhoto();
 
     String getPhotoContentType();
+
+    Long getPrimaryLocationId();
 }

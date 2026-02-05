@@ -2,11 +2,13 @@ package org.vaadin.bakery.ui;
 
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
@@ -27,6 +29,7 @@ import com.vaadin.flow.router.RouterLayout;
 import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
+import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 
@@ -37,9 +40,12 @@ import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.service.UserTimezoneService;
+import org.vaadin.bakery.ui.event.CurrentLocationChangedEvent;
 import org.vaadin.bakery.ui.view.storefront.EditOrderDialog;
 import org.vaadin.bakery.ui.view.storefront.StorefrontView;
+import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 
 import java.util.HashMap;
@@ -67,14 +73,16 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient ProductService productService;
     private final transient CustomerService customerService;
     private final transient UserTimezoneService userTimezoneService;
+    private final transient UserLocationService userLocationService;
 
     private Tabs navigationTabs;
     private final Map<String, Tab> routeToTab = new HashMap<>();
+    private ComboBox<LocationSummary> locationSelector;
 
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
                       OrderService orderService, LocationService locationService,
                       ProductService productService, CustomerService customerService,
-                      UserTimezoneService userTimezoneService) {
+                      UserTimezoneService userTimezoneService, UserLocationService userLocationService) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
         this.orderService = orderService;
@@ -82,6 +90,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         this.productService = productService;
         this.customerService = customerService;
         this.userTimezoneService = userTimezoneService;
+        this.userLocationService = userLocationService;
 
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
@@ -101,6 +110,27 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                     userTimezoneService.setBrowserTimezone(ZoneId.of(timezoneId));
                 }
             });
+        }
+
+        // Initialize current location from user's primary location
+        if (!userLocationService.isCurrentLocationSet()) {
+            userLocationService.initializeFromUserPrimaryLocation();
+        }
+
+        // Update location selector to show current location
+        updateLocationSelectorValue();
+    }
+
+    private void updateLocationSelectorValue() {
+        if (locationSelector != null) {
+            var currentLocation = userLocationService.getCurrentLocation();
+            if (currentLocation != null) {
+                // Find the matching item in the combo box
+                locationSelector.getListDataView().getItems()
+                        .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                        .findFirst()
+                        .ifPresent(locationSelector::setValue);
+            }
         }
     }
 
@@ -127,10 +157,16 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         navGroup.addClassNames(LumoUtility.Gap.MEDIUM, "nav-group");
         navGroup.setSpacing(false);
 
-        // User menu (desktop/tablet)
+        // Location selector + User menu (desktop/tablet)
+        locationSelector = createLocationSelector();
         var userMenu = createUserMenu();
 
-        navbar.add(branding, navGroup, userMenu);
+        var rightGroup = new HorizontalLayout(locationSelector, userMenu);
+        rightGroup.setAlignItems(FlexComponent.Alignment.CENTER);
+        rightGroup.addClassNames(LumoUtility.Gap.SMALL);
+        rightGroup.setSpacing(false);
+
+        navbar.add(branding, navGroup, rightGroup);
 
         addToNavbar(navbar);
     }
@@ -216,6 +252,42 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
             case "users" -> VaadinIcon.USERS;
             default -> VaadinIcon.CIRCLE;
         };
+    }
+
+    private ComboBox<LocationSummary> createLocationSelector() {
+        var comboBox = new ComboBox<LocationSummary>();
+        comboBox.setItems(locationService.listActive());
+        comboBox.setItemLabelGenerator(LocationSummary::getName);
+        comboBox.setPlaceholder("Select location");
+        comboBox.setWidth("160px");
+        comboBox.addClassName("location-selector");
+        comboBox.getElement().setAttribute("theme", "small");
+
+        // Set initial value from service (may be null initially)
+        var currentLocation = userLocationService.getCurrentLocation();
+        if (currentLocation != null) {
+            comboBox.getListDataView().getItems()
+                    .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                    .findFirst()
+                    .ifPresent(comboBox::setValue);
+        }
+
+        comboBox.addValueChangeListener(e -> {
+            if (e.isFromClient() && e.getValue() != null) {
+                userLocationService.setCurrentLocation(e.getValue());
+                fireEvent(new CurrentLocationChangedEvent(this, e.getValue()));
+            }
+        });
+
+        return comboBox;
+    }
+
+    /**
+     * Register a listener for current location changes.
+     */
+    public Registration addCurrentLocationChangedListener(
+            ComponentEventListener<CurrentLocationChangedEvent> listener) {
+        return addListener(CurrentLocationChangedEvent.class, listener);
     }
 
     private Component createNewOrderButton() {
@@ -422,7 +494,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private void openNewOrderDialog() {
-        var dialog = new EditOrderDialog(orderService, locationService, customerService);
+        var dialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
         dialog.setAvailableProducts(productService.listAvailable());
         dialog.addSaveClickListener(_ -> refreshCurrentViewIfNeeded());
         dialog.open();

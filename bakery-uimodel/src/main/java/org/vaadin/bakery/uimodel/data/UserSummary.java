@@ -14,6 +14,7 @@ public class UserSummary {
     private UserRole role;
     private byte[] photo;
     private String photoContentType;
+    private Long primaryLocationId;
 
     public Long getId() {
         return id;
@@ -69,6 +70,14 @@ public class UserSummary {
 
     public void setPhotoContentType(String photoContentType) {
         this.photoContentType = photoContentType;
+    }
+
+    public Long getPrimaryLocationId() {
+        return primaryLocationId;
+    }
+
+    public void setPrimaryLocationId(Long primaryLocationId) {
+        this.primaryLocationId = primaryLocationId;
     }
 
     public String getFullName() {

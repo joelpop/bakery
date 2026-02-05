@@ -29,6 +29,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
+import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.uimodel.data.CustomerSummary;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
@@ -53,6 +54,7 @@ public class EditOrderDialog extends Dialog {
     private final OrderService orderService;
     private final LocationService locationService;
     private final CustomerService customerService;
+    private final UserLocationService userLocationService;
 
     private final List<OrderItemDetail> orderItems = new ArrayList<>();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
@@ -77,10 +79,12 @@ public class EditOrderDialog extends Dialog {
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
     private final Span totalLabel = new Span("$0.00");
 
-    public EditOrderDialog(OrderService orderService, LocationService locationService, CustomerService customerService) {
+    public EditOrderDialog(OrderService orderService, LocationService locationService,
+                           CustomerService customerService, UserLocationService userLocationService) {
         this.orderService = orderService;
         this.locationService = locationService;
         this.customerService = customerService;
+        this.userLocationService = userLocationService;
 
         setHeaderTitle("New Order");
         setCloseOnOutsideClick(false);
@@ -325,6 +329,10 @@ public class EditOrderDialog extends Dialog {
         // Format the phone number using location defaults
         customPhoneNumber = formatPhoneNumber(phoneNumber);
 
+        // Update the displayed value in the ComboBox input field
+        customerPhoneComboBox.getElement()
+                .executeJs("this.inputElement.value = $0", customPhoneNumber);
+
         // New phone number entered - enable name field for entry
         selectedCustomer = null;
         isExistingCustomer = false;
@@ -413,7 +421,15 @@ public class EditOrderDialog extends Dialog {
     private void loadData() {
         var locations = locationService.listActive();
         locationComboBox.setItems(locations);
-        if (locations.size() == 1) {
+
+        // Pre-select from user's current location, or first location if only one
+        var currentLocation = userLocationService != null ? userLocationService.getCurrentLocation() : null;
+        if (currentLocation != null) {
+            locations.stream()
+                    .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                    .findFirst()
+                    .ifPresent(locationComboBox::setValue);
+        } else if (locations.size() == 1) {
             locationComboBox.setValue(locations.getFirst());
         }
     }

@@ -23,9 +23,13 @@ import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.UserService;
+import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.type.UserRole;
+
+import java.util.List;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -36,6 +40,7 @@ import java.io.IOException;
 public class UserDialog extends Dialog {
 
     private final UserService userService;
+    private final LocationService locationService;
     private final UserDetail user;
     private final boolean isNew;
     private final String currentUserEmail;
@@ -46,6 +51,9 @@ public class UserDialog extends Dialog {
     private final TextField lastNameField = new TextField("Last Name");
     private final PasswordField passwordField = new PasswordField("Password");
     private final ComboBox<UserRole> roleComboBox = new ComboBox<>("Role");
+    private final ComboBox<LocationSummary> primaryLocationComboBox = new ComboBox<>("Primary Location");
+
+    private List<LocationSummary> locations;
 
     private final Div photoContainer = new Div();
     private byte[] uploadedPhoto;
@@ -53,8 +61,9 @@ public class UserDialog extends Dialog {
 
     private final Binder<UserDetail> binder = new Binder<>(UserDetail.class);
 
-    public UserDialog(UserDetail user, UserService userService, String currentUserEmail) {
+    public UserDialog(UserDetail user, UserService userService, LocationService locationService, String currentUserEmail) {
         this.userService = userService;
+        this.locationService = locationService;
         this.currentUserEmail = currentUserEmail;
 
         // Create new user if null
@@ -107,6 +116,14 @@ public class UserDialog extends Dialog {
         roleComboBox.setRequired(true);
         roleComboBox.setWidthFull();
 
+        // Primary location (optional)
+        locations = locationService.listActive();
+        primaryLocationComboBox.setItems(locations);
+        primaryLocationComboBox.setItemLabelGenerator(LocationSummary::getName);
+        primaryLocationComboBox.setClearButtonVisible(true);
+        primaryLocationComboBox.setWidthFull();
+        primaryLocationComboBox.setPlaceholder("Select primary location...");
+
         // Self-edit restrictions
         if (isEditingSelf) {
             roleComboBox.setEnabled(false);
@@ -142,6 +159,23 @@ public class UserDialog extends Dialog {
         binder.forField(roleComboBox)
                 .asRequired("Role is required")
                 .bind(UserDetail::getRole, UserDetail::setRole);
+
+        binder.forField(primaryLocationComboBox)
+                .bind(
+                        userDetail -> {
+                            var locationId = userDetail.getPrimaryLocationId();
+                            if (locationId == null) {
+                                return null;
+                            }
+                            return locations.stream()
+                                    .filter(loc -> loc.getId().equals(locationId))
+                                    .findFirst()
+                                    .orElse(null);
+                        },
+                        (userDetail, location) -> userDetail.setPrimaryLocationId(
+                                location != null ? location.getId() : null
+                        )
+                );
     }
 
     private void createLayout() {
@@ -159,7 +193,8 @@ public class UserDialog extends Dialog {
         form.add(firstNameField, 1);
         form.add(lastNameField, 1);
         form.add(passwordField, 2);
-        form.add(roleComboBox, 2);
+        form.add(roleComboBox, 1);
+        form.add(primaryLocationComboBox, 1);
 
         add(form);
     }

@@ -1,17 +1,18 @@
 -- Demo seed data for Café Sunshine Bakery
 -- This file is automatically loaded by Spring Boot in development mode
 
--- Users (passwords are BCrypt hashed)
--- admin123, baker123, barista123
-INSERT INTO app_user (id, version, email, first_name, last_name, password_hash, role, created_at) VALUES
-(1, 0, 'admin@cafe-sunshine.com', 'Admin', 'User', '$2b$10$uIr3nuDde8Cf9QE8QI4nHuznvLV/70tbUKspP2J0tZg4kNhcKuiAa', 'ADMIN', CURRENT_TIMESTAMP),
-(2, 0, 'baker@cafe-sunshine.com', 'Baker', 'Smith', '$2b$10$cXHTiUndgoMk1l0kXdzwg.Q3M4gC1F.uw5RvmJS8NlXf/rLOPeyWO', 'BAKER', CURRENT_TIMESTAMP),
-(3, 0, 'barista@cafe-sunshine.com', 'Barista', 'Jones', '$2b$10$AMuiGV50FqtUCGF/FQu5IeALsi/qhrNCXynRxmA/SZKtMK9CkiZSG', 'BARISTA', CURRENT_TIMESTAMP);
-
 -- Locations (with timezone for display conversion and phone formatting defaults)
+-- Must be inserted before users due to foreign key constraint
 INSERT INTO location (id, version, name, address, timezone, default_country_code, default_area_code, active, sort_order, created_at) VALUES
 (1, 0, 'Downtown Store', '123 Main Street, Downtown', 'America/New_York', '1', '212', true, 1, CURRENT_TIMESTAMP),
 (2, 0, 'Central Bakery', '456 Baker Lane', 'America/New_York', '1', '718', true, 2, CURRENT_TIMESTAMP);
+
+-- Users (passwords are BCrypt hashed)
+-- admin123, baker123, barista123
+INSERT INTO app_user (id, version, email, first_name, last_name, password_hash, role, primary_location_id, created_at) VALUES
+(1, 0, 'admin@cafe-sunshine.com', 'Admin', 'User', '$2b$10$uIr3nuDde8Cf9QE8QI4nHuznvLV/70tbUKspP2J0tZg4kNhcKuiAa', 'ADMIN', 1, CURRENT_TIMESTAMP),
+(2, 0, 'baker@cafe-sunshine.com', 'Baker', 'Smith', '$2b$10$cXHTiUndgoMk1l0kXdzwg.Q3M4gC1F.uw5RvmJS8NlXf/rLOPeyWO', 'BAKER', 2, CURRENT_TIMESTAMP),
+(3, 0, 'barista@cafe-sunshine.com', 'Barista', 'Jones', '$2b$10$AMuiGV50FqtUCGF/FQu5IeALsi/qhrNCXynRxmA/SZKtMK9CkiZSG', 'BARISTA', 1, CURRENT_TIMESTAMP);
 
 -- Products (baked goods)
 INSERT INTO product (id, version, name, description, size, price, available, created_at) VALUES

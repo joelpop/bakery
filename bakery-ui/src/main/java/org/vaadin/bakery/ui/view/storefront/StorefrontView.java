@@ -1,5 +1,7 @@
 package org.vaadin.bakery.ui.view.storefront;
 
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
@@ -14,12 +16,15 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.router.RouteParameters;
+import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
+import org.vaadin.bakery.ui.MainLayout;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.OrderList;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
@@ -45,18 +50,22 @@ public class StorefrontView extends VerticalLayout {
     private final LocationService locationService;
     private final ProductService productService;
     private final CustomerService customerService;
+    private final UserLocationService userLocationService;
     private final Div ordersContainer;
     private FilterBar filterBar;
     private TextField searchField;
+    private Registration locationChangeRegistration;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
 
     public StorefrontView(OrderService orderService, LocationService locationService,
-                          ProductService productService, CustomerService customerService) {
+                          ProductService productService, CustomerService customerService,
+                          UserLocationService userLocationService) {
         this.orderService = orderService;
         this.locationService = locationService;
         this.productService = productService;
         this.customerService = customerService;
+        this.userLocationService = userLocationService;
 
         addClassName("storefront-view");
         setSizeFull();
@@ -71,7 +80,7 @@ public class StorefrontView extends VerticalLayout {
         add(header);
 
         // Filter bar
-        filterBar = new FilterBar(locationService.listActive());
+        filterBar = new FilterBar(locationService.listActive(), userLocationService);
         filterBar.addFilterChangedListener(e -> refresh());
         add(filterBar);
 
@@ -93,6 +102,35 @@ public class StorefrontView extends VerticalLayout {
         refresh();
     }
 
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        // Listen for location changes from MainLayout
+        getUI().ifPresent(ui -> {
+            ui.getChildren()
+                    .filter(MainLayout.class::isInstance)
+                    .map(MainLayout.class::cast)
+                    .findFirst()
+                    .ifPresent(mainLayout -> {
+                        locationChangeRegistration = mainLayout.addCurrentLocationChangedListener(e -> {
+                            // Refresh if "Current Location" is selected in the filter
+                            if (filterBar.isCurrentLocationSelected()) {
+                                refresh();
+                            }
+                        });
+                    });
+        });
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        super.onDetach(detachEvent);
+        if (locationChangeRegistration != null) {
+            locationChangeRegistration.remove();
+            locationChangeRegistration = null;
+        }
+    }
+
     private TextField createSearchField() {
         var field = new TextField();
         field.setPlaceholder("Filter orders");
@@ -105,7 +143,7 @@ public class StorefrontView extends VerticalLayout {
     }
 
     private void openNewOrderDialog() {
-        var dialog = new EditOrderDialog(orderService, locationService, customerService);
+        var dialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
         dialog.setAvailableProducts(productService.listAvailable());
         dialog.addSaveClickListener(event -> refresh());
         dialog.open();
