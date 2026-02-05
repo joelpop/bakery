@@ -5,6 +5,7 @@ import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -21,8 +22,10 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
+import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.shared.Registration;
@@ -80,9 +83,11 @@ public class EditOrderDialog extends Dialog {
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
 
     // Totals section
-    private final TextField discountField = new TextField("Discount");
-    private final Span subtotalLabel = new Span("$0.00");
-    private final Span totalLabel = new Span("$0.00");
+    private final Span subtotalValue = new Span("$0.00");
+    private final RadioButtonGroup<String> discountTypeGroup = new RadioButtonGroup<>();
+    private final NumberField discountField = new NumberField();
+    private final Span discountValue = new Span();
+    private final Span totalValue = new Span("$0.00");
 
     public EditOrderDialog(OrderService orderService, LocationService locationService,
                            CustomerService customerService, UserLocationService userLocationService) {
@@ -277,43 +282,51 @@ public class EditOrderDialog extends Dialog {
         itemsGrid.setMaxHeight("200px");
         section.add(itemsGrid);
 
-        // Totals section
+        // Totals section - compact grid layout
         var totalsSection = new Div();
-        totalsSection.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Gap.SMALL,
-                LumoUtility.AlignItems.END
-        );
+        totalsSection.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "auto auto")
+                .set("gap", "var(--lumo-space-xs) var(--lumo-space-m)")
+                .set("justify-content", "end")
+                .set("align-items", "center")
+                .set("margin-top", "var(--lumo-space-s)");
 
         // Subtotal row
-        var subtotalRow = new HorizontalLayout();
-        subtotalRow.setAlignItems(FlexComponent.Alignment.CENTER);
-        var subtotalText = new Span("Subtotal: ");
-        subtotalText.addClassNames(LumoUtility.TextColor.SECONDARY);
+        var subtotalLabel = new Span("Subtotal:");
         subtotalLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
-        subtotalRow.add(subtotalText, subtotalLabel);
-        totalsSection.add(subtotalRow);
+        subtotalValue.addClassNames(LumoUtility.TextColor.SECONDARY);
+        subtotalValue.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
+        totalsSection.add(subtotalLabel, subtotalValue);
 
-        // Discount row
-        var discountRow = new HorizontalLayout();
-        discountRow.setAlignItems(FlexComponent.Alignment.CENTER);
-        discountField.setPlaceholder("0.00");
-        discountField.setPrefixComponent(new Span("$"));
-        discountField.setWidth("100px");
+        // Discount row - label with inline input
+        var discountLabel = new Span("Discount:");
+        var discountInput = new HorizontalLayout();
+        discountInput.setSpacing(false);
+        discountInput.setAlignItems(FlexComponent.Alignment.CENTER);
+        discountInput.addClassNames(LumoUtility.Gap.XSMALL);
+
+        discountTypeGroup.setItems("%", "$");
+        discountTypeGroup.setValue("%");
+        discountTypeGroup.addValueChangeListener(e -> updateTotal());
+
+        discountField.setMin(0);
+        discountField.setWidth("80px");
+        discountField.addThemeVariants(TextFieldVariant.LUMO_ALIGN_RIGHT);
         discountField.addValueChangeListener(e -> updateTotal());
-        var discountLabel = new Span("Discount: ");
-        discountRow.add(discountLabel, discountField);
-        totalsSection.add(discountRow);
+
+        discountValue.addClassNames(LumoUtility.TextColor.SECONDARY);
+        discountValue.getStyle().set("font-variant-numeric", "tabular-nums").set("min-width", "70px").set("text-align", "right");
+
+        discountInput.add(discountTypeGroup, discountField, discountValue);
+        totalsSection.add(discountLabel, discountInput);
 
         // Total row
-        var totalRow = new HorizontalLayout();
-        totalRow.setAlignItems(FlexComponent.Alignment.CENTER);
-        var totalText = new Span("Total: ");
-        totalText.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
-        totalLabel.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
-        totalRow.add(totalText, totalLabel);
-        totalsSection.add(totalRow);
+        var totalLabel = new Span("Total:");
+        totalLabel.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
+        totalValue.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
+        totalValue.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
+        totalsSection.add(totalLabel, totalValue);
 
         section.add(totalsSection);
 
@@ -553,16 +566,36 @@ public class EditOrderDialog extends Dialog {
             return;
         }
 
-        var item = new OrderItemDetail();
-        item.setProductId(product.getId());
-        item.setProductName(product.getName());
-        item.setProductSize(product.getSize());
-        item.setQuantity(quantity);
-        item.setUnitPrice(product.getPrice());
-        item.setDetails(itemDetailsField.getValue());
-        item.calculateLineTotal();
+        var details = itemDetailsField.getValue();
+        var detailsNormalized = details == null ? "" : details.trim();
 
-        orderItems.add(item);
+        // Check for existing item with same product and notes
+        var existingItem = orderItems.stream()
+                .filter(i -> i.getProductId().equals(product.getId()))
+                .filter(i -> {
+                    var existingDetails = i.getDetails() == null ? "" : i.getDetails().trim();
+                    return existingDetails.equals(detailsNormalized);
+                })
+                .findFirst();
+
+        if (existingItem.isPresent()) {
+            // Combine quantities
+            var item = existingItem.get();
+            item.setQuantity(item.getQuantity() + quantity);
+            item.calculateLineTotal();
+        } else {
+            // Add new item
+            var item = new OrderItemDetail();
+            item.setProductId(product.getId());
+            item.setProductName(product.getName());
+            item.setProductSize(product.getSize());
+            item.setQuantity(quantity);
+            item.setUnitPrice(product.getPrice());
+            item.setDetails(details);
+            item.calculateLineTotal();
+            orderItems.add(item);
+        }
+
         refreshItemsGrid();
 
         productComboBox.clear();
@@ -585,27 +618,38 @@ public class EditOrderDialog extends Dialog {
                 .map(OrderItemDetail::getLineTotal)
                 .filter(java.util.Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        subtotalLabel.setText(currencyFormat.format(subtotal));
+        subtotalValue.setText(currencyFormat.format(subtotal));
 
-        var discount = parseDiscount();
+        var discount = calculateDiscount(subtotal);
+
+        // Show calculated discount amount (negative)
+        if (discount.compareTo(BigDecimal.ZERO) > 0) {
+            discountValue.setText("-" + currencyFormat.format(discount));
+        } else {
+            discountValue.setText("");
+        }
+
         var total = subtotal.subtract(discount);
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             total = BigDecimal.ZERO;
         }
-        totalLabel.setText(currencyFormat.format(total));
+        totalValue.setText(currencyFormat.format(total));
     }
 
-    private BigDecimal parseDiscount() {
-        var discountText = discountField.getValue();
-        if (discountText == null || discountText.isBlank()) {
+    private BigDecimal calculateDiscount(BigDecimal subtotal) {
+        var discountInput = discountField.getValue();
+        if (discountInput == null || discountInput == 0) {
             return BigDecimal.ZERO;
         }
-        try {
-            // Remove any currency symbols or commas
-            var cleanedText = discountText.replaceAll("[^\\d.]", "");
-            return new BigDecimal(cleanedText);
-        } catch (NumberFormatException e) {
-            return BigDecimal.ZERO;
+
+        var value = BigDecimal.valueOf(discountInput);
+
+        if ("%".equals(discountTypeGroup.getValue())) {
+            // Percentage discount
+            return subtotal.multiply(value).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        } else {
+            // Dollar discount
+            return value;
         }
     }
 
@@ -686,7 +730,12 @@ public class EditOrderDialog extends Dialog {
             order.setDueTime(dueTimePicker.getValue());
             order.setAdditionalDetails(additionalDetailsField.getValue());
             order.setItems(new ArrayList<>(orderItems));
-            order.setDiscount(parseDiscount());
+            // Calculate discount based on subtotal
+            var subtotal = orderItems.stream()
+                    .map(OrderItemDetail::getLineTotal)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            order.setDiscount(calculateDiscount(subtotal));
             order.calculateTotal();
             order.setPaid(false);
 
