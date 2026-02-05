@@ -709,11 +709,23 @@ public class EditOrderDialog extends Dialog {
 
         var discount = calculateDiscount(subtotal);
 
-        // Show calculated discount amount (negative)
+        // Show calculated discount amount (always show, even if zero)
         if (discount.compareTo(BigDecimal.ZERO) > 0) {
             discountValue.setText("-" + currencyFormat.format(discount));
         } else {
-            discountValue.setText("");
+            discountValue.setText("$0.00");
+        }
+
+        // Validate discount
+        var discountInput = discountField.getValue();
+        if (discountInput != null && discountInput < 0) {
+            discountField.setInvalid(true);
+            discountField.setErrorMessage("Discount cannot be negative");
+        } else if (discount.compareTo(subtotal) > 0) {
+            discountField.setInvalid(true);
+            discountField.setErrorMessage("Discount exceeds subtotal");
+        } else {
+            discountField.setInvalid(false);
         }
 
         var total = subtotal.subtract(discount);
