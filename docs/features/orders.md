@@ -185,32 +185,48 @@ Within each group, orders are sorted by:
 
 Orders are created via a single-page dialog accessible from the "+ New order" button. The dialog is designed for speed during customer interactions.
 
-### Field Order
+### Dialog Layout
 
-1. **Customer** - Phone number and name (phone-first for quick lookup of returning customers)
-2. **Pickup details** - Location, date, time, and any special instructions
-3. **Products** - Add items with quantities and per-item notes
-4. **Totals** - Discount (optional) and calculated total
+The dialog header contains:
+- **Title**: "New Order"
+- **Pickup Location**: Dropdown selector (pre-populated from current working location)
+
+The dialog body contains:
+1. **Customer** - Phone number and name fields (phone-first for quick lookup)
+2. **Pickup Date/Time** - Date picker and time picker (15-minute increments)
+3. **Items Section** - Product entry and items grid
+4. **Totals** - Subtotal, discount, and total
+5. **Additional Details** - Special instructions (optional, at bottom)
 
 ### Required Fields
 
 - Customer phone number
 - Customer name
-- Pickup location
-- Due date and time
+- Pickup location (in header)
+- Pickup date and time
 - At least one product
 
 ### Optional Fields
 
 - Additional details (special instructions)
 - Per-item notes
-- Discount
+- Discount (% or $)
 
 ### Validation
 
-- Due date cannot be in the past
+- Pickup date cannot be in the past
 - Product quantities must be positive integers (minimum 1)
 - At least one item must be added
+- Discount cannot be negative
+- Discount cannot exceed subtotal
+
+### Current Working Location
+
+The application maintains a "current working location" for each user session:
+- Initializes from the user's primary location on login
+- Can be changed via the location selector in the main navigation header
+- Pre-populates the pickup location in new order dialogs
+- Provides a "Current Location" filter option in the Storefront view
 
 ### Customer Phone Number Entry
 
@@ -234,7 +250,68 @@ The phone number field is first, making the interaction more personal and welcom
 | New number entered | Read-write | OT enters new customer name |
 | Changed to existing customer | Read-only | Updates to selected customer name |
 
-When an existing customer is selected, the name field is skipped and focus moves to the pickup section.
+When an existing customer is selected, the name field is skipped and focus moves to the pickup date field.
+
+### Adding Items
+
+The item entry section consists of:
+- **Product dropdown** - Shows product name, size, and price in dropdown list
+- **Qty field** - Integer field with stepper buttons (min 1, max 99)
+- **Add button** - Plus icon to add the item
+- **Notes field** - Optional special instructions for the item
+
+**Item Entry Flow**:
+1. Select product from dropdown (price shown in list)
+2. Adjust quantity if needed (defaults to 1)
+3. Add notes if needed (e.g., "extra crispy", "no nuts")
+4. Click the plus button to add
+
+**Combining Duplicate Items**: When adding an item with the same product and notes as an existing item, the quantities are combined instead of creating a duplicate line.
+
+### Items Grid
+
+The items grid displays added items with columns:
+- **Product** - Two-line display: product name (size) on first line, notes on second line (if any)
+- **Qty** - Right-aligned with tabular numbers for vertical alignment
+- **Total** - Right-aligned line total with tabular numbers
+- **Remove** - Trash icon button to delete the item
+
+### Editing Items
+
+To edit an existing item's quantity or notes:
+
+1. **Click/tap the row** to select it for editing
+2. Fields populate: Product (disabled), Qty, and Notes show current values
+3. **Button changes**: Plus icon becomes a checkmark
+4. **Modify values** as needed
+5. **Click checkmark** to save changes, or **click the row again** to cancel
+
+**Combining on Edit**: If editing notes causes the item to match another item with the same product and notes, the items are combined (quantities added, edited item removed).
+
+**Focus Management**:
+- Selecting a row focuses the Qty field
+- After adding/updating or canceling, focus returns to the Product dropdown
+
+### Discount
+
+The discount section allows applying either a percentage or dollar amount discount:
+
+- **Type selector**: Radio buttons for "%" (default) or "$"
+- **Value field**: Right-aligned number input
+- **Calculated amount**: Shows the dollar amount (e.g., "-$10.00" or "$0.00")
+
+**Validation**:
+- Discount cannot be negative
+- Discount cannot exceed the subtotal
+
+### Totals Display
+
+The totals section shows:
+- **Subtotal**: Sum of all line totals
+- **Discount**: Type selector, value input, and calculated amount
+- **Total**: Final amount after discount
+
+All monetary values use tabular numbers for proper vertical alignment.
 
 ---
 
