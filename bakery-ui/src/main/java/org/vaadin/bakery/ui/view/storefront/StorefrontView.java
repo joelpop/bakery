@@ -16,6 +16,7 @@ import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
+import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
@@ -43,6 +44,7 @@ public class StorefrontView extends VerticalLayout {
     private final OrderService orderService;
     private final LocationService locationService;
     private final ProductService productService;
+    private final CustomerService customerService;
     private final Div ordersContainer;
     private FilterBar filterBar;
     private TextField searchField;
@@ -50,10 +52,11 @@ public class StorefrontView extends VerticalLayout {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
 
     public StorefrontView(OrderService orderService, LocationService locationService,
-                          ProductService productService) {
+                          ProductService productService, CustomerService customerService) {
         this.orderService = orderService;
         this.locationService = locationService;
         this.productService = productService;
+        this.customerService = customerService;
 
         addClassName("storefront-view");
         setSizeFull();
@@ -102,7 +105,7 @@ public class StorefrontView extends VerticalLayout {
     }
 
     private void openNewOrderDialog() {
-        var dialog = new EditOrderDialog(orderService, locationService);
+        var dialog = new EditOrderDialog(orderService, locationService, customerService);
         dialog.setAvailableProducts(productService.listAvailable());
         dialog.addSaveClickListener(event -> refresh());
         dialog.open();

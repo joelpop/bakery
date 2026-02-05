@@ -8,10 +8,10 @@ INSERT INTO app_user (id, version, email, first_name, last_name, password_hash, 
 (2, 0, 'baker@cafe-sunshine.com', 'Baker', 'Smith', '$2b$10$cXHTiUndgoMk1l0kXdzwg.Q3M4gC1F.uw5RvmJS8NlXf/rLOPeyWO', 'BAKER', CURRENT_TIMESTAMP),
 (3, 0, 'barista@cafe-sunshine.com', 'Barista', 'Jones', '$2b$10$AMuiGV50FqtUCGF/FQu5IeALsi/qhrNCXynRxmA/SZKtMK9CkiZSG', 'BARISTA', CURRENT_TIMESTAMP);
 
--- Locations (with timezone for display conversion)
-INSERT INTO location (id, version, name, address, timezone, active, sort_order, created_at) VALUES
-(1, 0, 'Downtown Store', '123 Main Street, Downtown', 'America/New_York', true, 1, CURRENT_TIMESTAMP),
-(2, 0, 'Central Bakery', '456 Baker Lane', 'America/New_York', true, 2, CURRENT_TIMESTAMP);
+-- Locations (with timezone for display conversion and phone formatting defaults)
+INSERT INTO location (id, version, name, address, timezone, default_country_code, default_area_code, active, sort_order, created_at) VALUES
+(1, 0, 'Downtown Store', '123 Main Street, Downtown', 'America/New_York', '1', '212', true, 1, CURRENT_TIMESTAMP),
+(2, 0, 'Central Bakery', '456 Baker Lane', 'America/New_York', '1', '718', true, 2, CURRENT_TIMESTAMP);
 
 -- Products (baked goods)
 INSERT INTO product (id, version, name, description, size, price, available, created_at) VALUES
@@ -40,15 +40,15 @@ INSERT INTO product (id, version, name, description, size, price, available, cre
 
 -- Customers
 INSERT INTO customer (id, version, name, phone_number, email, active, created_at) VALUES
-(1, 0, 'Alice Johnson', '555-0101', 'alice@example.com', true, CURRENT_TIMESTAMP),
-(2, 0, 'Bob Smith', '555-0102', 'bob@example.com', true, CURRENT_TIMESTAMP),
-(3, 0, 'Carol White', '555-0103', 'carol@example.com', true, CURRENT_TIMESTAMP),
-(4, 0, 'David Brown', '555-0104', 'david@example.com', true, CURRENT_TIMESTAMP),
-(5, 0, 'Emma Davis', '555-0105', 'emma@example.com', true, CURRENT_TIMESTAMP),
-(6, 0, 'Frank Miller', '555-0106', 'frank@example.com', true, CURRENT_TIMESTAMP),
-(7, 0, 'Grace Lee', '555-0107', 'grace@example.com', true, CURRENT_TIMESTAMP),
-(8, 0, 'Henry Wilson', '555-0108', 'henry@example.com', true, CURRENT_TIMESTAMP),
-(9, 0, 'Iris Martinez', '555-0109', 'iris@example.com', true, CURRENT_TIMESTAMP);
+(1, 0, 'Alice Johnson', '+1 (212) 555-0101', 'alice@example.com', true, CURRENT_TIMESTAMP),
+(2, 0, 'Bob Smith', '+1 (212) 555-0102', 'bob@example.com', true, CURRENT_TIMESTAMP),
+(3, 0, 'Carol White', '+1 (212) 555-0103', 'carol@example.com', true, CURRENT_TIMESTAMP),
+(4, 0, 'David Brown', '+1 (212) 555-0104', 'david@example.com', true, CURRENT_TIMESTAMP),
+(5, 0, 'Emma Davis', '+1 (212) 555-0105', 'emma@example.com', true, CURRENT_TIMESTAMP),
+(6, 0, 'Frank Miller', '+1 (718) 555-0106', 'frank@example.com', true, CURRENT_TIMESTAMP),
+(7, 0, 'Grace Lee', '+1 (718) 555-0107', 'grace@example.com', true, CURRENT_TIMESTAMP),
+(8, 0, 'Henry Wilson', '+1 (718) 555-0108', 'henry@example.com', true, CURRENT_TIMESTAMP),
+(9, 0, 'Iris Martinez', '+1 (718) 555-0109', 'iris@example.com', true, CURRENT_TIMESTAMP);
 
 -- Orders with various statuses
 -- Downtown Store pickups (location_id = 1)

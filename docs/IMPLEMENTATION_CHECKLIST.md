@@ -94,6 +94,8 @@ The following decisions were made during documentation review to resolve conflic
   - [x] name (String, unique)
   - [x] address (String, optional)
   - [x] timezone (String) - IANA timezone ID (e.g., "America/New_York")
+  - [ ] defaultCountryCode (String) - Default country code for phone formatting (e.g., "+1")
+  - [ ] defaultAreaCode (String) - Default area code for 7-digit phone numbers (e.g., "212")
   - [x] active (boolean)
   - [x] sortOrder (Integer)
 
@@ -491,10 +493,16 @@ The following decisions were made during documentation review to resolve conflic
 ### 8.3 Edit Order Dialog
 
 - [x] **EditOrderDialog** - Single-page order creation/edit dialog
-  - [x] Customer section
-    - [x] Customer name field
-    - [x] Phone number field
-    - [ ] Customer autofill from phone number (lookup existing customer)
+  - [ ] Customer section (phone-first for quick lookup)
+    - [ ] Phone number field (first - triggers autofill popup)
+      - [ ] Autofill popup showing partial matches (ignoring punctuation)
+      - [ ] Popup displays phone number and customer name
+      - [ ] Selection populates both phone and name fields
+      - [ ] Phone formatting on blur (uses location's default country/area codes)
+    - [ ] Customer name field (second - conditionally editable)
+      - [ ] Read-only when existing customer selected
+      - [ ] Read-write when new phone number entered
+      - [ ] Skipped in tab order when existing customer selected
   - [x] Pickup section
     - [x] Location dropdown (auto-selects if only one active)
     - [x] Due date picker (defaults to today, min: today)

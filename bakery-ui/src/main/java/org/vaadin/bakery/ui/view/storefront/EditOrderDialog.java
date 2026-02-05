@@ -23,10 +23,13 @@ import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.timepicker.TimePicker;
+import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
+import org.vaadin.bakery.uimodel.data.CustomerSummary;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderItemDetail;
@@ -49,13 +52,19 @@ public class EditOrderDialog extends Dialog {
 
     private final OrderService orderService;
     private final LocationService locationService;
+    private final CustomerService customerService;
 
     private final List<OrderItemDetail> orderItems = new ArrayList<>();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
-    // Order fields
+    // Customer state tracking
+    private CustomerSummary selectedCustomer;
+    private boolean isExistingCustomer = false;
+    private String customPhoneNumber; // Stores formatted phone when entering new customer
+
+    // Order fields - phone first for quick customer lookup
+    private final ComboBox<CustomerSummary> customerPhoneComboBox = new ComboBox<>("Phone Number");
     private final TextField customerNameField = new TextField("Customer Name");
-    private final TextField customerPhoneField = new TextField("Phone Number");
     private final ComboBox<LocationSummary> locationComboBox = new ComboBox<>("Pickup Location");
     private final DatePicker dueDatePicker = new DatePicker("Due Date");
     private final TimePicker dueTimePicker = new TimePicker("Due Time");
@@ -68,9 +77,10 @@ public class EditOrderDialog extends Dialog {
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
     private final Span totalLabel = new Span("$0.00");
 
-    public EditOrderDialog(OrderService orderService, LocationService locationService) {
+    public EditOrderDialog(OrderService orderService, LocationService locationService, CustomerService customerService) {
         this.orderService = orderService;
         this.locationService = locationService;
+        this.customerService = customerService;
 
         setHeaderTitle("New Order");
         setCloseOnOutsideClick(false);
@@ -90,6 +100,13 @@ public class EditOrderDialog extends Dialog {
         getFooter().add(cancelButton, saveButton);
 
         loadData();
+
+        // Focus phone field when dialog opens
+        addOpenedChangeListener(e -> {
+            if (e.isOpened()) {
+                customerPhoneComboBox.focus();
+            }
+        });
     }
 
     // ========== Event Classes ==========
@@ -141,8 +158,24 @@ public class EditOrderDialog extends Dialog {
                 new FormLayout.ResponsiveStep("400px", 2)
         );
 
+        // Phone ComboBox with autofill popup
+        customerPhoneComboBox.setRequired(true);
+        customerPhoneComboBox.setAllowCustomValue(true);
+        // Show just phone number in the field when selected
+        customerPhoneComboBox.setItemLabelGenerator(CustomerSummary::getPhoneNumber);
+        // Show phone + name in the dropdown list
+        customerPhoneComboBox.setRenderer(LitRenderer.<CustomerSummary>of(
+                "${item.phone} - ${item.name}")
+                .withProperty("phone", CustomerSummary::getPhoneNumber)
+                .withProperty("name", CustomerSummary::getName));
+        customerPhoneComboBox.addCustomValueSetListener(e -> handleNewPhoneNumber(e.getDetail()));
+        customerPhoneComboBox.addValueChangeListener(e -> handleCustomerSelection(e.getValue()));
+        configurePhoneComboBoxFiltering();
+
+        // Customer name field - read-only until phone entered with new number
         customerNameField.setRequired(true);
-        customerPhoneField.setPlaceholder("(555) 123-4567");
+        customerNameField.setReadOnly(true);
+
         locationComboBox.setRequired(true);
         locationComboBox.setItemLabelGenerator(LocationSummary::getName);
         dueDatePicker.setRequired(true);
@@ -152,7 +185,7 @@ public class EditOrderDialog extends Dialog {
         dueTimePicker.setValue(LocalTime.of(12, 0));
         dueTimePicker.setStep(Duration.ofMinutes(15));
 
-        form.add(customerNameField, customerPhoneField);
+        form.add(customerPhoneComboBox, customerNameField);
         form.add(locationComboBox, 2);
         form.add(dueDatePicker, dueTimePicker);
         form.add(additionalDetailsField, 2);
@@ -241,6 +274,140 @@ public class EditOrderDialog extends Dialog {
         }).setFlexGrow(0).setWidth("50px");
     }
 
+    // ========== Customer Phone Handling ==========
+
+    private void configurePhoneComboBoxFiltering() {
+        // Load all customers and filter by phone digits (ignoring punctuation)
+        var allCustomers = customerService.search("");
+
+        // Custom filter that matches phone digits only
+        ComboBox.ItemFilter<CustomerSummary> phoneFilter = (customer, filterText) -> {
+            if (filterText == null || filterText.isBlank()) {
+                return true; // Show all when no filter
+            }
+            var filterDigits = filterText.replaceAll("\\D", "");
+            if (filterDigits.isEmpty()) {
+                return true; // Show all if filter has no digits
+            }
+            var phoneDigits = customer.getPhoneNumber() != null
+                    ? customer.getPhoneNumber().replaceAll("\\D", "")
+                    : "";
+            return phoneDigits.contains(filterDigits);
+        };
+
+        customerPhoneComboBox.setItems(phoneFilter, allCustomers);
+    }
+
+    private void handleCustomerSelection(CustomerSummary customer) {
+        if (customer != null) {
+            // Existing customer selected
+            selectedCustomer = customer;
+            isExistingCustomer = true;
+            customPhoneNumber = null; // Clear custom phone since we're using existing customer
+            customerNameField.setValue(customer.getName());
+            customerNameField.setReadOnly(true);
+            // Move focus to next field (location)
+            locationComboBox.focus();
+        } else {
+            // Selection cleared - reset to allow new entry
+            selectedCustomer = null;
+            isExistingCustomer = false;
+            customPhoneNumber = null;
+            customerNameField.clear();
+            customerNameField.setReadOnly(true); // Back to read-only until phone entered
+        }
+    }
+
+    private void handleNewPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return;
+        }
+        // Format the phone number using location defaults
+        customPhoneNumber = formatPhoneNumber(phoneNumber);
+
+        // New phone number entered - enable name field for entry
+        selectedCustomer = null;
+        isExistingCustomer = false;
+        customerNameField.setReadOnly(false);
+        customerNameField.clear();
+        customerNameField.focus();
+    }
+
+    /**
+     * Format phone number using location defaults for country code and area code.
+     * - If only 7 digits, prepends location's default area code
+     * - If no country code, prepends location's default country code
+     * - Formats as: +1 (212) 555-1234
+     */
+    private String formatPhoneNumber(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return phone;
+        }
+
+        // Extract digits only
+        var digits = phone.replaceAll("\\D", "");
+        if (digits.isEmpty()) {
+            return phone;
+        }
+
+        // Get location defaults
+        var location = locationComboBox.getValue();
+        var defaultCountryCode = location != null && location.getDefaultCountryCode() != null
+                ? location.getDefaultCountryCode().replaceAll("\\D", "")
+                : "1"; // Default to US
+        var defaultAreaCode = location != null && location.getDefaultAreaCode() != null
+                ? location.getDefaultAreaCode().replaceAll("\\D", "")
+                : "";
+
+        // Check if number starts with country code
+        var hasCountryCode = digits.length() > 10 ||
+                (digits.length() == 11 && digits.startsWith("1"));
+
+        // If only 7 digits and we have an area code, prepend it
+        if (digits.length() == 7 && !defaultAreaCode.isEmpty()) {
+            digits = defaultAreaCode + digits;
+        }
+
+        // If 10 digits (no country code), prepend country code
+        if (digits.length() == 10 && !hasCountryCode) {
+            digits = defaultCountryCode + digits;
+        }
+
+        // Format the phone number
+        if (digits.length() == 11) {
+            // Format as: +X (XXX) XXX-XXXX
+            return String.format("+%s (%s) %s-%s",
+                    digits.substring(0, 1),
+                    digits.substring(1, 4),
+                    digits.substring(4, 7),
+                    digits.substring(7, 11));
+        } else if (digits.length() == 10) {
+            // Format as: (XXX) XXX-XXXX
+            return String.format("(%s) %s-%s",
+                    digits.substring(0, 3),
+                    digits.substring(3, 6),
+                    digits.substring(6, 10));
+        }
+
+        // Return original if we can't format it
+        return phone;
+    }
+
+    private String getCustomerPhone() {
+        // Get phone number from either selected customer or custom value
+        var selected = customerPhoneComboBox.getValue();
+        if (selected != null) {
+            return selected.getPhoneNumber();
+        }
+        // Return formatted custom phone number if available
+        if (customPhoneNumber != null && !customPhoneNumber.isBlank()) {
+            return customPhoneNumber;
+        }
+        // Fall back to input element value
+        var inputValue = customerPhoneComboBox.getElement().getProperty("_inputElementValue");
+        return inputValue != null ? inputValue : "";
+    }
+
     // ========== Data Operations ==========
 
     private void loadData() {
@@ -312,6 +479,15 @@ public class EditOrderDialog extends Dialog {
         var valid = true;
         var requiredMessage = "Required";
 
+        var phoneValue = getCustomerPhone();
+        if (phoneValue == null || phoneValue.isBlank()) {
+            customerPhoneComboBox.setInvalid(true);
+            customerPhoneComboBox.setErrorMessage(requiredMessage);
+            valid = false;
+        } else {
+            customerPhoneComboBox.setInvalid(false);
+        }
+
         if (customerNameField.getValue() == null || customerNameField.getValue().isBlank()) {
             customerNameField.setInvalid(true);
             customerNameField.setErrorMessage(requiredMessage);
@@ -362,7 +538,11 @@ public class EditOrderDialog extends Dialog {
             var order = new OrderDetail();
             order.setStatus(OrderStatus.NEW);
             order.setCustomerName(customerNameField.getValue());
-            order.setCustomerPhone(customerPhoneField.getValue());
+            order.setCustomerPhone(getCustomerPhone());
+            // Set customer ID if existing customer was selected
+            if (selectedCustomer != null) {
+                order.setCustomerId(selectedCustomer.getId());
+            }
             order.setLocationId(locationComboBox.getValue().getId());
             order.setLocationName(locationComboBox.getValue().getName());
             order.setDueDate(dueDatePicker.getValue());

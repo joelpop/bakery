@@ -27,4 +27,10 @@ public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> 
     List<CustomerSummaryProjection> findByActiveTrueOrderByName();
 
     List<CustomerSummaryProjection> findByNameContainingIgnoreCaseAndActiveTrueOrderByName(String name, Class<CustomerSummaryProjection> type);
+
+    /**
+     * Find all active customers for phone number filtering.
+     * Filtering by digits is done in the service layer.
+     */
+    List<CustomerEntity> findByActiveTrueOrderByPhoneNumber();
 }

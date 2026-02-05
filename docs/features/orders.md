@@ -187,13 +187,14 @@ Orders are created via a single-page dialog accessible from the "+ New order" bu
 
 ### Field Order
 
-1. **Customer** - Name and phone number (phone triggers autofill for returning customers)
+1. **Customer** - Phone number and name (phone-first for quick lookup of returning customers)
 2. **Pickup details** - Location, date, time, and any special instructions
 3. **Products** - Add items with quantities and per-item notes
 4. **Totals** - Discount (optional) and calculated total
 
 ### Required Fields
 
+- Customer phone number
 - Customer name
 - Pickup location
 - Due date and time
@@ -201,7 +202,6 @@ Orders are created via a single-page dialog accessible from the "+ New order" bu
 
 ### Optional Fields
 
-- Customer phone number
 - Additional details (special instructions)
 - Per-item notes
 - Discount
@@ -212,9 +212,29 @@ Orders are created via a single-page dialog accessible from the "+ New order" bu
 - Product quantities must be positive integers (minimum 1)
 - At least one item must be added
 
-### Customer Autofill
+### Customer Phone Number Entry
 
-When entering a phone number that matches an existing customer, the customer name field is automatically populated. This speeds up order entry for returning customers and reduces errors.
+The phone number field is first, making the interaction more personal and welcoming. As the order taker (OT) types:
+
+1. **Autofill Popup**: Partially matching phone numbers (ignoring punctuation) display in a popup with customer names
+2. **Selection**: Selecting a match populates both phone and name fields; name becomes read-only
+3. **New Number**: If no match, leaving the field formats the number and enables the name field for entry
+
+**Phone Number Formatting Rules**:
+- Numbers are formatted based on the country code provided
+- If no country code: uses the pickup location's default country code
+- If only 7 digits: prepends the pickup location's default area code
+
+### Customer Name Field Behavior
+
+| Phone Number Status | Name Field | Notes |
+|---------------------|------------|-------|
+| Empty | Read-only | Waiting for phone entry |
+| Existing customer selected | Read-only | Auto-populated from customer record |
+| New number entered | Read-write | OT enters new customer name |
+| Changed to existing customer | Read-only | Updates to selected customer name |
+
+When an existing customer is selected, the name field is skipped and focus moves to the pickup section.
 
 ---
 

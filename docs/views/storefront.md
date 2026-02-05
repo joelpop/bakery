@@ -85,12 +85,41 @@ A single-page dialog for creating new orders, optimized for speed.
 
 #### Customer Section (Required)
 
+The customer section is positioned first to create a personal, welcoming interaction. Phone number entry enables quick lookup of returning customers.
+
 | Field | Type | Description |
 |-------|------|-------------|
-| Customer Name | Text Input | Customer's full name (required) |
-| Phone Number | Phone Input | Customer contact; triggers autofill for existing customers |
+| Phone Number | Phone Input | Customer contact number (required); triggers autofill popup |
+| Customer Name | Text Input | Customer's full name; read-only for existing customers |
 
-**Customer Autofill**: Entering a phone number that matches an existing customer auto-populates the customer name field.
+**Phone Number Autofill Popup**
+
+As the order taker (OT) types in the phone number field, a popup displays matching customers:
+- Matches are found by partial phone number comparison (ignoring all punctuation)
+- Each popup entry shows the phone number and customer name
+- Selecting an entry populates both the phone number and customer name fields
+- The popup updates dynamically as digits are typed
+
+**Phone Number Formatting**
+
+When leaving the phone number field with a new (non-matching) number:
+- The number is formatted according to the country code provided
+- If no country code is provided, the location's default country code is used
+- If only 7 digits are entered, the location's default area code is prepended
+
+**Customer Name Field Behavior**
+
+| Scenario | Name Field State |
+|----------|------------------|
+| Initial state (empty phone) | Read-only |
+| Existing customer selected from popup | Read-only (populated with customer name) |
+| New phone number entered | Read-write (OT enters new customer name) |
+| Phone changed from new to existing customer | Returns to read-only (updates to selected customer name) |
+
+**Field Navigation**
+
+- When an existing customer is selected, the customer name field is skipped (focus moves to next section)
+- When a new phone number is entered, focus moves to the customer name field for entry
 
 #### Pickup Section (Required)
 

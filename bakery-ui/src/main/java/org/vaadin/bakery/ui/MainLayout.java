@@ -33,6 +33,7 @@ import jakarta.annotation.security.PermitAll;
 import java.time.ZoneId;
 
 import org.vaadin.bakery.service.CurrentUserService;
+import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
@@ -64,6 +65,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient OrderService orderService;
     private final transient LocationService locationService;
     private final transient ProductService productService;
+    private final transient CustomerService customerService;
     private final transient UserTimezoneService userTimezoneService;
 
     private Tabs navigationTabs;
@@ -71,12 +73,14 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
                       OrderService orderService, LocationService locationService,
-                      ProductService productService, UserTimezoneService userTimezoneService) {
+                      ProductService productService, CustomerService customerService,
+                      UserTimezoneService userTimezoneService) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
         this.orderService = orderService;
         this.locationService = locationService;
         this.productService = productService;
+        this.customerService = customerService;
         this.userTimezoneService = userTimezoneService;
 
         addClassName("main-layout");
@@ -418,7 +422,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private void openNewOrderDialog() {
-        var dialog = new EditOrderDialog(orderService, locationService);
+        var dialog = new EditOrderDialog(orderService, locationService, customerService);
         dialog.setAvailableProducts(productService.listAvailable());
         dialog.addSaveClickListener(_ -> refreshCurrentViewIfNeeded());
         dialog.open();

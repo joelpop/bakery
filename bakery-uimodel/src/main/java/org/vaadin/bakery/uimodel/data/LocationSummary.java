@@ -9,6 +9,8 @@ public class LocationSummary {
     private String name;
     private String address;
     private String timezone;
+    private String defaultCountryCode;
+    private String defaultAreaCode;
     private boolean active;
     private Integer sortOrder;
 
@@ -42,6 +44,22 @@ public class LocationSummary {
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
+    }
+
+    public String getDefaultCountryCode() {
+        return defaultCountryCode;
+    }
+
+    public void setDefaultCountryCode(String defaultCountryCode) {
+        this.defaultCountryCode = defaultCountryCode;
+    }
+
+    public String getDefaultAreaCode() {
+        return defaultAreaCode;
+    }
+
+    public void setDefaultAreaCode(String defaultAreaCode) {
+        this.defaultAreaCode = defaultAreaCode;
     }
 
     public boolean isActive() {
