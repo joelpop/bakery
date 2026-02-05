@@ -577,6 +577,7 @@ public class EditOrderDialog extends Dialog {
         itemDetailsField.setValue(item.getDetails() != null ? item.getDetails() : "");
 
         addUpdateButton.setIcon(new Icon(VaadinIcon.CHECK));
+        quantityField.focus();
     }
 
     private void exitEditMode() {
@@ -588,6 +589,7 @@ public class EditOrderDialog extends Dialog {
         itemDetailsField.clear();
 
         addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
+        productComboBox.focus();
     }
 
     private void addOrUpdateItem() {
@@ -688,6 +690,7 @@ public class EditOrderDialog extends Dialog {
         productComboBox.clear();
         quantityField.setValue(1);
         itemDetailsField.clear();
+        productComboBox.focus();
     }
 
     private void removeItem(OrderItemDetail item) {
