@@ -8,6 +8,7 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Hr;
@@ -329,11 +330,15 @@ public class EditOrderDialog extends Dialog {
 
         itemsGrid.addColumn(OrderItemDetail::getQuantity)
                 .setHeader("Qty")
+                .setPartNameGenerator(item -> "numeric")
+                .setTextAlign(ColumnTextAlign.END)
                 .setFlexGrow(0)
                 .setWidth("60px");
 
         itemsGrid.addColumn(item -> currencyFormat.format(item.getLineTotal()))
                 .setHeader("Total")
+                .setPartNameGenerator(item -> "numeric")
+                .setTextAlign(ColumnTextAlign.END)
                 .setFlexGrow(0)
                 .setWidth("90px");
 
