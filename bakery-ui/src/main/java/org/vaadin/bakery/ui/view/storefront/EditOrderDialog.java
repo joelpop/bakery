@@ -64,7 +64,7 @@ public class EditOrderDialog extends Dialog {
     private boolean isExistingCustomer = false;
     private String customPhoneNumber; // Stores formatted phone when entering new customer
 
-    // Order fields - phone first for quick customer lookup
+    // Order fields - location first (for phone formatting defaults), but phone gets focus
     private final ComboBox<CustomerSummary> customerPhoneComboBox = new ComboBox<>("Phone Number");
     private final TextField customerNameField = new TextField("Customer Name");
     private final ComboBox<LocationSummary> locationComboBox = new ComboBox<>("Pickup Location");
@@ -189,8 +189,8 @@ public class EditOrderDialog extends Dialog {
         dueTimePicker.setValue(LocalTime.of(12, 0));
         dueTimePicker.setStep(Duration.ofMinutes(15));
 
-        form.add(customerPhoneComboBox, customerNameField);
         form.add(locationComboBox, 2);
+        form.add(customerPhoneComboBox, customerNameField);
         form.add(dueDatePicker, dueTimePicker);
         form.add(additionalDetailsField, 2);
 
@@ -310,8 +310,8 @@ public class EditOrderDialog extends Dialog {
             customPhoneNumber = null; // Clear custom phone since we're using existing customer
             customerNameField.setValue(customer.getName());
             customerNameField.setReadOnly(true);
-            // Move focus to next field (location)
-            locationComboBox.focus();
+            // Move focus to next field (due date, since location is already set)
+            dueDatePicker.focus();
         } else {
             // Selection cleared - reset to allow new entry
             selectedCustomer = null;
