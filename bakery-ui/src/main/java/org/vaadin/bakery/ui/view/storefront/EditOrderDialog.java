@@ -192,13 +192,16 @@ public class EditOrderDialog extends Dialog {
         form.add(locationComboBox, 2);
         form.add(customerPhoneComboBox, customerNameField);
         form.add(dueDatePicker, dueTimePicker);
-        form.add(additionalDetailsField, 2);
 
         content.add(form);
         content.add(new Hr());
 
         // Items section
         content.add(createItemsSection());
+
+        // Additional details at the end
+        additionalDetailsField.setWidthFull();
+        content.add(additionalDetailsField);
 
         return content;
     }
