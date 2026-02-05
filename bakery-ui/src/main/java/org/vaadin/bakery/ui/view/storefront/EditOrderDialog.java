@@ -77,6 +77,10 @@ public class EditOrderDialog extends Dialog {
     private final IntegerField quantityField = new IntegerField("Qty");
     private final TextField itemDetailsField = new TextField("Notes");
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
+
+    // Totals section
+    private final TextField discountField = new TextField("Discount");
+    private final Span subtotalLabel = new Span("$0.00");
     private final Span totalLabel = new Span("$0.00");
 
     public EditOrderDialog(OrderService orderService, LocationService locationService,
@@ -211,47 +215,89 @@ public class EditOrderDialog extends Dialog {
         section.addClassNames(
                 LumoUtility.Display.FLEX,
                 LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Gap.SMALL
+                LumoUtility.Gap.SMALL,
+                LumoUtility.Width.FULL
         );
 
-        // Add item row
+        // Add item - first row: Product, Qty, Add button
         productComboBox.setItemLabelGenerator(ProductSelect::getDisplayName);
-        productComboBox.setWidth("200px");
+        // Show price in dropdown list
+        productComboBox.setRenderer(LitRenderer.<ProductSelect>of(
+                "<span>${item.name} <small>(${item.size})</small> - <strong>${item.price}</strong></span>")
+                .withProperty("name", ProductSelect::getName)
+                .withProperty("size", ProductSelect::getSize)
+                .withProperty("price", p -> currencyFormat.format(p.getPrice())));
 
         quantityField.setValue(1);
         quantityField.setMin(1);
         quantityField.setMax(99);
         quantityField.setStepButtonsVisible(true);
-        quantityField.setWidth("80px");
-
-        itemDetailsField.setPlaceholder("Special instructions");
-        itemDetailsField.setWidth("150px");
+        quantityField.setWidth("120px");
 
         var addButton = new Button(new Icon(VaadinIcon.PLUS));
         addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addButton.addClickListener(e -> addItem());
 
-        var addItemRow = new HorizontalLayout(productComboBox, quantityField, itemDetailsField, addButton);
-        addItemRow.setAlignItems(FlexComponent.Alignment.END);
-        addItemRow.setFlexGrow(1, productComboBox);
-        section.add(addItemRow);
+        var addItemRow1 = new HorizontalLayout(productComboBox, quantityField, addButton);
+        addItemRow1.setWidthFull();
+        addItemRow1.setAlignItems(FlexComponent.Alignment.END);
+        addItemRow1.setFlexGrow(1, productComboBox);
+
+        // Add item - second row: Notes (full width)
+        itemDetailsField.setPlaceholder("Special instructions for this item");
+        itemDetailsField.setWidthFull();
+
+        // Wrap item entry in tight container
+        var addItemBlock = new VerticalLayout(addItemRow1, itemDetailsField);
+        addItemBlock.setPadding(false);
+        addItemBlock.setSpacing(false);
+        addItemBlock.setWidthFull();
+        section.add(addItemBlock);
 
         // Items grid
         configureItemsGrid();
         itemsGrid.setMaxHeight("200px");
         section.add(itemsGrid);
 
-        // Total
-        var totalRow = new HorizontalLayout();
-        totalRow.setWidthFull();
-        totalRow.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-        totalRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        // Totals section
+        var totalsSection = new Div();
+        totalsSection.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.SMALL,
+                LumoUtility.AlignItems.END
+        );
 
+        // Subtotal row
+        var subtotalRow = new HorizontalLayout();
+        subtotalRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        var subtotalText = new Span("Subtotal: ");
+        subtotalText.addClassNames(LumoUtility.TextColor.SECONDARY);
+        subtotalLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
+        subtotalRow.add(subtotalText, subtotalLabel);
+        totalsSection.add(subtotalRow);
+
+        // Discount row
+        var discountRow = new HorizontalLayout();
+        discountRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        discountField.setPlaceholder("0.00");
+        discountField.setPrefixComponent(new Span("$"));
+        discountField.setWidth("100px");
+        discountField.addValueChangeListener(e -> updateTotal());
+        var discountLabel = new Span("Discount: ");
+        discountRow.add(discountLabel, discountField);
+        totalsSection.add(discountRow);
+
+        // Total row
+        var totalRow = new HorizontalLayout();
+        totalRow.setAlignItems(FlexComponent.Alignment.CENTER);
         var totalText = new Span("Total: ");
         totalText.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
         totalLabel.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
         totalRow.add(totalText, totalLabel);
-        section.add(totalRow);
+        totalsSection.add(totalRow);
+
+        section.add(totalsSection);
 
         return section;
     }
@@ -485,11 +531,32 @@ public class EditOrderDialog extends Dialog {
     }
 
     private void updateTotal() {
-        var total = orderItems.stream()
+        var subtotal = orderItems.stream()
                 .map(OrderItemDetail::getLineTotal)
                 .filter(java.util.Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        subtotalLabel.setText(currencyFormat.format(subtotal));
+
+        var discount = parseDiscount();
+        var total = subtotal.subtract(discount);
+        if (total.compareTo(BigDecimal.ZERO) < 0) {
+            total = BigDecimal.ZERO;
+        }
         totalLabel.setText(currencyFormat.format(total));
+    }
+
+    private BigDecimal parseDiscount() {
+        var discountText = discountField.getValue();
+        if (discountText == null || discountText.isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            // Remove any currency symbols or commas
+            var cleanedText = discountText.replaceAll("[^\\d.]", "");
+            return new BigDecimal(cleanedText);
+        } catch (NumberFormatException e) {
+            return BigDecimal.ZERO;
+        }
     }
 
     // ========== Validation and Save ==========
@@ -568,6 +635,7 @@ public class EditOrderDialog extends Dialog {
             order.setDueTime(dueTimePicker.getValue());
             order.setAdditionalDetails(additionalDetailsField.getValue());
             order.setItems(new ArrayList<>(orderItems));
+            order.setDiscount(parseDiscount());
             order.calculateTotal();
             order.setPaid(false);
 
