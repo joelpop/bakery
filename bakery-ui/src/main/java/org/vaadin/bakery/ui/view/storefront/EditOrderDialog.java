@@ -1,11 +1,9 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.component.ComponentEvent;
-import com.vaadin.flow.component.ComponentEventListener;
+import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -16,12 +14,12 @@ import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -35,6 +33,9 @@ import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.UserLocationService;
+import org.vaadin.bakery.ui.event.NonComponent;
+import org.vaadin.bakery.ui.event.NonComponentEvent;
+import org.vaadin.bakery.ui.event.NonComponentEventSupport;
 import org.vaadin.bakery.uimodel.data.CustomerSummary;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
@@ -50,11 +51,16 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * Dialog for creating or editing an order.
+ * Uses delegation to Dialog rather than inheritance to control the public API.
  */
-public class EditOrderDialog extends Dialog {
+public class EditOrderDialog implements NonComponent {
+
+    private final Dialog dialog = new Dialog();
+    private final NonComponentEventSupport<EditOrderDialog> eventSupport = new NonComponentEventSupport<>();
 
     private final OrderService orderService;
     private final LocationService locationService;
@@ -99,40 +105,54 @@ public class EditOrderDialog extends Dialog {
         this.customerService = customerService;
         this.userLocationService = userLocationService;
 
-        setCloseOnOutsideClick(false);
-        setWidth("700px");
-        setMaxWidth("95vw");
+        dialog.setCloseOnOutsideClick(false);
+        dialog.setWidth("700px");
+        dialog.setMaxWidth("95vw");
 
         createHeader();
-        add(createContent());
+        dialog.add(createContent());
 
         // Footer buttons
         var cancelButton = new Button("Cancel", e -> {
-            fireEvent(new CancelClickEvent(this));
+            fireEvent(new CancelEvent(this));
             close();
         });
         var saveButton = new Button("Save", e -> save());
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        getFooter().add(cancelButton, saveButton);
+        dialog.getFooter().add(cancelButton, saveButton);
 
         loadData();
 
         // Focus phone field when dialog opens
-        addOpenedChangeListener(e -> {
+        dialog.addOpenedChangeListener(e -> {
             if (e.isOpened()) {
                 customerPhoneComboBox.focus();
             }
         });
     }
 
+    // ========== Public API ==========
+
+    public void open() {
+        dialog.open();
+    }
+
+    public void close() {
+        dialog.close();
+    }
+
+    public void setAvailableProducts(List<ProductSelect> products) {
+        productComboBox.setItems(products);
+    }
+
     // ========== Event Classes ==========
 
-    public static class SaveClickEvent extends ComponentEvent<EditOrderDialog> {
+    public static class SaveEvent extends NonComponentEvent<EditOrderDialog> {
         private final OrderDetail order;
 
-        public SaveClickEvent(EditOrderDialog source, OrderDetail order) {
-            super(source, false);
+        public SaveEvent(EditOrderDialog source, OrderDetail order) {
+            super(source);
             this.order = order;
         }
 
@@ -145,20 +165,31 @@ public class EditOrderDialog extends Dialog {
         }
     }
 
-    public static class CancelClickEvent extends ComponentEvent<EditOrderDialog> {
-        public CancelClickEvent(EditOrderDialog source) {
-            super(source, false);
+    public static class CancelEvent extends NonComponentEvent<EditOrderDialog> {
+        public CancelEvent(EditOrderDialog source) {
+            super(source);
         }
     }
 
-    // ========== Event Registration ==========
+    // ========== Event Registration (NonComponent interface) ==========
 
-    public Registration addSaveClickListener(ComponentEventListener<SaveClickEvent> listener) {
-        return addListener(SaveClickEvent.class, listener);
+    @Override
+    @SuppressWarnings("unchecked")
+    public <E extends NonComponentEvent<?>> Registration addListener(Class<E> eventType, Consumer<E> listener) {
+        return eventSupport.addListener((Class<NonComponentEvent<EditOrderDialog>>) eventType,
+                (Consumer<NonComponentEvent<EditOrderDialog>>) listener);
     }
 
-    public Registration addCancelClickListener(ComponentEventListener<CancelClickEvent> listener) {
-        return addListener(CancelClickEvent.class, listener);
+    public Registration addSaveListener(Consumer<SaveEvent> listener) {
+        return eventSupport.addListener(SaveEvent.class, listener);
+    }
+
+    public Registration addCancelListener(Consumer<CancelEvent> listener) {
+        return eventSupport.addListener(CancelEvent.class, listener);
+    }
+
+    protected void fireEvent(NonComponentEvent<EditOrderDialog> event) {
+        eventSupport.fireEvent(event);
     }
 
     // ========== UI Creation ==========
@@ -180,14 +211,14 @@ public class EditOrderDialog extends Dialog {
         header.setAlignItems(FlexComponent.Alignment.CENTER);
         header.addClassNames(LumoUtility.Gap.MEDIUM);
 
-        getHeader().add(header);
+        dialog.getHeader().add(header);
     }
 
     private VerticalLayout createContent() {
         var content = new VerticalLayout();
+        content.setSizeFull();
         content.setPadding(false);
         content.setSpacing(false);
-        content.addClassName(LumoUtility.BoxSizing.BORDER);
 
         // Order details form
         var form = new FormLayout();
@@ -569,10 +600,6 @@ public class EditOrderDialog extends Dialog {
         }
     }
 
-    public void setAvailableProducts(List<ProductSelect> products) {
-        productComboBox.setItems(products);
-    }
-
     private void enterEditMode(OrderItemDetail item) {
         selectedItem = item;
 
@@ -856,7 +883,7 @@ public class EditOrderDialog extends Dialog {
             Notification.show("Order created", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
-            fireEvent(new SaveClickEvent(this, savedOrder));
+            fireEvent(new SaveEvent(this, savedOrder));
             close();
         } catch (Exception e) {
             Notification.show("Failed: " + e.getMessage(), 3000, Notification.Position.BOTTOM_START)

@@ -145,7 +145,7 @@ public class StorefrontView extends VerticalLayout {
     private void openNewOrderDialog() {
         var dialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
         dialog.setAvailableProducts(productService.listAvailable());
-        dialog.addSaveClickListener(event -> refresh());
+        dialog.addSaveListener(_ -> refresh());
         dialog.open();
     }
 

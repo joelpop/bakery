@@ -454,47 +454,78 @@ When elements with padding cause horizontal overflow (e.g., 100% width + padding
 
 ### Dialogs
 
-Dialogs should use the **listener pattern** for dismiss actions rather than constructor callbacks. Each dialog should:
+Custom dialogs should use **delegation rather than inheritance**. Instead of extending `Dialog`, create a class with a private `Dialog` field and expose only the methods needed. This prevents exposing Dialog's 50+ public methods to callers.
 
-1. **Define event classes** for each dismiss action (e.g., `SaveClickEvent`, `CancelClickEvent`)
-2. **Provide registration methods** (e.g., `addSaveClickListener()`, `addCancelClickListener()`)
-3. **Include getters in save events** to return the data entered/created in the dialog
+#### NonComponent Event System
 
-Example pattern:
+For classes that don't extend `Component` but need event publishing (like delegating dialogs), use the event infrastructure in `org.vaadin.bakery.ui.event`:
+
+- `NonComponent` - Interface marking classes that can fire events (analogous to `Component`)
+- `NonComponentEvent<N extends NonComponent>` - Base event class with `getSource()` (analogous to `ComponentEvent`)
+- `NonComponentEventSupport<N>` - Helper class for listener management
+
+#### Example Pattern
+
 ```java
-public class EditOrderDialog extends Dialog {
+public class EditOrderDialog implements NonComponent {
+    private final Dialog dialog = new Dialog();
+    private final NonComponentEventSupport<EditOrderDialog> eventSupport = new NonComponentEventSupport<>();
 
-    // Event classes
-    public static class SaveClickEvent extends ComponentEvent<EditOrderDialog> {
+    // Event class extends NonComponentEvent<SourceType>
+    public static class SaveEvent extends NonComponentEvent<EditOrderDialog> {
         private final OrderDetail order;
-        private final boolean newCustomerCreated;
 
-        public SaveClickEvent(EditOrderDialog source, OrderDetail order, boolean newCustomerCreated) {
-            super(source, false);
+        public SaveEvent(EditOrderDialog source, OrderDetail order) {
+            super(source);
             this.order = order;
-            this.newCustomerCreated = newCustomerCreated;
         }
 
         public OrderDetail getOrder() { return order; }
-        public boolean isNewCustomerCreated() { return newCustomerCreated; }
     }
 
-    public static class CancelClickEvent extends ComponentEvent<EditOrderDialog> {
-        public CancelClickEvent(EditOrderDialog source) {
-            super(source, false);
+    public static class CancelEvent extends NonComponentEvent<EditOrderDialog> {
+        public CancelEvent(EditOrderDialog source) {
+            super(source);
         }
     }
 
-    // Registration methods
-    public Registration addSaveClickListener(ComponentEventListener<SaveClickEvent> listener) {
-        return addListener(SaveClickEvent.class, listener);
+    public EditOrderDialog(...) {
+        dialog.setCloseOnOutsideClick(false);
+        dialog.add(createContent());
+        dialog.getFooter().add(cancelButton, saveButton);
     }
 
-    public Registration addCancelClickListener(ComponentEventListener<CancelClickEvent> listener) {
-        return addListener(CancelClickEvent.class, listener);
+    // Implement NonComponent interface
+    @Override
+    public <E extends NonComponentEvent<?>> Registration addListener(Class<E> eventType, Consumer<E> listener) {
+        return eventSupport.addListener((Class) eventType, listener);
     }
+
+    // Convenience listener methods
+    public Registration addSaveListener(Consumer<SaveEvent> listener) {
+        return eventSupport.addListener(SaveEvent.class, listener);
+    }
+
+    public Registration addCancelListener(Consumer<CancelEvent> listener) {
+        return eventSupport.addListener(CancelEvent.class, listener);
+    }
+
+    // Fire events
+    protected void fireEvent(NonComponentEvent<EditOrderDialog> event) {
+        eventSupport.fireEvent(event);
+    }
+
+    // Only expose what's needed from Dialog
+    public void open() { dialog.open(); }
+    public void close() { dialog.close(); }
 }
 ```
+
+Benefits:
+- Prevents exposing Dialog's 50+ public methods to callers
+- Makes the public API explicit and intentional
+- Provides `getSource()` on events (like `ComponentEvent`)
+- Reusable event infrastructure across all delegating dialogs
 
 The code that instantiates the dialog is responsible for attaching listeners and handling the events appropriately.
 

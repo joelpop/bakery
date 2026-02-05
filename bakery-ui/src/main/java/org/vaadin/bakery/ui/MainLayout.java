@@ -2,6 +2,7 @@ package org.vaadin.bakery.ui;
 
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -42,7 +43,6 @@ import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.service.UserTimezoneService;
-import org.vaadin.bakery.ui.event.CurrentLocationChangedEvent;
 import org.vaadin.bakery.ui.view.storefront.EditOrderDialog;
 import org.vaadin.bakery.ui.view.storefront.StorefrontView;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
@@ -290,6 +290,22 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         return addListener(CurrentLocationChangedEvent.class, listener);
     }
 
+    /**
+     * Event fired when the user changes their current working location.
+     */
+    public static class CurrentLocationChangedEvent extends ComponentEvent<MainLayout> {
+        private final LocationSummary location;
+
+        public CurrentLocationChangedEvent(MainLayout source, LocationSummary location) {
+            super(source, false);
+            this.location = location;
+        }
+
+        public LocationSummary getLocation() {
+            return location;
+        }
+    }
+
     private Component createNewOrderButton() {
         // Create button with icon, text added via suffix component
         var icon = new Icon(VaadinIcon.PLUS);
@@ -496,7 +512,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private void openNewOrderDialog() {
         var dialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
         dialog.setAvailableProducts(productService.listAvailable());
-        dialog.addSaveClickListener(_ -> refreshCurrentViewIfNeeded());
+        dialog.addSaveListener(_ -> refreshCurrentViewIfNeeded());
         dialog.open();
     }
 
