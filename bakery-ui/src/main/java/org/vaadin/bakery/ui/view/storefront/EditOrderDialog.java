@@ -80,7 +80,9 @@ public class EditOrderDialog extends Dialog {
     private final ComboBox<ProductSelect> productComboBox = new ComboBox<>("Product");
     private final IntegerField quantityField = new IntegerField("Qty");
     private final TextField itemDetailsField = new TextField("Notes");
+    private final Button addUpdateButton = new Button();
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
+    private OrderItemDetail selectedItem = null;
 
     // Totals section
     private final Span subtotalValue = new Span("$0.00");
@@ -257,11 +259,11 @@ public class EditOrderDialog extends Dialog {
         quantityField.setStepButtonsVisible(true);
         quantityField.setWidth("120px");
 
-        var addButton = new Button(new Icon(VaadinIcon.PLUS));
-        addButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addButton.addClickListener(e -> addItem());
+        addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
+        addUpdateButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addUpdateButton.addClickListener(e -> addOrUpdateItem());
 
-        var addItemRow1 = new HorizontalLayout(productComboBox, quantityField, addButton);
+        var addItemRow1 = new HorizontalLayout(productComboBox, quantityField, addUpdateButton);
         addItemRow1.setWidthFull();
         addItemRow1.setAlignItems(FlexComponent.Alignment.END);
         addItemRow1.setFlexGrow(1, productComboBox);
@@ -335,6 +337,17 @@ public class EditOrderDialog extends Dialog {
 
     private void configureItemsGrid() {
         itemsGrid.setAllRowsVisible(true);
+
+        // Enable single selection for editing
+        itemsGrid.setSelectionMode(Grid.SelectionMode.SINGLE);
+        itemsGrid.addSelectionListener(e -> {
+            var selected = e.getFirstSelectedItem().orElse(null);
+            if (selected != null) {
+                enterEditMode(selected);
+            } else {
+                exitEditMode();
+            }
+        });
 
         // Product column with two-line display: name (size) and notes
         itemsGrid.addComponentColumn(this::createProductCell)
@@ -550,7 +563,81 @@ public class EditOrderDialog extends Dialog {
         productComboBox.setItems(products);
     }
 
-    private void addItem() {
+    private void enterEditMode(OrderItemDetail item) {
+        selectedItem = item;
+
+        // Find the matching product for the ComboBox
+        productComboBox.getListDataView().getItems()
+                .filter(p -> p.getId().equals(item.getProductId()))
+                .findFirst()
+                .ifPresent(productComboBox::setValue);
+        productComboBox.setEnabled(false); // Can't change product when editing
+
+        quantityField.setValue(item.getQuantity());
+        itemDetailsField.setValue(item.getDetails() != null ? item.getDetails() : "");
+
+        addUpdateButton.setIcon(new Icon(VaadinIcon.CHECK));
+    }
+
+    private void exitEditMode() {
+        selectedItem = null;
+
+        productComboBox.clear();
+        productComboBox.setEnabled(true);
+        quantityField.setValue(1);
+        itemDetailsField.clear();
+
+        addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
+    }
+
+    private void addOrUpdateItem() {
+        if (selectedItem != null) {
+            updateSelectedItem();
+        } else {
+            addNewItem();
+        }
+    }
+
+    private void updateSelectedItem() {
+        var quantity = quantityField.getValue();
+        if (quantity == null || quantity < 1) {
+            Notification.show("Enter a valid quantity", 2000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+            return;
+        }
+
+        var details = itemDetailsField.getValue();
+        var detailsNormalized = details == null ? "" : details.trim();
+
+        // Check if another item has same product and notes (for combining)
+        var matchingItem = orderItems.stream()
+                .filter(i -> i != selectedItem) // Exclude the selected item
+                .filter(i -> i.getProductId().equals(selectedItem.getProductId()))
+                .filter(i -> {
+                    var existingDetails = i.getDetails() == null ? "" : i.getDetails().trim();
+                    return existingDetails.equals(detailsNormalized);
+                })
+                .findFirst();
+
+        if (matchingItem.isPresent()) {
+            // Combine: add quantity to matching item, remove selected item
+            var target = matchingItem.get();
+            target.setQuantity(target.getQuantity() + quantity);
+            target.calculateLineTotal();
+            orderItems.remove(selectedItem);
+        } else {
+            // Update selected item
+            selectedItem.setQuantity(quantity);
+            selectedItem.setDetails(details);
+            selectedItem.calculateLineTotal();
+        }
+
+        refreshItemsGrid();
+        itemsGrid.deselectAll();
+        // exitEditMode will be called by selection listener
+    }
+
+    private void addNewItem() {
         var product = productComboBox.getValue();
         var quantity = quantityField.getValue();
 
