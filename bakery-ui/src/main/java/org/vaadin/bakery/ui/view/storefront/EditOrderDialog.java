@@ -64,10 +64,10 @@ public class EditOrderDialog extends Dialog {
     private boolean isExistingCustomer = false;
     private String customPhoneNumber; // Stores formatted phone when entering new customer
 
-    // Order fields - location first (for phone formatting defaults), but phone gets focus
+    // Order fields
     private final ComboBox<CustomerSummary> customerPhoneComboBox = new ComboBox<>("Phone Number");
     private final TextField customerNameField = new TextField("Customer Name");
-    private final ComboBox<LocationSummary> locationComboBox = new ComboBox<>("Pickup Location");
+    private final ComboBox<LocationSummary> locationComboBox = new ComboBox<>(); // In dialog header
     private final DatePicker dueDatePicker = new DatePicker("Pickup Date");
     private final TimePicker dueTimePicker = new TimePicker("Pickup Time");
     private final TextArea additionalDetailsField = new TextArea("Additional Details");
@@ -90,11 +90,11 @@ public class EditOrderDialog extends Dialog {
         this.customerService = customerService;
         this.userLocationService = userLocationService;
 
-        setHeaderTitle("New Order");
         setCloseOnOutsideClick(false);
         setWidth("700px");
         setMaxWidth("95vw");
 
+        createHeader();
         add(createContent());
 
         // Footer buttons
@@ -154,6 +154,26 @@ public class EditOrderDialog extends Dialog {
 
     // ========== UI Creation ==========
 
+    private void createHeader() {
+        // Title
+        var title = new Span("New Order");
+        title.addClassNames(LumoUtility.FontSize.XLARGE, LumoUtility.FontWeight.SEMIBOLD);
+
+        // Location selector styled for header
+        locationComboBox.setPlaceholder("Pickup location...");
+        locationComboBox.setItemLabelGenerator(LocationSummary::getName);
+        locationComboBox.setWidth("180px");
+        locationComboBox.addClassNames(LumoUtility.Margin.Left.AUTO);
+
+        // Header layout
+        var header = new HorizontalLayout(title, locationComboBox);
+        header.setWidthFull();
+        header.setAlignItems(FlexComponent.Alignment.CENTER);
+        header.addClassNames(LumoUtility.Gap.MEDIUM);
+
+        getHeader().add(header);
+    }
+
     private VerticalLayout createContent() {
         var content = new VerticalLayout();
         content.setPadding(false);
@@ -184,8 +204,6 @@ public class EditOrderDialog extends Dialog {
         customerNameField.setRequired(true);
         customerNameField.setReadOnly(true);
 
-        locationComboBox.setRequired(true);
-        locationComboBox.setItemLabelGenerator(LocationSummary::getName);
         dueDatePicker.setRequired(true);
         dueDatePicker.setValue(LocalDate.now());
         dueDatePicker.setMin(LocalDate.now());
@@ -193,7 +211,6 @@ public class EditOrderDialog extends Dialog {
         dueTimePicker.setValue(LocalTime.of(12, 0));
         dueTimePicker.setStep(Duration.ofMinutes(15));
 
-        form.add(locationComboBox, 2);
         form.add(customerPhoneComboBox, customerNameField);
         form.add(dueDatePicker, dueTimePicker);
 
@@ -305,19 +322,20 @@ public class EditOrderDialog extends Dialog {
     private void configureItemsGrid() {
         itemsGrid.setAllRowsVisible(true);
 
-        itemsGrid.addColumn(OrderItemDetail::getProductName)
+        // Product column with two-line display: name (size) and notes
+        itemsGrid.addComponentColumn(this::createProductCell)
                 .setHeader("Product")
                 .setFlexGrow(2);
 
         itemsGrid.addColumn(OrderItemDetail::getQuantity)
                 .setHeader("Qty")
                 .setFlexGrow(0)
-                .setWidth("50px");
+                .setWidth("60px");
 
         itemsGrid.addColumn(item -> currencyFormat.format(item.getLineTotal()))
                 .setHeader("Total")
                 .setFlexGrow(0)
-                .setWidth("80px");
+                .setWidth("90px");
 
         itemsGrid.addComponentColumn(item -> {
             var removeButton = new Button(new Icon(VaadinIcon.TRASH));
@@ -325,6 +343,33 @@ public class EditOrderDialog extends Dialog {
             removeButton.addClickListener(e -> removeItem(item));
             return removeButton;
         }).setFlexGrow(0).setWidth("50px");
+    }
+
+    private Div createProductCell(OrderItemDetail item) {
+        var cell = new Div();
+        cell.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN);
+
+        // First line: Product name (size)
+        var productLine = new Span();
+        var nameText = item.getProductName();
+        if (item.getProductSize() != null && !item.getProductSize().isBlank()) {
+            nameText += " (" + item.getProductSize() + ")";
+        }
+        productLine.setText(nameText);
+        cell.add(productLine);
+
+        // Second line: Notes (if any)
+        var details = item.getDetails();
+        if (details != null && !details.isBlank()) {
+            var notesLine = new Span(details);
+            notesLine.addClassNames(
+                    LumoUtility.FontSize.SMALL,
+                    LumoUtility.TextColor.SECONDARY
+            );
+            cell.add(notesLine);
+        }
+
+        return cell;
     }
 
     // ========== Customer Phone Handling ==========
@@ -584,7 +629,8 @@ public class EditOrderDialog extends Dialog {
 
         if (locationComboBox.getValue() == null) {
             locationComboBox.setInvalid(true);
-            locationComboBox.setErrorMessage(requiredMessage);
+            Notification.show("Select a pickup location", 2000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
             valid = false;
         } else {
             locationComboBox.setInvalid(false);
