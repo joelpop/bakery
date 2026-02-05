@@ -17,6 +17,7 @@ import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CurrentUserService;
+import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.UserService;
 import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.UserDetail;
@@ -38,14 +39,16 @@ public class UsersView extends VerticalLayout {
 
     private final UserService userService;
     private final CurrentUserService currentUserService;
+    private final LocationService locationService;
     private final Grid<UserSummary> grid;
     private final TextField searchField;
 
     private List<UserSummary> allUsers;
 
-    public UsersView(UserService userService, CurrentUserService currentUserService) {
+    public UsersView(UserService userService, CurrentUserService currentUserService, LocationService locationService) {
         this.userService = userService;
         this.currentUserService = currentUserService;
+        this.locationService = locationService;
 
         addClassName("users-view");
         setSizeFull();
@@ -131,7 +134,7 @@ public class UsersView extends VerticalLayout {
 
     private void openDialog(UserDetail user) {
         var currentUserEmail = currentUserService.getCurrentUserEmail().orElse(null);
-        var dialog = new UserDialog(user, userService, currentUserEmail);
+        var dialog = new UserDialog(user, userService, locationService, currentUserEmail);
         dialog.addSaveListener(e -> refreshGrid());
         dialog.addDeleteListener(e -> refreshGrid());
         dialog.open();

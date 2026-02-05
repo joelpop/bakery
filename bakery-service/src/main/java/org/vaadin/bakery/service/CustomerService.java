@@ -12,6 +12,15 @@ public interface CustomerService {
 
     List<CustomerSummary> search(String query);
 
+    /**
+     * Search customers by partial phone number match.
+     * Non-digit characters are ignored in the comparison.
+     *
+     * @param phoneDigits partial phone number (digits only)
+     * @return matching customers
+     */
+    List<CustomerSummary> searchByPhone(String phoneDigits);
+
     Optional<CustomerSummary> getByPhoneNumber(String phoneNumber);
 
     CustomerSummary create(CustomerSummary customer);

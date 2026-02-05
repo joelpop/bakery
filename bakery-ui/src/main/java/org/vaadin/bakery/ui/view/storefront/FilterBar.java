@@ -8,10 +8,12 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -20,12 +22,25 @@ import java.util.Set;
  */
 public class FilterBar extends Div {
 
+    /**
+     * Sentinel ID for the "Current Location" option.
+     */
+    public static final Long CURRENT_LOCATION_ID = -1L;
+
     private final DatePicker fromDate;
     private final DatePicker toDate;
     private final MultiSelectComboBox<OrderStatus> statusFilter;
     private final ComboBox<LocationSummary> locationFilter;
+    private final UserLocationService userLocationService;
+    private final LocationSummary currentLocationSentinel;
 
-    public FilterBar(List<LocationSummary> locations) {
+    public FilterBar(List<LocationSummary> locations, UserLocationService userLocationService) {
+        this.userLocationService = userLocationService;
+
+        // Create sentinel for "Current Location" option
+        currentLocationSentinel = new LocationSummary();
+        currentLocationSentinel.setId(CURRENT_LOCATION_ID);
+        currentLocationSentinel.setName("Current Location");
         addClassName("filter-bar");
         addClassNames(
                 LumoUtility.Display.FLEX,
@@ -57,9 +72,12 @@ public class FilterBar extends Div {
         statusFilter.setPlaceholder("All statuses");
         statusFilter.addValueChangeListener(e -> fireFilterChanged());
 
-        // Location filter
+        // Location filter with "Current Location" sentinel at the top
         locationFilter = new ComboBox<>("Location");
-        locationFilter.setItems(locations);
+        var locationItems = new ArrayList<LocationSummary>();
+        locationItems.add(currentLocationSentinel);
+        locationItems.addAll(locations);
+        locationFilter.setItems(locationItems);
         locationFilter.setItemLabelGenerator(LocationSummary::getName);
         locationFilter.setWidth("180px");
         locationFilter.setPlaceholder("All locations");
@@ -93,8 +111,24 @@ public class FilterBar extends Div {
         return statusFilter.getValue();
     }
 
+    /**
+     * Returns the selected location. If "Current Location" is selected,
+     * returns the actual current location from UserLocationService.
+     */
     public LocationSummary getSelectedLocation() {
-        return locationFilter.getValue();
+        var selected = locationFilter.getValue();
+        if (selected != null && CURRENT_LOCATION_ID.equals(selected.getId())) {
+            return userLocationService.getCurrentLocation();
+        }
+        return selected;
+    }
+
+    /**
+     * Checks if "Current Location" is currently selected in the filter.
+     */
+    public boolean isCurrentLocationSelected() {
+        var selected = locationFilter.getValue();
+        return selected != null && CURRENT_LOCATION_ID.equals(selected.getId());
     }
 
     // Event for filter changes

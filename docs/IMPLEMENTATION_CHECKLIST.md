@@ -47,15 +47,25 @@ The following decisions were made during documentation review to resolve conflic
   - [x] READY_FOR_PICK_UP - Available for pickup
   - [x] PICKED_UP - Order complete
 
-### 1.2 Abstract Base Entity (bakery-jpamodel)
+- [x] **OrderItemStatusCode** - Order item lifecycle states (first 6 of order statuses)
+  - [x] NEW, VERIFIED, NOT_OK, CANCELLED, IN_PROGRESS, BAKED
+
+### 1.2 Abstract Base Entities (bakery-jpamodel)
 
 - [x] **AbstractEntity** - Base class for all entities
   - [x] id (Long) - Primary key, auto-generated
   - [x] version (Integer) - Optimistic locking
 
+- [x] **AbstractAuditableEntity** - Base class for auditable entities (extends AbstractEntity)
+  - [x] createdAt (Instant) - UTC timestamp, set on persist
+  - [x] updatedAt (Instant) - UTC timestamp, set on update
+  - [x] createdBy (UserEntity) - User who created
+  - [x] updatedBy (UserEntity) - User who last updated
+  - [x] @PrePersist and @PreUpdate lifecycle callbacks
+
 ### 1.3 JPA Entities (bakery-jpamodel)
 
-- [x] **UserEntity** - Staff members
+- [x] **UserEntity** - Staff members (extends AbstractAuditableEntity)
   - [x] email (String, unique) - Login identifier
   - [x] firstName (String)
   - [x] lastName (String)
@@ -64,14 +74,14 @@ The following decisions were made during documentation review to resolve conflic
   - [x] photo (byte[]) - Profile photo
   - [x] photoContentType (String)
 
-- [x] **CustomerEntity** - Customers who place orders
+- [x] **CustomerEntity** - Customers who place orders (extends AbstractAuditableEntity)
   - [x] name (String)
   - [x] phoneNumber (String)
   - [x] email (String, optional)
   - [x] active (boolean, default: true) - For soft delete
   - [x] Relationship: orders (One-to-Many → OrderEntity)
 
-- [x] **ProductEntity** - Bakery products
+- [x] **ProductEntity** - Bakery products (extends AbstractAuditableEntity)
   - [x] name (String, unique)
   - [x] description (String, optional)
   - [x] size (String) - e.g., "12 ppl", "individual"
@@ -80,14 +90,16 @@ The following decisions were made during documentation review to resolve conflic
   - [x] photo (byte[])
   - [x] photoContentType (String)
 
-- [x] **LocationEntity** - Pickup locations
+- [x] **LocationEntity** - Pickup locations (extends AbstractAuditableEntity)
   - [x] name (String, unique)
-  - [x] code (String, unique) - e.g., "STORE", "BAKERY"
   - [x] address (String, optional)
+  - [x] timezone (String) - IANA timezone ID (e.g., "America/New_York")
+  - [ ] defaultCountryCode (String) - Default country code for phone formatting (e.g., "+1")
+  - [ ] defaultAreaCode (String) - Default area code for 7-digit phone numbers (e.g., "212")
   - [x] active (boolean)
   - [x] sortOrder (Integer)
 
-- [x] **OrderEntity** - Customer orders
+- [x] **OrderEntity** - Customer orders (extends AbstractAuditableEntity)
   - [x] status (OrderStatusCode)
   - [x] dueDate (LocalDate)
   - [x] dueTime (LocalTime)
@@ -95,22 +107,31 @@ The following decisions were made during documentation review to resolve conflic
   - [x] total (BigDecimal)
   - [x] discount (BigDecimal, optional)
   - [x] paid (Boolean)
-  - [x] createdAt (LocalDateTime)
-  - [x] updatedAt (LocalDateTime, optional)
   - [x] Relationship: customer (Many-to-One → CustomerEntity)
   - [x] Relationship: location (Many-to-One → LocationEntity)
   - [x] Relationship: items (One-to-Many → OrderItemEntity, cascade ALL)
-  - [x] Relationship: createdBy (Many-to-One → UserEntity)
-  - [x] Relationship: updatedBy (Many-to-One → UserEntity)
-  - [x] Lifecycle callbacks: PrePersist, PreUpdate
+  - [x] Inherits from AbstractAuditableEntity: createdAt, updatedAt (Instant), createdBy, updatedBy
 
 - [x] **OrderItemEntity** - Order line items
+  - [x] status (OrderItemStatusCode) - Item-level status tracking
   - [x] quantity (Integer)
   - [x] details (String, optional) - Per-item customizations
   - [x] unitPrice (BigDecimal) - Price snapshot at order time
   - [x] lineTotal (BigDecimal) - Calculated
   - [x] Relationship: order (Many-to-One → OrderEntity)
   - [x] Relationship: product (Many-to-One → ProductEntity)
+
+- [x] **OrderStatusHistoryEntity** - Audit trail for order status changes
+  - [x] order (Many-to-One → OrderEntity)
+  - [x] status (OrderStatusCode)
+  - [x] changedBy (Many-to-One → UserEntity)
+  - [x] changedAt (Instant) - UTC timestamp
+
+- [x] **OrderItemStatusHistoryEntity** - Audit trail for order item status changes
+  - [x] orderItem (Many-to-One → OrderItemEntity)
+  - [x] status (OrderItemStatusCode)
+  - [x] changedBy (Many-to-One → UserEntity)
+  - [x] changedAt (Instant) - UTC timestamp
 
 - [ ] **NotificationEntity** - User-to-user notifications *(Deferred)*
   - [ ] message (String)
@@ -167,7 +188,6 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Projection queries for ProductSummaryProjection, ProductSelectProjection
 
 - [x] **LocationRepository**
-  - [x] findByCode / existsByCode / existsByCodeAndIdNot
   - [x] existsByName / existsByNameAndIdNot
   - [x] findByActiveTrueOrderBySortOrderAsc
   - [x] countByActiveTrue
@@ -247,7 +267,7 @@ The following decisions were made during documentation review to resolve conflic
 
 - [x] **LocationService**
   - [x] list() / listActive()
-  - [x] get(id) / getByCode(code)
+  - [x] get(id)
   - [x] create(location) / update(id, location) / delete(id)
 
 - [x] **OrderService**
@@ -427,16 +447,16 @@ The following decisions were made during documentation review to resolve conflic
 ### 7.3 Locations View (bakery-ui)
 
 - [x] **LocationsView** - Location management (Admin only)
-  - [x] Data grid with Name, Code, Address, Active, Sort Order
+  - [x] Data grid with Name, Address, Timezone, Active, Sort Order
   - [x] "+ New location" button
   - [x] @RolesAllowed("ADMIN")
 
 - [x] **LocationDialog** - Create/Edit location dialog
-  - [x] Name, Code, Address fields
+  - [x] Name, Address, Timezone fields
   - [x] Active checkbox
   - [x] Sort order number field
   - [x] Save, Cancel, Delete buttons
-  - [x] Validation: unique name/code, at least one active location
+  - [x] Validation: unique name, at least one active location
   - [ ] Deletion protection (cannot delete with orders) *(service layer handles this)*
 
 ---
@@ -473,19 +493,29 @@ The following decisions were made during documentation review to resolve conflic
 ### 8.3 Edit Order Dialog
 
 - [x] **EditOrderDialog** - Single-page order creation/edit dialog
-  - [x] Order details section
-    - [x] Customer name field
-    - [x] Phone number field
-    - [x] Due date picker
-    - [x] Due time picker (15-minute intervals)
-    - [x] Location dropdown
+  - [ ] Customer section (phone-first for quick lookup)
+    - [ ] Phone number field (first - triggers autofill popup)
+      - [ ] Autofill popup showing partial matches (ignoring punctuation)
+      - [ ] Popup displays phone number and customer name
+      - [ ] Selection populates both phone and name fields
+      - [ ] Phone formatting on blur (uses location's default country/area codes)
+    - [ ] Customer name field (second - conditionally editable)
+      - [ ] Read-only when existing customer selected
+      - [ ] Read-write when new phone number entered
+      - [ ] Skipped in tab order when existing customer selected
+  - [x] Pickup section
+    - [x] Location dropdown (auto-selects if only one active)
+    - [x] Due date picker (defaults to today, min: today)
+    - [ ] Due time picker (hourly slots: 08:00, 09:00, etc.)
     - [x] Additional details text area
   - [x] Order items section
-    - [x] Product combo box
-    - [x] Quantity field with stepper
+    - [x] Product combo box with autocomplete
+    - [x] Quantity field with stepper (min: 1)
     - [x] Item notes field
     - [x] Items grid with remove button
-    - [x] Total calculation
+  - [ ] Totals section
+    - [ ] Discount field (currency input)
+    - [x] Total calculation (items minus discount)
   - [x] Cancel and Save buttons
   - [x] Listener pattern for dismiss events (`SaveClickEvent`, `CancelClickEvent`)
   - [x] `SaveClickEvent` returns created order and new customer flag
@@ -681,40 +711,68 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 13: Data Seeding
+## Phase 13: Data Seeding ✅
 
 ### 13.1 Default Locations
 
-- [ ] Store (code: "STORE", active, sortOrder: 1)
-- [ ] Bakery (code: "BAKERY", active, sortOrder: 2)
+- [x] Downtown Store (active, sortOrder: 1, timezone: America/New_York)
+- [x] Central Bakery (active, sortOrder: 2, timezone: America/New_York)
 
-### 13.2 Default Admin User
+### 13.2 Default Users
 
-- [ ] Email: admin@cafe-sunshine.com
-- [ ] Password: (configured via environment variable or prompt)
-- [ ] Role: ADMIN
+- [x] Admin: admin@cafe-sunshine.com (password: admin123, role: ADMIN)
+- [x] Baker: baker@cafe-sunshine.com (password: baker123, role: BAKER)
+- [x] Barista: barista@cafe-sunshine.com (password: barista123, role: BARISTA)
+- [x] Passwords stored as BCrypt hashes
 
-### 13.3 Demo Products
+### 13.3 Demo Products (18 items)
 
-- [ ] Princess Cake (12 ppl, $39.90)
-- [ ] Strawberry Cake (12 ppl, $29.90)
-- [ ] Salami Pastry (individual, $7.90)
-- [ ] Blueberry Cheese Cake
-- [ ] Vanilla Bun
-- [ ] Bacon Tart
-- [ ] Bacon Cheese Cake
-- [ ] Bacon Cracker
+**Pastries:**
+- [x] Croissant (Individual, $3.50)
+- [x] Chocolate Croissant (Individual, $4.00)
+- [x] Almond Croissant (Individual, $4.50)
+- [x] Cinnamon Roll (Individual, $4.50)
+- [x] Blueberry Scone (Individual, $3.25)
+- [x] Chocolate Muffin (Individual, $3.00)
+- [x] Banana Nut Muffin (Individual, $3.25)
+- [x] Danish Pastry (Individual, $3.75)
 
-### 13.4 Demo Customers
+**Breads:**
+- [x] Sourdough Loaf (Large, $7.00)
+- [x] Baguette (Regular, $4.00)
+- [x] Ciabatta (Regular, $4.50)
+- [x] Whole Wheat Loaf (Large, $6.00)
+- [x] Focaccia (Half Sheet, $8.00)
 
-- [ ] Sample customers with varied names and phone numbers
+**Cakes and Tarts:**
+- [x] Birthday Cake (12 people, $45.00)
+- [x] Chocolate Cake (12 people, $48.00)
+- [x] Fruit Tart (8 people, $28.00)
+- [x] Cheesecake (10 people, $35.00)
 
-### 13.5 Demo Orders
+**Specialty:**
+- [x] Quiche Lorraine (6 people, $22.00)
 
-- [ ] Orders across various statuses (NEW, VERIFIED, IN_PROGRESS, etc.)
-- [ ] Orders due today, tomorrow, this week, and upcoming
-- [ ] Mix of paid and unpaid orders
-- [ ] Some orders with multiple items
+### 13.4 Demo Customers (9 customers)
+
+- [x] Alice Johnson, Bob Smith, Carol White, David Brown
+- [x] Emma Davis, Frank Miller, Grace Lee, Henry Wilson, Iris Martinez
+- [x] Each with phone number and email
+
+### 13.5 Demo Orders (12 orders)
+
+- [x] Orders across all statuses: NEW, VERIFIED, IN_PROGRESS, BAKED, READY_FOR_PICK_UP, PICKED_UP, CANCELLED
+- [x] Orders due today, tomorrow, and in the past
+- [x] Mix of paid and unpaid orders
+- [x] Orders with single and multiple items
+- [x] Orders split across both locations
+- [x] No same-day multi-location orders per customer
+
+### 13.6 Implementation
+
+- [x] SQL-based seed data in `bakery-app/src/main/resources/data.sql`
+- [x] Auto-loaded by Spring Boot with `spring.jpa.defer-datasource-initialization=true`
+- [x] Audit fields (createdAt) populated via CURRENT_TIMESTAMP
 
 ---
 
@@ -774,7 +832,7 @@ The following decisions were made during documentation review to resolve conflic
 
 ### Images
 
-Screenshots from `docs/originals/images/` are available for:
+Screenshots from `docs/legacy/images/` are available for:
 - Dashboard view
 - Storefront view (order list, filters, new order dialog)
 - User menu (notifications)

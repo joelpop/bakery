@@ -13,6 +13,10 @@ public interface LocationSummaryProjection {
 
     String getTimezone();
 
+    String getDefaultCountryCode();
+
+    String getDefaultAreaCode();
+
     boolean isActive();
 
     Integer getSortOrder();

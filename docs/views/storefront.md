@@ -7,9 +7,9 @@ The Storefront is the primary view for managing customer orders. It provides a c
 **Access**: All authenticated users (Admin, Baker, Barista)
 
 ## Screenshots
-- Desktop: `originals/images/storefront view/Desktop, order list.png`
-- Desktop with filters: `originals/images/storefront view/Desktop, order list, filters active.png`
-- Phone: `originals/images/storefront view/Phone, order list.png`
+- Desktop: `legacy/images/storefront view/Desktop, order list.png`
+- Desktop with filters: `legacy/images/storefront view/Desktop, order list, filters active.png`
+- Phone: `legacy/images/storefront view/Phone, order list.png`
 
 ---
 
@@ -75,85 +75,95 @@ A prominent "+ New order" button is accessible from all states of the view.
 
 ## New Order Dialog
 
-A two-step wizard for creating new orders, optimized for speed and error prevention.
+A single-page dialog for creating new orders, optimized for speed.
 
 ### Screenshots
-- Empty form: `originals/images/storefront view/new order dialog/Desktop, new order.png`
-- Filled form: `originals/images/storefront view/new order dialog/Desktop, new order, filled.png`
-- Review step: `originals/images/storefront view/new order dialog/Desktop, new order, review.png`
+- Empty form: `legacy/images/storefront view/new order dialog/Desktop, new order.png`
+- Filled form: `legacy/images/storefront view/new order dialog/Desktop, new order, filled.png`
 
-### Sell Flow Design
-
-The order entry flow is deliberately sequenced:
-
-1. **Due date first** - Allows immediate feasibility verification
-   - "Due tomorrow and it's evening? Maybe no can do."
-   - "Special order for day after tomorrow? Might need to double-check with bakery."
-
-2. **Items and details** - Product selection with customizations
-
-3. **Customer last** - Autofill speeds up entry and reduces errors
-
-### Step 1: Order Details
-
-#### Due Section (Required)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| Date | Date Picker | Pickup date (first field for feasibility check) |
-| Time | Time Picker (Dropdown) | Pickup time (hourly slots: 08:00 a.m., 09:00 a.m., etc.) |
-| Location | Dropdown | "Café" or "Bakery" |
-
-#### Products Section
-
-| Field | Type | Description |
-|-------|------|-------------|
-| Product | Combo Box (autocomplete) | Select from product catalog |
-| Quantity | Number Stepper (+/-) | Number of items (default: 1) |
-| Details | Text Input | Per-item notes (e.g., "White topping instead of pink") |
-| Price | Display | Calculated price for line item |
-
-- Multiple products can be added to a single order
-- Each product line shows individual price
-- Product autocomplete speeds up entry
-- **Discount** field available for applying order discounts
-- **Total** is calculated and displayed at bottom
-
-**Note**: No separate product catalog is visible during order entry; staff and customers refer to an offline catalog.
+### Dialog Layout
 
 #### Customer Section (Required)
 
+The customer section is positioned first to create a personal, welcoming interaction. Phone number entry enables quick lookup of returning customers.
+
 | Field | Type | Description |
 |-------|------|-------------|
-| Customer | Combo Box (autocomplete) | Create new or select existing customer |
-| Phone number | Phone Input | Customer contact (triggers autofill) |
-| Additional details | Text Area | Special instructions (e.g., "Husband, Mark Torres, will pickup the order") |
+| Phone Number | Phone Input | Customer contact number (required); triggers autofill popup |
+| Customer Name | Text Input | Customer's full name; read-only for existing customers |
 
-**Customer Autofill**: Entering a phone number or name autocompletes existing customer information, speeding up the process and avoiding mistakes.
+**Phone Number Autofill Popup**
 
-#### Actions
+As the order taker (OT) types in the phone number field, a popup displays matching customers:
+- Matches are found by partial phone number comparison (ignoring all punctuation)
+- Each popup entry shows the phone number and customer name
+- Selecting an entry populates both the phone number and customer name fields
+- The popup updates dynamically as digits are typed
+
+**Phone Number Formatting**
+
+When leaving the phone number field with a new (non-matching) number:
+- The number is formatted according to the country code provided
+- If no country code is provided, the location's default country code is used
+- If only 7 digits are entered, the location's default area code is prepended
+
+**Customer Name Field Behavior**
+
+| Scenario | Name Field State |
+|----------|------------------|
+| Initial state (empty phone) | Read-only |
+| Existing customer selected from popup | Read-only (populated with customer name) |
+| New phone number entered | Read-write (OT enters new customer name) |
+| Phone changed from new to existing customer | Returns to read-only (updates to selected customer name) |
+
+**Field Navigation**
+
+- When an existing customer is selected, the customer name field is skipped (focus moves to next section)
+- When a new phone number is entered, focus moves to the customer name field for entry
+
+#### Pickup Section (Required)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Location | Dropdown | Pickup location (auto-selected if only one active) |
+| Due Date | Date Picker | Pickup date (defaults to today, min: today) |
+| Due Time | Time Picker | Pickup time in hourly slots (08:00, 09:00, etc.) |
+| Additional Details | Text Area | Special instructions (optional) |
+
+#### Products Section (Required)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Product | Combo Box | Select from available products (with autocomplete) |
+| Quantity | Number Stepper (+/-) | Number of items (default: 1, min: 1) |
+| Notes | Text Input | Per-item instructions (optional) |
+| Add Button | Icon Button | Adds item to order |
+
+- Items appear in a grid showing Product, Qty, Total, and Remove button
+- Multiple products can be added to a single order
+- At least one item required to save
+
+**Note**: No separate product catalog is visible during order entry; staff and customers refer to an offline catalog.
+
+#### Totals Section
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Discount | Currency Input | Order discount amount (optional) |
+| Total | Display | Calculated total (sum of items minus discount) |
+
+### Actions
+
 - **Cancel** - Close dialog without saving
-- **Review order** - Proceed to review step (disabled until required fields complete)
+- **Save** - Validate and create order with "New" status
 
-### Step 2: Review Order
+### Validation
 
-A read-only summary shown to verify with the customer before placement:
-
-| Section | Content |
-|---------|---------|
-| Header | "New" status badge |
-| Due | Date, day of week, time, location |
-| Customer | Name, phone number |
-| Additional details | Special instructions |
-| Products | List with quantities, sizes, customizations, and prices |
-| Discount | Applied discount (if any) |
-| Total | Order total |
-
-This summary can be shown to the customer (in person or read over the phone) to confirm accuracy.
-
-#### Actions
-- **Back** - Return to edit order details
-- **Place order** - Submit the order (creates with "New" status)
+- Customer name required
+- Pickup location required
+- Due date required (cannot be in past)
+- Due time required
+- At least one item required
 
 ---
 

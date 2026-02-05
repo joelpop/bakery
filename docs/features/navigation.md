@@ -3,9 +3,9 @@
 The application features responsive navigation that adapts between desktop and mobile layouts.
 
 ## Screenshots
-- Desktop: `originals/images/storefront view/Desktop, order list.png` (top navigation visible)
-- Phone menu: `originals/images/storefront view/Phone, menu overflow.png`
-- Phone admin menu: `originals/images/admin view/Phone, selected menu item from overflow, menu open.png`
+- Desktop: `legacy/images/storefront view/Desktop, order list.png` (top navigation visible)
+- Phone menu: `legacy/images/storefront view/Phone, menu overflow.png`
+- Phone admin menu: `legacy/images/admin view/Phone, selected menu item from overflow, menu open.png`
 
 ---
 

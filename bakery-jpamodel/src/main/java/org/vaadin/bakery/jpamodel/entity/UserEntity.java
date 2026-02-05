@@ -4,7 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -48,6 +51,10 @@ public class UserEntity extends AbstractAuditableEntity implements UserSummaryPr
 
     @Column(name = "photo_content_type")
     private String photoContentType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_location_id")
+    private LocationEntity primaryLocation;
 
     public String getEmail() {
         return email;
@@ -103,5 +110,17 @@ public class UserEntity extends AbstractAuditableEntity implements UserSummaryPr
 
     public void setPhotoContentType(String photoContentType) {
         this.photoContentType = photoContentType;
+    }
+
+    public LocationEntity getPrimaryLocation() {
+        return primaryLocation;
+    }
+
+    public void setPrimaryLocation(LocationEntity primaryLocation) {
+        this.primaryLocation = primaryLocation;
+    }
+
+    public Long getPrimaryLocationId() {
+        return primaryLocation != null ? primaryLocation.getId() : null;
     }
 }

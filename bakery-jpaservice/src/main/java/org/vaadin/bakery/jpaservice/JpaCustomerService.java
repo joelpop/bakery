@@ -55,6 +55,29 @@ public class JpaCustomerService implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<CustomerSummary> searchByPhone(String phoneDigits) {
+        if (phoneDigits == null || phoneDigits.isBlank()) {
+            return List.of();
+        }
+        // Extract digits only from search term
+        var searchDigits = phoneDigits.replaceAll("\\D", "");
+        if (searchDigits.isEmpty()) {
+            return List.of();
+        }
+        // Find customers whose phone number digits contain the search digits
+        return customerRepository.findByActiveTrueOrderByPhoneNumber().stream()
+                .filter(customer -> {
+                    var customerDigits = customer.getPhoneNumber() != null
+                            ? customer.getPhoneNumber().replaceAll("\\D", "")
+                            : "";
+                    return customerDigits.contains(searchDigits);
+                })
+                .map(customerMapper::toSummary)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<CustomerSummary> getByPhoneNumber(String phoneNumber) {
         return customerRepository.findByPhoneNumberAndActiveTrue(phoneNumber)
                 .map(customerMapper::toSummary);

@@ -32,6 +32,8 @@ public class LocationDialog extends Dialog {
 
     private final TextField nameField = new TextField("Name");
     private final TextArea addressField = new TextArea("Address");
+    private final TextField defaultCountryCodeField = new TextField("Default Country Code");
+    private final TextField defaultAreaCodeField = new TextField("Default Area Code");
     private final Checkbox activeCheckbox = new Checkbox("Active");
     private final IntegerField sortOrderField = new IntegerField("Sort Order");
 
@@ -65,6 +67,12 @@ public class LocationDialog extends Dialog {
         addressField.setWidthFull();
         addressField.setMinHeight("100px");
 
+        defaultCountryCodeField.setPlaceholder("e.g., 1");
+        defaultCountryCodeField.setHelperText("For phone number formatting");
+
+        defaultAreaCodeField.setPlaceholder("e.g., 212");
+        defaultAreaCodeField.setHelperText("For 7-digit phone numbers");
+
         sortOrderField.setMin(0);
         sortOrderField.setStepButtonsVisible(true);
         sortOrderField.setValue(0);
@@ -86,6 +94,12 @@ public class LocationDialog extends Dialog {
         binder.forField(addressField)
                 .bind(LocationSummary::getAddress, LocationSummary::setAddress);
 
+        binder.forField(defaultCountryCodeField)
+                .bind(LocationSummary::getDefaultCountryCode, LocationSummary::setDefaultCountryCode);
+
+        binder.forField(defaultAreaCodeField)
+                .bind(LocationSummary::getDefaultAreaCode, LocationSummary::setDefaultAreaCode);
+
         binder.forField(activeCheckbox)
                 .bind(LocationSummary::isActive, LocationSummary::setActive);
 
@@ -103,6 +117,8 @@ public class LocationDialog extends Dialog {
         form.add(nameField, 2);
         form.add(sortOrderField, 1);
         form.add(addressField, 2);
+        form.add(defaultCountryCodeField, 1);
+        form.add(defaultAreaCodeField, 1);
         form.add(activeCheckbox, 2);
 
         add(form);

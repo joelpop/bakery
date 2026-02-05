@@ -7,7 +7,7 @@ The Dashboard provides a comprehensive overview of business performance with KPI
 **Access**: All authenticated users (Admin, Baker, Barista)
 
 ## Screenshot
-- Desktop: `originals/images/dashboard view/Desktop, dashboard.png`
+- Desktop: `legacy/images/dashboard view/Desktop, dashboard.png`
 
 ## Layout
 

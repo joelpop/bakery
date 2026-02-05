@@ -25,6 +25,12 @@ public class LocationEntity extends AbstractAuditableEntity implements LocationS
     @Column(name = "timezone")
     private String timezone;
 
+    @Column(name = "default_country_code")
+    private String defaultCountryCode;
+
+    @Column(name = "default_area_code")
+    private String defaultAreaCode;
+
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
@@ -54,6 +60,22 @@ public class LocationEntity extends AbstractAuditableEntity implements LocationS
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
+    }
+
+    public String getDefaultCountryCode() {
+        return defaultCountryCode;
+    }
+
+    public void setDefaultCountryCode(String defaultCountryCode) {
+        this.defaultCountryCode = defaultCountryCode;
+    }
+
+    public String getDefaultAreaCode() {
+        return defaultAreaCode;
+    }
+
+    public void setDefaultAreaCode(String defaultAreaCode) {
+        this.defaultAreaCode = defaultAreaCode;
     }
 
     public boolean isActive() {
