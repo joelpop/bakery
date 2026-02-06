@@ -45,6 +45,7 @@ import org.vaadin.bakery.uimodel.type.OrderStatus;
 
 import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.signals.Signal;
+import com.vaadin.signals.local.ListSignal;
 import com.vaadin.signals.local.ValueSignal;
 
 import java.math.BigDecimal;
@@ -96,7 +97,7 @@ public class EditOrderDialog implements NonComponent {
     private final CustomerService customerService;
     private final UserLocationService userLocationService;
 
-    private final List<OrderItemDetail> orderItems = new ArrayList<>();
+    private final ListSignal<OrderItemDetail> orderItems = new ListSignal<>();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
     // Customer state tracking
@@ -130,7 +131,6 @@ public class EditOrderDialog implements NonComponent {
     // Signals for reactive totals
     private final ValueSignal<DiscountType> discountTypeSignal = new ValueSignal<>(DiscountType.PERCENT);
     private final ValueSignal<Double> discountAmountSignal = new ValueSignal<>(0.0);
-    private final ValueSignal<Integer> itemsVersion = new ValueSignal<>(0);
 
     public EditOrderDialog(OrderService orderService, LocationService locationService,
                            CustomerService customerService, UserLocationService userLocationService) {
@@ -364,8 +364,10 @@ public class EditOrderDialog implements NonComponent {
 
         // Create computed signals for reactive totals
         Signal<BigDecimal> subtotalSignal = Signal.computed(() -> {
-            itemsVersion.value(); // Subscribe to item changes
-            return orderItems.stream()
+            // ListSignal automatically triggers when items added/removed
+            // Calling .value() on each entry subscribes to individual item changes
+            return orderItems.value().stream()
+                    .map(ValueSignal::value)
                     .map(OrderItemDetail::getLineTotal)
                     .filter(Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -753,26 +755,29 @@ public class EditOrderDialog implements NonComponent {
         var detailsNormalized = details == null ? "" : details.trim();
 
         // Check if another item has same product and notes (for combining)
-        var matchingItem = orderItems.stream()
-                .filter(i -> i != selectedItem) // Exclude the selected item
-                .filter(i -> i.getProductId().equals(selectedItem.getProductId()))
-                .filter(i -> {
-                    var existingDetails = i.getDetails() == null ? "" : i.getDetails().trim();
+        var matchingSignal = orderItems.value().stream()
+                .filter(s -> s.value() != selectedItem) // Exclude the selected item
+                .filter(s -> s.value().getProductId().equals(selectedItem.getProductId()))
+                .filter(s -> {
+                    var existingDetails = s.value().getDetails() == null ? "" : s.value().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
 
-        if (matchingItem.isPresent()) {
+        if (matchingSignal.isPresent()) {
             // Combine: add quantity to matching item, remove selected item
-            var target = matchingItem.get();
+            var targetSignal = matchingSignal.get();
+            var target = targetSignal.value();
             target.setQuantity(target.getQuantity() + quantity);
             target.calculateLineTotal();
-            orderItems.remove(selectedItem);
+            targetSignal.value(target); // Trigger reactivity
+            removeItem(selectedItem);
         } else {
             // Update selected item
             selectedItem.setQuantity(quantity);
             selectedItem.setDetails(details);
             selectedItem.calculateLineTotal();
+            touchItem(selectedItem); // Trigger reactivity
         }
 
         refreshItemsGrid();
@@ -800,19 +805,21 @@ public class EditOrderDialog implements NonComponent {
         var detailsNormalized = details == null ? "" : details.trim();
 
         // Check for existing item with same product and notes
-        var existingItem = orderItems.stream()
-                .filter(i -> i.getProductId().equals(product.getId()))
-                .filter(i -> {
-                    var existingDetails = i.getDetails() == null ? "" : i.getDetails().trim();
+        var existingSignal = orderItems.value().stream()
+                .filter(s -> s.value().getProductId().equals(product.getId()))
+                .filter(s -> {
+                    var existingDetails = s.value().getDetails() == null ? "" : s.value().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
 
-        if (existingItem.isPresent()) {
+        if (existingSignal.isPresent()) {
             // Combine quantities
-            var item = existingItem.get();
+            var signal = existingSignal.get();
+            var item = signal.value();
             item.setQuantity(item.getQuantity() + quantity);
             item.calculateLineTotal();
+            signal.value(item); // Trigger reactivity
         } else {
             // Add new item
             var item = new OrderItemDetail();
@@ -823,7 +830,7 @@ public class EditOrderDialog implements NonComponent {
             item.setUnitPrice(product.getPrice());
             item.setDetails(details);
             item.calculateLineTotal();
-            orderItems.add(item);
+            orderItems.insertLast(item);
         }
 
         refreshItemsGrid();
@@ -835,14 +842,30 @@ public class EditOrderDialog implements NonComponent {
     }
 
     private void removeItem(OrderItemDetail item) {
-        orderItems.remove(item);
+        // Find the signal for this item and remove it
+        orderItems.value().stream()
+                .filter(s -> s.value() == item)
+                .findFirst()
+                .ifPresent(orderItems::remove);
         refreshItemsGrid();
     }
 
+    /**
+     * Triggers reactivity for an item after in-place modification.
+     */
+    private void touchItem(OrderItemDetail item) {
+        orderItems.value().stream()
+                .filter(s -> s.value() == item)
+                .findFirst()
+                .ifPresent(s -> s.value(item));
+    }
+
     private void refreshItemsGrid() {
-        itemsGrid.setItems(orderItems);
-        // Trigger signal recomputation by incrementing version
-        itemsVersion.update(v -> v + 1);
+        // Extract current items from signals for grid display
+        var items = orderItems.value().stream()
+                .map(ValueSignal::value)
+                .toList();
+        itemsGrid.setItems(items);
     }
 
     private BigDecimal calculateDiscount(BigDecimal subtotal) {
@@ -910,7 +933,7 @@ public class EditOrderDialog implements NonComponent {
             dueTimePicker.setInvalid(false);
         }
 
-        if (orderItems.isEmpty()) {
+        if (orderItems.value().isEmpty()) {
             Notification.show("Add at least one item", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_WARNING);
             valid = false;
@@ -938,11 +961,15 @@ public class EditOrderDialog implements NonComponent {
             order.setDueDate(dueDatePicker.getValue());
             order.setDueTime(dueTimePicker.getValue());
             order.setAdditionalDetails(additionalDetailsField.getValue());
-            order.setItems(new ArrayList<>(orderItems));
+            // Extract items from signals
+            var itemsList = orderItems.value().stream()
+                    .map(ValueSignal::value)
+                    .toList();
+            order.setItems(new ArrayList<>(itemsList));
             // Calculate discount based on subtotal
-            var subtotal = orderItems.stream()
+            var subtotal = itemsList.stream()
                     .map(OrderItemDetail::getLineTotal)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             order.setDiscount(calculateDiscount(subtotal));
             order.calculateTotal();
