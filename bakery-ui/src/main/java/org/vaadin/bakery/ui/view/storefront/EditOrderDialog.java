@@ -100,10 +100,9 @@ public class EditOrderDialog implements NonComponent {
     private final ListSignal<OrderItemDetail> orderItems = new ListSignal<>();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
-    // Customer state tracking
-    private CustomerSummary selectedCustomer;
-    private boolean isExistingCustomer = false;
-    private String customPhoneNumber; // Stores formatted phone when entering new customer
+    // Customer state signals
+    private final ValueSignal<CustomerSummary> selectedCustomerSignal = new ValueSignal<>(null);
+    private final ValueSignal<String> customPhoneSignal = new ValueSignal<>(null);
 
     // Order fields
     private final ComboBox<CustomerSummary> customerPhoneComboBox = new ComboBox<>("Phone Number");
@@ -577,18 +576,16 @@ public class EditOrderDialog implements NonComponent {
     private void handleCustomerSelection(CustomerSummary customer) {
         if (customer != null) {
             // Existing customer selected
-            selectedCustomer = customer;
-            isExistingCustomer = true;
-            customPhoneNumber = null; // Clear custom phone since we're using existing customer
+            selectedCustomerSignal.value(customer);
+            customPhoneSignal.value(null); // Clear custom phone since we're using existing customer
             customerNameField.setValue(customer.getName());
             customerNameField.setReadOnly(true);
             // Move focus to next field (due date, since location is already set)
             dueDatePicker.focus();
         } else {
             // Selection cleared - reset to allow new entry
-            selectedCustomer = null;
-            isExistingCustomer = false;
-            customPhoneNumber = null;
+            selectedCustomerSignal.value(null);
+            customPhoneSignal.value(null);
             customerNameField.clear();
             customerNameField.setReadOnly(true); // Back to read-only until phone entered
         }
@@ -599,15 +596,15 @@ public class EditOrderDialog implements NonComponent {
             return;
         }
         // Format the phone number using location defaults
-        customPhoneNumber = formatPhoneNumber(phoneNumber);
+        var formattedPhone = formatPhoneNumber(phoneNumber);
+        customPhoneSignal.value(formattedPhone);
 
         // Update the displayed value in the ComboBox input field
         customerPhoneComboBox.getElement()
-                .executeJs("this.inputElement.value = $0", customPhoneNumber);
+                .executeJs("this.inputElement.value = $0", formattedPhone);
 
         // New phone number entered - enable name field for entry
-        selectedCustomer = null;
-        isExistingCustomer = false;
+        selectedCustomerSignal.value(null);
         customerNameField.setReadOnly(false);
         customerNameField.clear();
         customerNameField.focus();
@@ -680,8 +677,9 @@ public class EditOrderDialog implements NonComponent {
             return selected.getPhoneNumber();
         }
         // Return formatted custom phone number if available
-        if (customPhoneNumber != null && !customPhoneNumber.isBlank()) {
-            return customPhoneNumber;
+        var customPhone = customPhoneSignal.value();
+        if (customPhone != null && !customPhone.isBlank()) {
+            return customPhone;
         }
         // Fall back to input element value
         var inputValue = customerPhoneComboBox.getElement().getProperty("_inputElementValue");
@@ -953,6 +951,7 @@ public class EditOrderDialog implements NonComponent {
             order.setCustomerName(customerNameField.getValue());
             order.setCustomerPhone(getCustomerPhone());
             // Set customer ID if existing customer was selected
+            var selectedCustomer = selectedCustomerSignal.value();
             if (selectedCustomer != null) {
                 order.setCustomerId(selectedCustomer.getId());
             }
