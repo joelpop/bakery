@@ -118,7 +118,9 @@ public class EditOrderDialog implements NonComponent {
     private final TextField itemDetailsField = new TextField("Notes");
     private final Button addUpdateButton = new Button();
     private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
-    private OrderItemDetail selectedItem = null;
+
+    // Edit mode signal - null means add mode, non-null means editing that item
+    private final ValueSignal<OrderItemDetail> editingItemSignal = new ValueSignal<>(null);
 
     // Totals section
     private final Span subtotalValue = new Span("$0.00");
@@ -481,10 +483,35 @@ public class EditOrderDialog implements NonComponent {
         itemsGrid.setSelectionMode(Grid.SelectionMode.SINGLE);
         itemsGrid.addSelectionListener(e -> {
             var selected = e.getFirstSelectedItem().orElse(null);
+            editingItemSignal.value(selected);
+            // Handle focus based on selection change
             if (selected != null) {
-                enterEditMode(selected);
+                quantityField.focus();
             } else {
-                exitEditMode();
+                productComboBox.focus();
+            }
+        });
+
+        // Bind edit mode UI state to signal
+        ComponentEffect.effect(addUpdateButton, () -> {
+            var editingItem = editingItemSignal.value();
+            if (editingItem != null) {
+                // Edit mode - populate fields from item
+                productComboBox.getListDataView().getItems()
+                        .filter(p -> p.getId().equals(editingItem.getProductId()))
+                        .findFirst()
+                        .ifPresent(productComboBox::setValue);
+                productComboBox.setEnabled(false);
+                quantityField.setValue(editingItem.getQuantity());
+                itemDetailsField.setValue(editingItem.getDetails() != null ? editingItem.getDetails() : "");
+                addUpdateButton.setIcon(new Icon(VaadinIcon.CHECK));
+            } else {
+                // Add mode - reset to defaults
+                productComboBox.clear();
+                productComboBox.setEnabled(true);
+                quantityField.setValue(1);
+                itemDetailsField.clear();
+                addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
             }
         });
 
@@ -704,37 +731,8 @@ public class EditOrderDialog implements NonComponent {
         }
     }
 
-    private void enterEditMode(OrderItemDetail item) {
-        selectedItem = item;
-
-        // Find the matching product for the ComboBox
-        productComboBox.getListDataView().getItems()
-                .filter(p -> p.getId().equals(item.getProductId()))
-                .findFirst()
-                .ifPresent(productComboBox::setValue);
-        productComboBox.setEnabled(false); // Can't change product when editing
-
-        quantityField.setValue(item.getQuantity());
-        itemDetailsField.setValue(item.getDetails() != null ? item.getDetails() : "");
-
-        addUpdateButton.setIcon(new Icon(VaadinIcon.CHECK));
-        quantityField.focus();
-    }
-
-    private void exitEditMode() {
-        selectedItem = null;
-
-        productComboBox.clear();
-        productComboBox.setEnabled(true);
-        quantityField.setValue(1);
-        itemDetailsField.clear();
-
-        addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
-        productComboBox.focus();
-    }
-
     private void addOrUpdateItem() {
-        if (selectedItem != null) {
+        if (editingItemSignal.value() != null) {
             updateSelectedItem();
         } else {
             addNewItem();
@@ -742,6 +740,11 @@ public class EditOrderDialog implements NonComponent {
     }
 
     private void updateSelectedItem() {
+        var editingItem = editingItemSignal.value();
+        if (editingItem == null) {
+            return; // Shouldn't happen, but guard against it
+        }
+
         var quantity = quantityField.getValue();
         if (quantity == null || quantity < 1) {
             Notification.show("Enter a valid quantity", 2000, Notification.Position.BOTTOM_START)
@@ -754,8 +757,8 @@ public class EditOrderDialog implements NonComponent {
 
         // Check if another item has same product and notes (for combining)
         var matchingSignal = orderItems.value().stream()
-                .filter(s -> s.value() != selectedItem) // Exclude the selected item
-                .filter(s -> s.value().getProductId().equals(selectedItem.getProductId()))
+                .filter(s -> s.value() != editingItem) // Exclude the editing item
+                .filter(s -> s.value().getProductId().equals(editingItem.getProductId()))
                 .filter(s -> {
                     var existingDetails = s.value().getDetails() == null ? "" : s.value().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
@@ -763,24 +766,24 @@ public class EditOrderDialog implements NonComponent {
                 .findFirst();
 
         if (matchingSignal.isPresent()) {
-            // Combine: add quantity to matching item, remove selected item
+            // Combine: add quantity to matching item, remove editing item
             var targetSignal = matchingSignal.get();
             var target = targetSignal.value();
             target.setQuantity(target.getQuantity() + quantity);
             target.calculateLineTotal();
             targetSignal.value(target); // Trigger reactivity
-            removeItem(selectedItem);
+            removeItem(editingItem);
         } else {
-            // Update selected item
-            selectedItem.setQuantity(quantity);
-            selectedItem.setDetails(details);
-            selectedItem.calculateLineTotal();
-            touchItem(selectedItem); // Trigger reactivity
+            // Update editing item
+            editingItem.setQuantity(quantity);
+            editingItem.setDetails(details);
+            editingItem.calculateLineTotal();
+            touchItem(editingItem); // Trigger reactivity
         }
 
         refreshItemsGrid();
         itemsGrid.deselectAll();
-        // exitEditMode will be called by selection listener
+        // Edit mode will be cleared by selection listener setting editingItemSignal to null
     }
 
     private void addNewItem() {
