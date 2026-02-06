@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.storefront;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -29,6 +30,9 @@ import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import com.vaadin.signals.Signal;
+import com.vaadin.signals.local.ListSignal;
+import com.vaadin.signals.local.ValueSignal;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
@@ -44,6 +48,7 @@ import org.vaadin.bakery.uimodel.data.ProductSelect;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -59,44 +64,44 @@ import java.util.function.Consumer;
  */
 public class EditOrderDialog implements NonComponent {
 
-    private final Dialog dialog = new Dialog();
-    private final NonComponentEventSupport<EditOrderDialog> eventSupport = new NonComponentEventSupport<>();
+    private final Dialog dialog;
+    private final NonComponentEventSupport<EditOrderDialog> eventSupport;
 
     private final OrderService orderService;
     private final LocationService locationService;
     private final CustomerService customerService;
     private final UserLocationService userLocationService;
 
-    private final List<OrderItemDetail> orderItems = new ArrayList<>();
-    private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
+    private final ListSignal<OrderItemDetail> orderItemsListSignal;
+    private final NumberFormat currencyFormat;
 
-    // Customer state tracking
-    private CustomerSummary selectedCustomer;
-    private boolean isExistingCustomer = false;
-    private String customPhoneNumber; // Stores formatted phone when entering new customer
+    // Customer state signals
+    private final ValueSignal<CustomerSummary> selectedCustomerSignal;
+    private final ValueSignal<String> customPhoneSignal;
 
     // Order fields
-    private final ComboBox<CustomerSummary> customerPhoneComboBox = new ComboBox<>("Phone Number");
-    private final TextField customerNameField = new TextField("Customer Name");
-    private final ComboBox<LocationSummary> locationComboBox = new ComboBox<>(); // In dialog header
-    private final DatePicker dueDatePicker = new DatePicker("Pickup Date");
-    private final TimePicker dueTimePicker = new TimePicker("Pickup Time");
-    private final TextArea additionalDetailsField = new TextArea("Additional Details");
+    private final ComboBox<CustomerSummary> customerPhoneComboBox;
+    private final TextField customerNameField;
+    private final ComboBox<LocationSummary> locationComboBox;
+    private final DatePicker dueDatePicker;
+    private final TimePicker dueTimePicker;
+    private final TextArea additionalDetailsField;
 
     // Item entry fields
-    private final ComboBox<ProductSelect> productComboBox = new ComboBox<>("Product");
-    private final IntegerField quantityField = new IntegerField("Qty");
-    private final TextField itemDetailsField = new TextField("Notes");
-    private final Button addUpdateButton = new Button();
-    private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
-    private OrderItemDetail selectedItem = null;
+    private final ComboBox<ProductSelect> productComboBox;
+    private final IntegerField quantityField;
+    private final TextField itemDetailsField;
+    private final Button addUpdateButton;
+    private final Grid<OrderItemDetail> itemsGrid;
 
-    // Totals section
-    private final Span subtotalValue = new Span("$0.00");
-    private final RadioButtonGroup<String> discountTypeGroup = new RadioButtonGroup<>();
-    private final NumberField discountField = new NumberField();
-    private final Span discountValue = new Span();
-    private final Span totalValue = new Span("$0.00");
+    // Edit mode signal - null means add mode, non-null means editing that item
+    private final ValueSignal<OrderItemDetail> editingItemSignal;
+
+    // Discount fields and signals
+    private final RadioButtonGroup<DiscountType> discountTypeGroup;
+    private final NumberField discountAmountField;
+    private final ValueSignal<DiscountType> discountTypeSignal;
+    private final ValueSignal<Double> discountAmountSignal;
 
     public EditOrderDialog(OrderService orderService, LocationService locationService,
                            CustomerService customerService, UserLocationService userLocationService) {
@@ -105,24 +110,336 @@ public class EditOrderDialog implements NonComponent {
         this.customerService = customerService;
         this.userLocationService = userLocationService;
 
-        dialog.setCloseOnOutsideClick(false);
-        dialog.setWidth("700px");
-        dialog.setMaxWidth("95vw");
+        // Component initializations
+        eventSupport = new NonComponentEventSupport<>();
 
-        createHeader();
-        dialog.add(createContent());
+        currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
-        // Footer buttons
+        var titleSpan = new Span("New Order");
+        titleSpan.addClassNames(LumoUtility.FontSize.XLARGE, LumoUtility.FontWeight.SEMIBOLD);
+
+        locationComboBox = new ComboBox<>();
+        locationComboBox.setPlaceholder("Pickup location...");
+        locationComboBox.setItemLabelGenerator(LocationSummary::getName);
+        locationComboBox.setWidth("180px");
+        locationComboBox.addClassNames(LumoUtility.Margin.Left.AUTO);
+
+        var header = new HorizontalLayout(titleSpan, locationComboBox);
+        header.setWidthFull();
+        header.setAlignItems(FlexComponent.Alignment.CENTER);
+        header.addClassNames(LumoUtility.Gap.MEDIUM);
+
+        var form = new FormLayout();
+        form.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1),
+                new FormLayout.ResponsiveStep("400px", 2)
+        );
+
+        customerPhoneComboBox = new ComboBox<>("Phone Number");
+        customerPhoneComboBox.setRequired(true);
+        customerPhoneComboBox.setAllowCustomValue(true);
+        customerPhoneComboBox.setItemLabelGenerator(CustomerSummary::getPhoneNumber);
+        customerPhoneComboBox.setRenderer(LitRenderer.<CustomerSummary>of(
+                "${item.phone} - ${item.name}")
+                .withProperty("phone", CustomerSummary::getPhoneNumber)
+                .withProperty("name", CustomerSummary::getName));
+        customerPhoneComboBox.addCustomValueSetListener(e -> handleNewPhoneNumber(e.getDetail()));
+        customerPhoneComboBox.addValueChangeListener(e -> handleCustomerSelection(e.getValue()));
+
+        customerNameField = new TextField("Customer Name");
+        customerNameField.setRequired(true);
+        customerNameField.setReadOnly(true);
+
+        dueDatePicker = new DatePicker("Pickup Date");
+        dueDatePicker.setRequired(true);
+        dueDatePicker.setMin(LocalDate.now());
+
+        dueTimePicker = new TimePicker("Pickup Time");
+        dueTimePicker.setRequired(true);
+        dueTimePicker.setStep(Duration.ofMinutes(15));
+
+        additionalDetailsField = new TextArea("Additional Details");
+        additionalDetailsField.setWidthFull();
+
+        var itemsSection = new Div();
+        itemsSection.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.SMALL,
+                LumoUtility.Width.FULL
+        );
+
+        productComboBox = new ComboBox<>("Product");
+        productComboBox.setItemLabelGenerator(ProductSelect::getDisplayName);
+        productComboBox.setRenderer(LitRenderer.<ProductSelect>of(
+                "<span>${item.name} <small>(${item.size})</small> - <strong>${item.price}</strong></span>")
+                .withProperty("name", ProductSelect::getName)
+                .withProperty("size", ProductSelect::getSize)
+                .withProperty("price", p -> currencyFormat.format(p.getPrice())));
+
+        quantityField = new IntegerField("Qty");
+        quantityField.setMin(1);
+        quantityField.setMax(99);
+        quantityField.setStepButtonsVisible(true);
+        quantityField.setWidth("120px");
+
+        addUpdateButton = new Button();
+        addUpdateButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addUpdateButton.addClickListener(e -> addOrUpdateItem());
+        addUpdateButton.addClickShortcut(Key.ENTER);
+
+        var addItemRow = new HorizontalLayout(productComboBox, quantityField, addUpdateButton);
+        addItemRow.setWidthFull();
+        addItemRow.setAlignItems(FlexComponent.Alignment.END);
+        addItemRow.setFlexGrow(1, productComboBox);
+
+        itemDetailsField = new TextField("Notes");
+        itemDetailsField.setPlaceholder("Special instructions for this item");
+        itemDetailsField.setWidthFull();
+
+        var addItemBlock = new VerticalLayout(addItemRow, itemDetailsField);
+        addItemBlock.setPadding(false);
+        addItemBlock.setSpacing(false);
+        addItemBlock.setWidthFull();
+
+        itemsGrid = new Grid<>();
+        itemsGrid.setAllRowsVisible(true);
+        itemsGrid.setSelectionMode(Grid.SelectionMode.SINGLE);
+        itemsGrid.setMaxHeight("200px");
+        itemsGrid.addComponentColumn(this::createProductCell)
+                .setHeader("Product")
+                .setFlexGrow(2);
+        itemsGrid.addColumn(OrderItemDetail::getQuantity)
+                .setHeader("Qty")
+                .setPartNameGenerator(item -> "numeric")
+                .setTextAlign(ColumnTextAlign.END)
+                .setFlexGrow(0)
+                .setWidth("60px");
+        itemsGrid.addColumn(item -> currencyFormat.format(item.getUnitPrice()))
+                .setHeader("Price")
+                .setPartNameGenerator(item -> "numeric")
+                .setTextAlign(ColumnTextAlign.END)
+                .setFlexGrow(0)
+                .setWidth("90px");
+        itemsGrid.addColumn(item -> currencyFormat.format(item.getLineTotal()))
+                .setHeader("Total")
+                .setPartNameGenerator(item -> "numeric")
+                .setTextAlign(ColumnTextAlign.END)
+                .setFlexGrow(0)
+                .setWidth("100px");
+        itemsGrid.addComponentColumn(item -> {
+            var removeButton = new Button(new Icon(VaadinIcon.TRASH));
+            removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            removeButton.addClickListener(e -> removeItem(item));
+            return removeButton;
+        }).setFlexGrow(0).setWidth("50px");
+
+        var totalsSection = new Div();
+        totalsSection.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "auto auto")
+                .set("gap", "var(--lumo-space-xs) var(--lumo-space-m)")
+                .set("justify-content", "end")
+                .set("align-items", "center")
+                .set("margin-top", "var(--lumo-space-s)");
+
+        var subtotalLabel = new Span("Subtotal:");
+        subtotalLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
+
+        var subtotalValueSpan = new Span();
+        subtotalValueSpan.addClassNames(LumoUtility.TextColor.SECONDARY);
+        subtotalValueSpan.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
+
+        var discountLabel = new Span("Discount:");
+
+        var discountInput = new HorizontalLayout();
+        discountInput.setSpacing(false);
+        discountInput.setAlignItems(FlexComponent.Alignment.CENTER);
+        discountInput.addClassNames(LumoUtility.Gap.XSMALL);
+
+        discountTypeGroup = new RadioButtonGroup<>();
+        discountTypeGroup.setItemLabelGenerator(DiscountType::getSymbol);
+
+        discountAmountField = new NumberField();
+        discountAmountField.setMin(0);
+        discountAmountField.setWidth("80px");
+        discountAmountField.setClearButtonVisible(true);
+        discountAmountField.addThemeVariants(TextFieldVariant.LUMO_ALIGN_RIGHT);
+
+        var discountValueSpan = new Span();
+        discountValueSpan.addClassNames(LumoUtility.TextColor.SECONDARY);
+        discountValueSpan.getStyle().set("font-variant-numeric", "tabular-nums").set("min-width", "70px").set("text-align", "right");
+
+        var totalLabel = new Span("Total:");
+        totalLabel.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
+
+        var totalValueSpan = new Span();
+        totalValueSpan.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
+        totalValueSpan.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
+
+        var content = new VerticalLayout();
+        content.setSizeFull();
+        content.setPadding(false);
+        content.setSpacing(false);
+
         var cancelButton = new Button("Cancel", e -> {
             fireEvent(new CancelEvent(this));
             close();
         });
+
         var saveButton = new Button("Save", e -> save());
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        dialog.getFooter().add(cancelButton, saveButton);
+        // Signal definitions
+        orderItemsListSignal = new ListSignal<>();
 
+        selectedCustomerSignal = new ValueSignal<>(null);
+
+        customPhoneSignal = new ValueSignal<>(null);
+
+        editingItemSignal = new ValueSignal<>(null);
+
+        discountTypeSignal = new ValueSignal<>(DiscountType.PERCENT);
+
+        discountAmountSignal = new ValueSignal<>(0.0);
+
+        Signal<BigDecimal> subtotalValueSignal = Signal.computed(() ->
+                orderItemsListSignal.value().stream()
+                        .map(ValueSignal::value)
+                        .map(OrderItemDetail::getLineTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        Signal<BigDecimal> discountValueSignal = Signal.computed(() -> {
+            var sub = subtotalValueSignal.value();
+            var amount = discountAmountSignal.value();
+            if (amount == null || amount <= 0) {
+                return BigDecimal.ZERO;
+            }
+            var value = BigDecimal.valueOf(amount);
+            var discount = DiscountType.PERCENT == discountTypeSignal.value()
+                    ? sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                    : value;
+            return discount.compareTo(sub) > 0 ? BigDecimal.ZERO : discount;
+        });
+
+        Signal<BigDecimal> totalValueSignal = Signal.computed(() -> {
+            var sub = subtotalValueSignal.value();
+            var disc = discountValueSignal.value();
+            var result = sub.subtract(disc);
+            return result.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : result;
+        });
+
+        // Signal bindings
+        subtotalValueSpan.bindText(subtotalValueSignal.map(currencyFormat::format));
+
+        discountValueSpan.bindText(discountValueSignal.map(d ->
+                d.compareTo(BigDecimal.ZERO) > 0 ? "-" + currencyFormat.format(d) : "$0.00"));
+
+        totalValueSpan.bindText(totalValueSignal.map(currencyFormat::format));
+
+        discountTypeGroup.addValueChangeListener(e -> discountTypeSignal.value(e.getValue()));
+
+        discountAmountField.addValueChangeListener(e -> {
+            var val = e.getValue();
+            discountAmountSignal.value(val != null ? val : 0.0);
+        });
+
+        ComponentEffect.effect(discountAmountField, () -> {
+            var sub = subtotalValueSignal.value();
+            var amount = discountAmountSignal.value();
+            if (amount == null || amount == 0) {
+                discountAmountField.setInvalid(false);
+                return;
+            }
+            if (amount < 0) {
+                discountAmountField.setInvalid(true);
+                discountAmountField.setErrorMessage("Discount cannot be negative");
+                return;
+            }
+            var value = BigDecimal.valueOf(amount);
+            var rawDiscount = DiscountType.PERCENT == discountTypeSignal.value()
+                    ? sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                    : value;
+            if (rawDiscount.compareTo(sub) > 0) {
+                discountAmountField.setInvalid(true);
+                discountAmountField.setErrorMessage("Discount exceeds subtotal");
+            } else {
+                discountAmountField.setInvalid(false);
+            }
+        });
+
+        itemsGrid.addSelectionListener(e -> {
+            var selected = e.getFirstSelectedItem().orElse(null);
+            editingItemSignal.value(selected);
+            if (selected != null) {
+                quantityField.focus();
+            } else {
+                productComboBox.focus();
+            }
+        });
+
+        ComponentEffect.effect(addUpdateButton, () -> {
+            var editingItem = editingItemSignal.value();
+            if (editingItem != null) {
+                productComboBox.getListDataView().getItems()
+                        .filter(p -> p.getId().equals(editingItem.getProductId()))
+                        .findFirst()
+                        .ifPresent(productComboBox::setValue);
+                productComboBox.setEnabled(false);
+                quantityField.setValue(editingItem.getQuantity());
+                itemDetailsField.setValue(editingItem.getDetails() != null ? editingItem.getDetails() : "");
+                addUpdateButton.setIcon(new Icon(VaadinIcon.CHECK));
+            } else {
+                productComboBox.clear();
+                productComboBox.setEnabled(true);
+                quantityField.setValue(1);
+                itemDetailsField.clear();
+                addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
+            }
+        });
+
+        // Value settings
+        dueDatePicker.setValue(LocalDate.now());
+
+        dueTimePicker.setValue(LocalTime.of(12, 0));
+
+        discountTypeGroup.setItems(DiscountType.values());
+        discountTypeGroup.setValue(DiscountType.PERCENT);
+
+        quantityField.setValue(1);
+
+        addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
+
+        // Data loading
+        configurePhoneComboBoxFiltering();
         loadData();
+
+        // Assemble layout
+        form.add(customerPhoneComboBox, customerNameField);
+        form.add(dueDatePicker, dueTimePicker);
+
+        discountInput.add(discountTypeGroup, discountAmountField, discountValueSpan);
+
+        totalsSection.add(subtotalLabel, subtotalValueSpan);
+        totalsSection.add(discountLabel, discountInput);
+        totalsSection.add(totalLabel, totalValueSpan);
+
+        itemsSection.add(addItemBlock);
+        itemsSection.add(itemsGrid);
+        itemsSection.add(totalsSection);
+
+        content.add(form);
+        content.add(new Hr());
+        content.add(itemsSection);
+        content.add(additionalDetailsField);
+
+        dialog = new Dialog();
+        dialog.setCloseOnOutsideClick(false);
+        dialog.setWidth("700px");
+        dialog.setMaxWidth("95vw");
+        dialog.getHeader().add(header);
+        dialog.add(content);
+        dialog.getFooter().add(cancelButton, saveButton);
 
         // Focus phone field when dialog opens
         dialog.addOpenedChangeListener(e -> {
@@ -146,31 +463,6 @@ public class EditOrderDialog implements NonComponent {
         productComboBox.setItems(products);
     }
 
-    // ========== Event Classes ==========
-
-    public static class SaveEvent extends NonComponentEvent<EditOrderDialog> {
-        private final OrderDetail order;
-
-        public SaveEvent(EditOrderDialog source, OrderDetail order) {
-            super(source);
-            this.order = order;
-        }
-
-        public OrderDetail getOrder() {
-            return order;
-        }
-
-        public boolean isNewCustomerCreated() {
-            return order != null && order.isNewCustomerCreated();
-        }
-    }
-
-    public static class CancelEvent extends NonComponentEvent<EditOrderDialog> {
-        public CancelEvent(EditOrderDialog source) {
-            super(source);
-        }
-    }
-
     // ========== Event Registration (NonComponent interface) ==========
 
     @Override
@@ -192,230 +484,7 @@ public class EditOrderDialog implements NonComponent {
         eventSupport.fireEvent(event);
     }
 
-    // ========== UI Creation ==========
-
-    private void createHeader() {
-        // Title
-        var title = new Span("New Order");
-        title.addClassNames(LumoUtility.FontSize.XLARGE, LumoUtility.FontWeight.SEMIBOLD);
-
-        // Location selector styled for header
-        locationComboBox.setPlaceholder("Pickup location...");
-        locationComboBox.setItemLabelGenerator(LocationSummary::getName);
-        locationComboBox.setWidth("180px");
-        locationComboBox.addClassNames(LumoUtility.Margin.Left.AUTO);
-
-        // Header layout
-        var header = new HorizontalLayout(title, locationComboBox);
-        header.setWidthFull();
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
-        header.addClassNames(LumoUtility.Gap.MEDIUM);
-
-        dialog.getHeader().add(header);
-    }
-
-    private VerticalLayout createContent() {
-        var content = new VerticalLayout();
-        content.setSizeFull();
-        content.setPadding(false);
-        content.setSpacing(false);
-
-        // Order details form
-        var form = new FormLayout();
-        form.setResponsiveSteps(
-                new FormLayout.ResponsiveStep("0", 1),
-                new FormLayout.ResponsiveStep("400px", 2)
-        );
-
-        // Phone ComboBox with autofill popup
-        customerPhoneComboBox.setRequired(true);
-        customerPhoneComboBox.setAllowCustomValue(true);
-        // Show just phone number in the field when selected
-        customerPhoneComboBox.setItemLabelGenerator(CustomerSummary::getPhoneNumber);
-        // Show phone + name in the dropdown list
-        customerPhoneComboBox.setRenderer(LitRenderer.<CustomerSummary>of(
-                "${item.phone} - ${item.name}")
-                .withProperty("phone", CustomerSummary::getPhoneNumber)
-                .withProperty("name", CustomerSummary::getName));
-        customerPhoneComboBox.addCustomValueSetListener(e -> handleNewPhoneNumber(e.getDetail()));
-        customerPhoneComboBox.addValueChangeListener(e -> handleCustomerSelection(e.getValue()));
-        configurePhoneComboBoxFiltering();
-
-        // Customer name field - read-only until phone entered with new number
-        customerNameField.setRequired(true);
-        customerNameField.setReadOnly(true);
-
-        dueDatePicker.setRequired(true);
-        dueDatePicker.setValue(LocalDate.now());
-        dueDatePicker.setMin(LocalDate.now());
-        dueTimePicker.setRequired(true);
-        dueTimePicker.setValue(LocalTime.of(12, 0));
-        dueTimePicker.setStep(Duration.ofMinutes(15));
-
-        form.add(customerPhoneComboBox, customerNameField);
-        form.add(dueDatePicker, dueTimePicker);
-
-        content.add(form);
-        content.add(new Hr());
-
-        // Items section
-        content.add(createItemsSection());
-
-        // Additional details at the end
-        additionalDetailsField.setWidthFull();
-        content.add(additionalDetailsField);
-
-        return content;
-    }
-
-    private Div createItemsSection() {
-        var section = new Div();
-        section.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Gap.SMALL,
-                LumoUtility.Width.FULL
-        );
-
-        // Add item - first row: Product, Qty, Add button
-        productComboBox.setItemLabelGenerator(ProductSelect::getDisplayName);
-        // Show price in dropdown list
-        productComboBox.setRenderer(LitRenderer.<ProductSelect>of(
-                "<span>${item.name} <small>(${item.size})</small> - <strong>${item.price}</strong></span>")
-                .withProperty("name", ProductSelect::getName)
-                .withProperty("size", ProductSelect::getSize)
-                .withProperty("price", p -> currencyFormat.format(p.getPrice())));
-
-        quantityField.setValue(1);
-        quantityField.setMin(1);
-        quantityField.setMax(99);
-        quantityField.setStepButtonsVisible(true);
-        quantityField.setWidth("120px");
-
-        addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
-        addUpdateButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addUpdateButton.addClickListener(e -> addOrUpdateItem());
-        addUpdateButton.addClickShortcut(Key.ENTER);
-
-        var addItemRow1 = new HorizontalLayout(productComboBox, quantityField, addUpdateButton);
-        addItemRow1.setWidthFull();
-        addItemRow1.setAlignItems(FlexComponent.Alignment.END);
-        addItemRow1.setFlexGrow(1, productComboBox);
-
-        // Add item - second row: Notes (full width)
-        itemDetailsField.setPlaceholder("Special instructions for this item");
-        itemDetailsField.setWidthFull();
-
-        // Wrap item entry in tight container
-        var addItemBlock = new VerticalLayout(addItemRow1, itemDetailsField);
-        addItemBlock.setPadding(false);
-        addItemBlock.setSpacing(false);
-        addItemBlock.setWidthFull();
-        section.add(addItemBlock);
-
-        // Items grid
-        configureItemsGrid();
-        itemsGrid.setMaxHeight("200px");
-        section.add(itemsGrid);
-
-        // Totals section - compact grid layout
-        var totalsSection = new Div();
-        totalsSection.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "auto auto")
-                .set("gap", "var(--lumo-space-xs) var(--lumo-space-m)")
-                .set("justify-content", "end")
-                .set("align-items", "center")
-                .set("margin-top", "var(--lumo-space-s)");
-
-        // Subtotal row
-        var subtotalLabel = new Span("Subtotal:");
-        subtotalLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
-        subtotalValue.addClassNames(LumoUtility.TextColor.SECONDARY);
-        subtotalValue.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
-        totalsSection.add(subtotalLabel, subtotalValue);
-
-        // Discount row - label with inline input
-        var discountLabel = new Span("Discount:");
-        var discountInput = new HorizontalLayout();
-        discountInput.setSpacing(false);
-        discountInput.setAlignItems(FlexComponent.Alignment.CENTER);
-        discountInput.addClassNames(LumoUtility.Gap.XSMALL);
-
-        discountTypeGroup.setItems("%", "$");
-        discountTypeGroup.setValue("%");
-        discountTypeGroup.addValueChangeListener(e -> updateTotal());
-
-        discountField.setMin(0);
-        discountField.setWidth("80px");
-        discountField.addThemeVariants(TextFieldVariant.LUMO_ALIGN_RIGHT);
-        discountField.addValueChangeListener(e -> updateTotal());
-
-        discountValue.addClassNames(LumoUtility.TextColor.SECONDARY);
-        discountValue.getStyle().set("font-variant-numeric", "tabular-nums").set("min-width", "70px").set("text-align", "right");
-
-        discountInput.add(discountTypeGroup, discountField, discountValue);
-        totalsSection.add(discountLabel, discountInput);
-
-        // Total row
-        var totalLabel = new Span("Total:");
-        totalLabel.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
-        totalValue.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
-        totalValue.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
-        totalsSection.add(totalLabel, totalValue);
-
-        section.add(totalsSection);
-
-        return section;
-    }
-
-    private void configureItemsGrid() {
-        itemsGrid.setAllRowsVisible(true);
-
-        // Enable single selection for editing
-        itemsGrid.setSelectionMode(Grid.SelectionMode.SINGLE);
-        itemsGrid.addSelectionListener(e -> {
-            var selected = e.getFirstSelectedItem().orElse(null);
-            if (selected != null) {
-                enterEditMode(selected);
-            } else {
-                exitEditMode();
-            }
-        });
-
-        // Product column with two-line display: name (size) and notes
-        itemsGrid.addComponentColumn(this::createProductCell)
-                .setHeader("Product")
-                .setFlexGrow(2);
-
-        itemsGrid.addColumn(OrderItemDetail::getQuantity)
-                .setHeader("Qty")
-                .setPartNameGenerator(item -> "numeric")
-                .setTextAlign(ColumnTextAlign.END)
-                .setFlexGrow(0)
-                .setWidth("60px");
-
-        itemsGrid.addColumn(item -> currencyFormat.format(item.getUnitPrice()))
-                .setHeader("Price")
-                .setPartNameGenerator(item -> "numeric")
-                .setTextAlign(ColumnTextAlign.END)
-                .setFlexGrow(0)
-                .setWidth("90px");
-
-        itemsGrid.addColumn(item -> currencyFormat.format(item.getLineTotal()))
-                .setHeader("Total")
-                .setPartNameGenerator(item -> "numeric")
-                .setTextAlign(ColumnTextAlign.END)
-                .setFlexGrow(0)
-                .setWidth("100px");
-
-        itemsGrid.addComponentColumn(item -> {
-            var removeButton = new Button(new Icon(VaadinIcon.TRASH));
-            removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            removeButton.addClickListener(e -> removeItem(item));
-            return removeButton;
-        }).setFlexGrow(0).setWidth("50px");
-    }
+    // ========== Grid Cell Renderer ==========
 
     private Div createProductCell(OrderItemDetail item) {
         var cell = new Div();
@@ -471,18 +540,16 @@ public class EditOrderDialog implements NonComponent {
     private void handleCustomerSelection(CustomerSummary customer) {
         if (customer != null) {
             // Existing customer selected
-            selectedCustomer = customer;
-            isExistingCustomer = true;
-            customPhoneNumber = null; // Clear custom phone since we're using existing customer
+            selectedCustomerSignal.value(customer);
+            customPhoneSignal.value(null); // Clear custom phone since we're using existing customer
             customerNameField.setValue(customer.getName());
             customerNameField.setReadOnly(true);
             // Move focus to next field (due date, since location is already set)
             dueDatePicker.focus();
         } else {
             // Selection cleared - reset to allow new entry
-            selectedCustomer = null;
-            isExistingCustomer = false;
-            customPhoneNumber = null;
+            selectedCustomerSignal.value(null);
+            customPhoneSignal.value(null);
             customerNameField.clear();
             customerNameField.setReadOnly(true); // Back to read-only until phone entered
         }
@@ -493,15 +560,15 @@ public class EditOrderDialog implements NonComponent {
             return;
         }
         // Format the phone number using location defaults
-        customPhoneNumber = formatPhoneNumber(phoneNumber);
+        var formattedPhone = formatPhoneNumber(phoneNumber);
+        customPhoneSignal.value(formattedPhone);
 
         // Update the displayed value in the ComboBox input field
         customerPhoneComboBox.getElement()
-                .executeJs("this.inputElement.value = $0", customPhoneNumber);
+                .executeJs("this.inputElement.value = $0", formattedPhone);
 
         // New phone number entered - enable name field for entry
-        selectedCustomer = null;
-        isExistingCustomer = false;
+        selectedCustomerSignal.value(null);
         customerNameField.setReadOnly(false);
         customerNameField.clear();
         customerNameField.focus();
@@ -574,8 +641,9 @@ public class EditOrderDialog implements NonComponent {
             return selected.getPhoneNumber();
         }
         // Return formatted custom phone number if available
-        if (customPhoneNumber != null && !customPhoneNumber.isBlank()) {
-            return customPhoneNumber;
+        var customPhone = customPhoneSignal.value();
+        if (customPhone != null && !customPhone.isBlank()) {
+            return customPhone;
         }
         // Fall back to input element value
         var inputValue = customerPhoneComboBox.getElement().getProperty("_inputElementValue");
@@ -600,37 +668,8 @@ public class EditOrderDialog implements NonComponent {
         }
     }
 
-    private void enterEditMode(OrderItemDetail item) {
-        selectedItem = item;
-
-        // Find the matching product for the ComboBox
-        productComboBox.getListDataView().getItems()
-                .filter(p -> p.getId().equals(item.getProductId()))
-                .findFirst()
-                .ifPresent(productComboBox::setValue);
-        productComboBox.setEnabled(false); // Can't change product when editing
-
-        quantityField.setValue(item.getQuantity());
-        itemDetailsField.setValue(item.getDetails() != null ? item.getDetails() : "");
-
-        addUpdateButton.setIcon(new Icon(VaadinIcon.CHECK));
-        quantityField.focus();
-    }
-
-    private void exitEditMode() {
-        selectedItem = null;
-
-        productComboBox.clear();
-        productComboBox.setEnabled(true);
-        quantityField.setValue(1);
-        itemDetailsField.clear();
-
-        addUpdateButton.setIcon(new Icon(VaadinIcon.PLUS));
-        productComboBox.focus();
-    }
-
     private void addOrUpdateItem() {
-        if (selectedItem != null) {
+        if (editingItemSignal.value() != null) {
             updateSelectedItem();
         } else {
             addNewItem();
@@ -638,6 +677,11 @@ public class EditOrderDialog implements NonComponent {
     }
 
     private void updateSelectedItem() {
+        var editingItem = editingItemSignal.value();
+        if (editingItem == null) {
+            return; // Shouldn't happen, but guard against it
+        }
+
         var quantity = quantityField.getValue();
         if (quantity == null || quantity < 1) {
             Notification.show("Enter a valid quantity", 2000, Notification.Position.BOTTOM_START)
@@ -649,31 +693,34 @@ public class EditOrderDialog implements NonComponent {
         var detailsNormalized = details == null ? "" : details.trim();
 
         // Check if another item has same product and notes (for combining)
-        var matchingItem = orderItems.stream()
-                .filter(i -> i != selectedItem) // Exclude the selected item
-                .filter(i -> i.getProductId().equals(selectedItem.getProductId()))
-                .filter(i -> {
-                    var existingDetails = i.getDetails() == null ? "" : i.getDetails().trim();
+        var matchingSignal = orderItemsListSignal.value().stream()
+                .filter(s -> s.value() != editingItem) // Exclude the editing item
+                .filter(s -> s.value().getProductId().equals(editingItem.getProductId()))
+                .filter(s -> {
+                    var existingDetails = s.value().getDetails() == null ? "" : s.value().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
 
-        if (matchingItem.isPresent()) {
-            // Combine: add quantity to matching item, remove selected item
-            var target = matchingItem.get();
+        if (matchingSignal.isPresent()) {
+            // Combine: add quantity to matching item, remove editing item
+            var targetSignal = matchingSignal.get();
+            var target = targetSignal.value();
             target.setQuantity(target.getQuantity() + quantity);
             target.calculateLineTotal();
-            orderItems.remove(selectedItem);
+            targetSignal.value(target); // Trigger reactivity
+            removeItem(editingItem);
         } else {
-            // Update selected item
-            selectedItem.setQuantity(quantity);
-            selectedItem.setDetails(details);
-            selectedItem.calculateLineTotal();
+            // Update editing item
+            editingItem.setQuantity(quantity);
+            editingItem.setDetails(details);
+            editingItem.calculateLineTotal();
+            touchItem(editingItem); // Trigger reactivity
         }
 
         refreshItemsGrid();
         itemsGrid.deselectAll();
-        // exitEditMode will be called by selection listener
+        // Edit mode will be cleared by selection listener setting editingItemSignal to null
     }
 
     private void addNewItem() {
@@ -696,19 +743,21 @@ public class EditOrderDialog implements NonComponent {
         var detailsNormalized = details == null ? "" : details.trim();
 
         // Check for existing item with same product and notes
-        var existingItem = orderItems.stream()
-                .filter(i -> i.getProductId().equals(product.getId()))
-                .filter(i -> {
-                    var existingDetails = i.getDetails() == null ? "" : i.getDetails().trim();
+        var existingSignal = orderItemsListSignal.value().stream()
+                .filter(s -> s.value().getProductId().equals(product.getId()))
+                .filter(s -> {
+                    var existingDetails = s.value().getDetails() == null ? "" : s.value().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
 
-        if (existingItem.isPresent()) {
+        if (existingSignal.isPresent()) {
             // Combine quantities
-            var item = existingItem.get();
+            var signal = existingSignal.get();
+            var item = signal.value();
             item.setQuantity(item.getQuantity() + quantity);
             item.calculateLineTotal();
+            signal.value(item); // Trigger reactivity
         } else {
             // Add new item
             var item = new OrderItemDetail();
@@ -719,7 +768,7 @@ public class EditOrderDialog implements NonComponent {
             item.setUnitPrice(product.getPrice());
             item.setDetails(details);
             item.calculateLineTotal();
-            orderItems.add(item);
+            orderItemsListSignal.insertLast(item);
         }
 
         refreshItemsGrid();
@@ -731,59 +780,41 @@ public class EditOrderDialog implements NonComponent {
     }
 
     private void removeItem(OrderItemDetail item) {
-        orderItems.remove(item);
+        // Find the signal for this item and remove it
+        orderItemsListSignal.value().stream()
+                .filter(s -> s.value() == item)
+                .findFirst()
+                .ifPresent(orderItemsListSignal::remove);
         refreshItemsGrid();
     }
 
-    private void refreshItemsGrid() {
-        itemsGrid.setItems(orderItems);
-        updateTotal();
+    /**
+     * Triggers reactivity for an item after in-place modification.
+     */
+    private void touchItem(OrderItemDetail item) {
+        orderItemsListSignal.value().stream()
+                .filter(s -> s.value() == item)
+                .findFirst()
+                .ifPresent(s -> s.value(item));
     }
 
-    private void updateTotal() {
-        var subtotal = orderItems.stream()
-                .map(OrderItemDetail::getLineTotal)
-                .filter(java.util.Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        subtotalValue.setText(currencyFormat.format(subtotal));
-
-        var discount = calculateDiscount(subtotal);
-
-        // Show calculated discount amount (always show, even if zero)
-        if (discount.compareTo(BigDecimal.ZERO) > 0) {
-            discountValue.setText("-" + currencyFormat.format(discount));
-        } else {
-            discountValue.setText("$0.00");
-        }
-
-        // Validate discount
-        var discountInput = discountField.getValue();
-        if (discountInput != null && discountInput < 0) {
-            discountField.setInvalid(true);
-            discountField.setErrorMessage("Discount cannot be negative");
-        } else if (discount.compareTo(subtotal) > 0) {
-            discountField.setInvalid(true);
-            discountField.setErrorMessage("Discount exceeds subtotal");
-        } else {
-            discountField.setInvalid(false);
-        }
-
-        var total = subtotal.subtract(discount);
-        if (total.compareTo(BigDecimal.ZERO) < 0) {
-            total = BigDecimal.ZERO;
-        }
-        totalValue.setText(currencyFormat.format(total));
+    private void refreshItemsGrid() {
+        // Extract current items from signals for grid display
+        var items = orderItemsListSignal.value().stream()
+                .map(ValueSignal::value)
+                .toList();
+        itemsGrid.setItems(items);
     }
 
     private BigDecimal calculateDiscount(BigDecimal subtotal) {
-        var discountInput = discountField.getValue();
+        var discountInput = discountAmountField.getValue();
         if (discountInput == null || discountInput == 0) {
             return BigDecimal.ZERO;
         }
 
         var value = BigDecimal.valueOf(discountInput);
 
-        if ("%".equals(discountTypeGroup.getValue())) {
+        if (DiscountType.PERCENT == discountTypeGroup.getValue()) {
             // Percentage discount
             return subtotal.multiply(value).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
         } else {
@@ -840,7 +871,7 @@ public class EditOrderDialog implements NonComponent {
             dueTimePicker.setInvalid(false);
         }
 
-        if (orderItems.isEmpty()) {
+        if (orderItemsListSignal.value().isEmpty()) {
             Notification.show("Add at least one item", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_WARNING);
             valid = false;
@@ -860,6 +891,7 @@ public class EditOrderDialog implements NonComponent {
             order.setCustomerName(customerNameField.getValue());
             order.setCustomerPhone(getCustomerPhone());
             // Set customer ID if existing customer was selected
+            var selectedCustomer = selectedCustomerSignal.value();
             if (selectedCustomer != null) {
                 order.setCustomerId(selectedCustomer.getId());
             }
@@ -868,11 +900,14 @@ public class EditOrderDialog implements NonComponent {
             order.setDueDate(dueDatePicker.getValue());
             order.setDueTime(dueTimePicker.getValue());
             order.setAdditionalDetails(additionalDetailsField.getValue());
-            order.setItems(new ArrayList<>(orderItems));
+            // Extract items from signals
+            var itemsList = orderItemsListSignal.value().stream()
+                    .map(ValueSignal::value)
+                    .toList();
+            order.setItems(new ArrayList<>(itemsList));
             // Calculate discount based on subtotal
-            var subtotal = orderItems.stream()
+            var subtotal = itemsList.stream()
                     .map(OrderItemDetail::getLineTotal)
-                    .filter(java.util.Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             order.setDiscount(calculateDiscount(subtotal));
             order.calculateTotal();
@@ -888,6 +923,54 @@ public class EditOrderDialog implements NonComponent {
         } catch (Exception e) {
             Notification.show("Failed: " + e.getMessage(), 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    // ========== Event Classes ==========
+
+    public static class SaveEvent extends NonComponentEvent<EditOrderDialog> {
+        private final OrderDetail order;
+
+        public SaveEvent(EditOrderDialog source, OrderDetail order) {
+            super(source);
+            this.order = order;
+        }
+
+        public OrderDetail getOrder() {
+            return order;
+        }
+
+        public boolean isNewCustomerCreated() {
+            return order != null && order.isNewCustomerCreated();
+        }
+    }
+
+    public static class CancelEvent extends NonComponentEvent<EditOrderDialog> {
+        public CancelEvent(EditOrderDialog source) {
+            super(source);
+        }
+    }
+
+    /**
+     * Discount type for order discounts.
+     */
+    private enum DiscountType {
+        PERCENT("%"),
+        DOLLAR("$");
+
+        private final String symbol;
+
+        DiscountType(String symbol) {
+            this.symbol = symbol;
+        }
+
+        public String getSymbol() {
+            return symbol;
+        }
+
+        @Override
+        public String toString() {
+            return symbol;
         }
     }
 }

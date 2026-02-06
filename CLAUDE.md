@@ -561,6 +561,29 @@ Tests use:
 - **Interface Projections**: Suffix with "Projection" and place in `jpamodel.projection` package
 - **Service Implementations**: Prefix with the technology (e.g., "JpaUserService" for JPA implementation), place in `jpaservice` package
 
+### Signal Field Naming
+
+Suffix signal fields with their signal type for clarity:
+- `ListSignal` fields: `orderItemsListSignal` (not `orderItems`)
+- `ValueSignal` fields: `discountTypeSignal`, `editingItemSignal`
+- Local computed signals: `subtotalValueSignal`, `discountValueSignal`, `totalValueSignal`
+
+Use lowercase, descriptive comments for signal declarations:
+```java
+// signal for computed subtotal value
+Signal<BigDecimal> subtotalValueSignal = Signal.computed(() -> ...);
+
+// signal for computed discount value
+Signal<BigDecimal> discountValueSignal = Signal.computed(() -> ...);
+```
+
+### UI Component Field Naming
+
+Suffix UI component fields with their component type when the type isn't obvious from the name:
+- `subtotalValueSpan` (not `subtotalValue`)
+- `totalValueSpan` (not `totalValue`)
+- `discountAmountField` (clarifies purpose and distinguishes from `discountAmountSignal`)
+
 ## Maven Conventions
 
 - Specify versions for all dependencies in the parent POM's `dependencyManagement` section
@@ -569,6 +592,189 @@ Tests use:
 ## Java Conventions
 
 - Use `var` instead of explicit types whenever possible
+
+### Member Variable Initialization
+
+Initialize member variables in constructors, not in their declarations. This keeps all initialization logic in one place.
+
+```java
+// Preferred: initialize in constructor
+public class EditOrderDialog {
+    private final Dialog dialog;
+    private final ListSignal<OrderItemDetail> orderItemsListSignal;
+    private final ValueSignal<DiscountType> discountTypeSignal;
+
+    public EditOrderDialog(...) {
+        dialog = new Dialog();
+        orderItemsListSignal = new ListSignal<>();
+        discountTypeSignal = new ValueSignal<>(DiscountType.PERCENT);
+        // ...
+    }
+}
+
+// Avoid: initialize at declaration
+public class EditOrderDialog {
+    private final Dialog dialog = new Dialog();  // Scattered initialization
+    private final ListSignal<OrderItemDetail> orderItemsListSignal = new ListSignal<>();
+    private final ValueSignal<DiscountType> discountTypeSignal = new ValueSignal<>(DiscountType.PERCENT);
+}
+```
+
+### UI Initialization in Constructors
+
+Keep all UI initialization in the constructor rather than splitting it across helper methods like `createHeader()`, `createContent()`, etc. This provides several benefits:
+
+- **Visibility**: All initialization is visible in one place
+- **Simplicity**: Fewer methods to navigate and understand
+- **Local variables**: Components only used during construction can be local variables instead of fields
+- **Consistency**: Avoids arbitrary decisions about what gets its own method (e.g., having `createHeader()` and `createContent()` but not `createFooter()`)
+
+```java
+// Preferred: all initialization in constructor
+public EditOrderDialog(...) {
+    // Component initializations
+    var titleSpan = new Span("New Order");  // Local variable - only used here
+    titleSpan.addClassNames(LumoUtility.FontSize.XLARGE);
+
+    var header = new HorizontalLayout(titleSpan, locationComboBox);
+    header.setWidthFull();
+
+    // ... more initialization ...
+
+    // Assemble layout
+    dialog.getHeader().add(header);
+    dialog.add(content);
+    dialog.getFooter().add(cancelButton, saveButton);
+}
+
+// Avoid: splitting initialization across helper methods
+public EditOrderDialog(...) {
+    createHeader();      // Where does this add to?
+    createContent();     // Inconsistent - why no createFooter()?
+    createFooter();      // Or is footer created inline?
+}
+```
+
+### Code Organization Within Methods
+
+Group code by operation type, not by component. Within a constructor or method, organize in this order:
+1. **Component initializations** - creating instances and configuring properties (min, max, width, items, data sources, etc.)
+2. **Signal definitions** - creating and configuring signals
+3. **Signal bindings** - connecting signals to components (reactive UI)
+4. **Binder bindings** - connecting form fields to bean model (with validation)
+5. **Value settings** - setting initial/default values on fields or bean on Binder
+
+Use blank lines between each component in the initialization section for readability.
+
+```java
+// Preferred: grouped by operation type
+private Div createTotalsSection() {
+    // 1. Component initializations (creation + configuration)
+    var subtotalLabel = new Span("Subtotal:");
+
+    var subtotalValueSpan = new Span();
+
+    var discountTypeGroup = new RadioButtonGroup<DiscountType>();
+    discountTypeGroup.setItems(DiscountType.values());
+
+    var discountAmountField = new NumberField();
+    discountAmountField.setMin(0);
+    discountAmountField.setWidth("80px");
+
+    // 2. Signal definitions
+    Signal<BigDecimal> subtotalValueSignal = Signal.computed(() -> ...);
+    Signal<BigDecimal> discountValueSignal = Signal.computed(() -> ...);
+
+    // 3. Signal bindings
+    subtotalValueSpan.bindText(subtotalValueSignal.map(...));
+    discountValueSpan.bindText(discountValueSignal.map(...));
+
+    // 4. Binder bindings (if applicable)
+    // binder.forField(discountAmountField).bind(...);
+
+    // 5. Value settings (field values or bean on Binder)
+    discountTypeGroup.setValue(DiscountType.PERCENT);
+    // binder.setBean(order);
+    // ...
+}
+
+// Avoid: grouped by component
+private Div createTotalsSection() {
+    var subtotalLabel = new Span("Subtotal:");
+    subtotalLabel.addClassNames(...);  // Mixed with creation
+
+    var discountTypeGroup = new RadioButtonGroup<DiscountType>();
+    discountTypeGroup.setItems(DiscountType.values());  // Immediately after creation
+    discountTypeGroup.setValue(DiscountType.PERCENT);
+
+    Signal<BigDecimal> subtotalValueSignal = Signal.computed(() -> ...);  // Signal in middle
+    // ...
+}
+```
+
+### Local Variable Declaration
+
+Declare local variables close to their first use, not at the top of methods:
+
+```java
+// Preferred: declare near first use
+private VerticalLayout createContent() {
+    var form = new FormLayout();
+    // ... configure form ...
+
+    var content = new VerticalLayout();  // Declared just before use
+    content.add(form);
+    return content;
+}
+
+// Avoid: declaring at top when used later
+private VerticalLayout createContent() {
+    var content = new VerticalLayout();  // Too early
+    var form = new FormLayout();
+    // ... configure form ...
+    content.add(form);
+    return content;
+}
+```
+
+### Nested Types Placement
+
+Place nested types (inner classes, enums) at the **end** of the class, after all methods:
+
+```java
+public class EditOrderDialog {
+    // Fields
+    // Constructor
+    // Public API methods
+    // Private methods
+
+    // ========== Event Classes ==========
+    public static class SaveEvent extends NonComponentEvent<EditOrderDialog> { ... }
+    public static class CancelEvent extends NonComponentEvent<EditOrderDialog> { ... }
+
+    // Private enums last
+    private enum DiscountType { ... }
+}
+```
+
+Use `private` visibility for enums that are only used internally.
+
+### Stream Operations
+
+Avoid unnecessary operations in streams:
+- Don't filter for nulls if the data source guarantees non-null values
+- Prefer simpler expressions when the result is equivalent
+
+```java
+// Preferred: no unnecessary null filter
+.map(OrderItemDetail::getLineTotal)
+.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+// Avoid: filtering nulls when not needed
+.map(OrderItemDetail::getLineTotal)
+.filter(Objects::nonNull)  // Remove if nulls aren't possible
+.reduce(BigDecimal.ZERO, BigDecimal::add);
+```
 
 ## Date/Time Handling
 
