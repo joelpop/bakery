@@ -31,58 +31,49 @@ public class LocationsView extends VerticalLayout {
     public LocationsView(LocationService locationService) {
         this.locationService = locationService;
 
+        // Component initializations
         addClassName("locations-view");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
-        // Header with title and add button
         var header = new ViewHeader("Locations")
                 .withAction("New location", () -> openDialog(new LocationSummary()));
 
-        // Grid container with padding
         var gridContainer = new Div();
         gridContainer.addClassNames(LumoUtility.Padding.MEDIUM, LumoUtility.BoxSizing.BORDER);
         gridContainer.setSizeFull();
 
-        grid = createGrid();
-        gridContainer.add(grid);
-
-        add(header, gridContainer);
-        setFlexGrow(1, gridContainer);
-        refreshGrid();
-    }
-
-    private Grid<LocationSummary> createGrid() {
-        var grid = new Grid<>(LocationSummary.class, false);
+        grid = new Grid<>(LocationSummary.class, false);
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
         grid.setSizeFull();
-
         grid.addColumn(LocationSummary::getName)
                 .setHeader("Name")
                 .setSortable(true)
                 .setFlexGrow(2);
-
         grid.addColumn(LocationSummary::getAddress)
                 .setHeader("Address")
                 .setSortable(true)
                 .setFlexGrow(2);
-
         grid.addComponentColumn(location -> {
             var badge = new Span(location.isActive() ? "Active" : "Inactive");
             badge.getElement().getThemeList().add("badge " + (location.isActive() ? "success" : "contrast"));
             return badge;
         }).setHeader("Status").setFlexGrow(0).setAutoWidth(true);
-
         grid.addColumn(LocationSummary::getSortOrder)
                 .setHeader("Sort Order")
                 .setSortable(true)
                 .setFlexGrow(0)
                 .setAutoWidth(true);
-
         grid.addItemClickListener(event -> openDialog(event.getItem()));
 
-        return grid;
+        // Layout assembly
+        gridContainer.add(grid);
+        add(header, gridContainer);
+        setFlexGrow(1, gridContainer);
+
+        // Data loading
+        refreshGrid();
     }
 
     private void openDialog(LocationSummary location) {
