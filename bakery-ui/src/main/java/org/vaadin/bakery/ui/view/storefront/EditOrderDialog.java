@@ -374,14 +374,15 @@ public class EditOrderDialog implements NonComponent {
         Signal<BigDecimal> discountValueSignal = Signal.computed(() -> {
             var sub = subtotalSignal.value();
             var amount = discountAmountSignal.value();
-            if (amount == null || amount == 0) {
+            if (amount == null || amount <= 0) {
                 return BigDecimal.ZERO;
             }
             var value = BigDecimal.valueOf(amount);
-            if (DiscountType.PERCENT == discountTypeSignal.value()) {
-                return sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            }
-            return value;
+            var discount = DiscountType.PERCENT == discountTypeSignal.value()
+                    ? sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                    : value;
+            // Return zero if discount exceeds subtotal
+            return discount.compareTo(sub) > 0 ? BigDecimal.ZERO : discount;
         });
 
         Signal<BigDecimal> totalSignal = Signal.computed(() -> {
@@ -434,13 +435,23 @@ public class EditOrderDialog implements NonComponent {
 
         // Discount validation effect
         ComponentEffect.effect(discountField, () -> {
-            var disc = discountValueSignal.value();
             var sub = subtotalSignal.value();
             var amount = discountAmountSignal.value();
-            if (amount != null && amount < 0) {
+            if (amount == null || amount == 0) {
+                discountField.setInvalid(false);
+                return;
+            }
+            if (amount < 0) {
                 discountField.setInvalid(true);
                 discountField.setErrorMessage("Discount cannot be negative");
-            } else if (disc.compareTo(sub) > 0) {
+                return;
+            }
+            // Compute raw discount to check validity
+            var value = BigDecimal.valueOf(amount);
+            var rawDiscount = DiscountType.PERCENT == discountTypeSignal.value()
+                    ? sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                    : value;
+            if (rawDiscount.compareTo(sub) > 0) {
                 discountField.setInvalid(true);
                 discountField.setErrorMessage("Discount exceeds subtotal");
             } else {
