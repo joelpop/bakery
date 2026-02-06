@@ -43,7 +43,12 @@ import org.vaadin.bakery.uimodel.data.OrderItemDetail;
 import org.vaadin.bakery.uimodel.data.ProductSelect;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
 
+import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.signals.Signal;
+import com.vaadin.signals.local.ValueSignal;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -51,6 +56,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -58,6 +64,29 @@ import java.util.function.Consumer;
  * Uses delegation to Dialog rather than inheritance to control the public API.
  */
 public class EditOrderDialog implements NonComponent {
+
+    /**
+     * Discount type for order discounts.
+     */
+    public enum DiscountType {
+        PERCENT("%"),
+        DOLLAR("$");
+
+        private final String symbol;
+
+        DiscountType(String symbol) {
+            this.symbol = symbol;
+        }
+
+        public String getSymbol() {
+            return symbol;
+        }
+
+        @Override
+        public String toString() {
+            return symbol;
+        }
+    }
 
     private final Dialog dialog = new Dialog();
     private final NonComponentEventSupport<EditOrderDialog> eventSupport = new NonComponentEventSupport<>();
@@ -93,10 +122,15 @@ public class EditOrderDialog implements NonComponent {
 
     // Totals section
     private final Span subtotalValue = new Span("$0.00");
-    private final RadioButtonGroup<String> discountTypeGroup = new RadioButtonGroup<>();
+    private final RadioButtonGroup<DiscountType> discountTypeGroup = new RadioButtonGroup<>();
     private final NumberField discountField = new NumberField();
-    private final Span discountValue = new Span();
+    private final Span discountValueSpan = new Span();
     private final Span totalValue = new Span("$0.00");
+
+    // Signals for reactive totals
+    private final ValueSignal<DiscountType> discountTypeSignal = new ValueSignal<>(DiscountType.PERCENT);
+    private final ValueSignal<Double> discountAmountSignal = new ValueSignal<>(0.0);
+    private final ValueSignal<Integer> itemsVersion = new ValueSignal<>(0);
 
     public EditOrderDialog(OrderService orderService, LocationService locationService,
                            CustomerService customerService, UserLocationService userLocationService) {
@@ -328,11 +362,42 @@ public class EditOrderDialog implements NonComponent {
                 .set("align-items", "center")
                 .set("margin-top", "var(--lumo-space-s)");
 
+        // Create computed signals for reactive totals
+        Signal<BigDecimal> subtotalSignal = Signal.computed(() -> {
+            itemsVersion.value(); // Subscribe to item changes
+            return orderItems.stream()
+                    .map(OrderItemDetail::getLineTotal)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        });
+
+        Signal<BigDecimal> discountValueSignal = Signal.computed(() -> {
+            var sub = subtotalSignal.value();
+            var amount = discountAmountSignal.value();
+            if (amount == null || amount == 0) {
+                return BigDecimal.ZERO;
+            }
+            var value = BigDecimal.valueOf(amount);
+            if (DiscountType.PERCENT == discountTypeSignal.value()) {
+                return sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            }
+            return value;
+        });
+
+        Signal<BigDecimal> totalSignal = Signal.computed(() -> {
+            var sub = subtotalSignal.value();
+            var disc = discountValueSignal.value();
+            var result = sub.subtract(disc);
+            return result.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : result;
+        });
+
         // Subtotal row
         var subtotalLabel = new Span("Subtotal:");
         subtotalLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
         subtotalValue.addClassNames(LumoUtility.TextColor.SECONDARY);
         subtotalValue.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
+        // Bind subtotal to signal
+        subtotalValue.bindText(subtotalSignal.map(currencyFormat::format));
         totalsSection.add(subtotalLabel, subtotalValue);
 
         // Discount row - label with inline input
@@ -342,26 +407,54 @@ public class EditOrderDialog implements NonComponent {
         discountInput.setAlignItems(FlexComponent.Alignment.CENTER);
         discountInput.addClassNames(LumoUtility.Gap.XSMALL);
 
-        discountTypeGroup.setItems("%", "$");
-        discountTypeGroup.setValue("%");
-        discountTypeGroup.addValueChangeListener(e -> updateTotal());
+        discountTypeGroup.setItems(DiscountType.values());
+        discountTypeGroup.setItemLabelGenerator(DiscountType::getSymbol);
+        discountTypeGroup.setValue(DiscountType.PERCENT);
+        // Update signal when discount type changes
+        discountTypeGroup.addValueChangeListener(e -> discountTypeSignal.value(e.getValue()));
 
         discountField.setMin(0);
         discountField.setWidth("80px");
+        discountField.setClearButtonVisible(true);
         discountField.addThemeVariants(TextFieldVariant.LUMO_ALIGN_RIGHT);
-        discountField.addValueChangeListener(e -> updateTotal());
+        // Update signal when discount amount changes
+        discountField.addValueChangeListener(e -> {
+            var val = e.getValue();
+            discountAmountSignal.value(val != null ? val : 0.0);
+        });
 
-        discountValue.addClassNames(LumoUtility.TextColor.SECONDARY);
-        discountValue.getStyle().set("font-variant-numeric", "tabular-nums").set("min-width", "70px").set("text-align", "right");
+        discountValueSpan.addClassNames(LumoUtility.TextColor.SECONDARY);
+        discountValueSpan.getStyle().set("font-variant-numeric", "tabular-nums").set("min-width", "70px").set("text-align", "right");
+        // Bind discount display to signal
+        discountValueSpan.bindText(discountValueSignal.map(d ->
+                d.compareTo(BigDecimal.ZERO) > 0 ? "-" + currencyFormat.format(d) : "$0.00"));
 
-        discountInput.add(discountTypeGroup, discountField, discountValue);
+        discountInput.add(discountTypeGroup, discountField, discountValueSpan);
         totalsSection.add(discountLabel, discountInput);
+
+        // Discount validation effect
+        ComponentEffect.effect(discountField, () -> {
+            var disc = discountValueSignal.value();
+            var sub = subtotalSignal.value();
+            var amount = discountAmountSignal.value();
+            if (amount != null && amount < 0) {
+                discountField.setInvalid(true);
+                discountField.setErrorMessage("Discount cannot be negative");
+            } else if (disc.compareTo(sub) > 0) {
+                discountField.setInvalid(true);
+                discountField.setErrorMessage("Discount exceeds subtotal");
+            } else {
+                discountField.setInvalid(false);
+            }
+        });
 
         // Total row
         var totalLabel = new Span("Total:");
         totalLabel.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
         totalValue.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
         totalValue.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
+        // Bind total to signal
+        totalValue.bindText(totalSignal.map(currencyFormat::format));
         totalsSection.add(totalLabel, totalValue);
 
         section.add(totalsSection);
@@ -737,42 +830,8 @@ public class EditOrderDialog implements NonComponent {
 
     private void refreshItemsGrid() {
         itemsGrid.setItems(orderItems);
-        updateTotal();
-    }
-
-    private void updateTotal() {
-        var subtotal = orderItems.stream()
-                .map(OrderItemDetail::getLineTotal)
-                .filter(java.util.Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        subtotalValue.setText(currencyFormat.format(subtotal));
-
-        var discount = calculateDiscount(subtotal);
-
-        // Show calculated discount amount (always show, even if zero)
-        if (discount.compareTo(BigDecimal.ZERO) > 0) {
-            discountValue.setText("-" + currencyFormat.format(discount));
-        } else {
-            discountValue.setText("$0.00");
-        }
-
-        // Validate discount
-        var discountInput = discountField.getValue();
-        if (discountInput != null && discountInput < 0) {
-            discountField.setInvalid(true);
-            discountField.setErrorMessage("Discount cannot be negative");
-        } else if (discount.compareTo(subtotal) > 0) {
-            discountField.setInvalid(true);
-            discountField.setErrorMessage("Discount exceeds subtotal");
-        } else {
-            discountField.setInvalid(false);
-        }
-
-        var total = subtotal.subtract(discount);
-        if (total.compareTo(BigDecimal.ZERO) < 0) {
-            total = BigDecimal.ZERO;
-        }
-        totalValue.setText(currencyFormat.format(total));
+        // Trigger signal recomputation by incrementing version
+        itemsVersion.update(v -> v + 1);
     }
 
     private BigDecimal calculateDiscount(BigDecimal subtotal) {
@@ -783,7 +842,7 @@ public class EditOrderDialog implements NonComponent {
 
         var value = BigDecimal.valueOf(discountInput);
 
-        if ("%".equals(discountTypeGroup.getValue())) {
+        if (DiscountType.PERCENT == discountTypeGroup.getValue()) {
             // Percentage discount
             return subtotal.multiply(value).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
         } else {
