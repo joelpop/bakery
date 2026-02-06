@@ -39,92 +39,78 @@ import java.util.Locale;
 public class ProductsView extends VerticalLayout {
 
     private final ProductService productService;
-    private final CurrentUserService currentUserService;
     private final Grid<ProductSummary> grid;
     private final TextField searchField;
     private final boolean isAdmin;
+    private final NumberFormat currencyFormat;
 
     private List<ProductSummary> allProducts;
-    private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
     public ProductsView(ProductService productService, CurrentUserService currentUserService) {
         this.productService = productService;
-        this.currentUserService = currentUserService;
         this.isAdmin = currentUserService.isAdmin();
 
+        // Component initializations
         addClassName("products-view");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
-        // Header with title, search, and add button (admin only)
-        searchField = createSearchField();
+        currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
+
+        searchField = new TextField();
+        searchField.setPlaceholder("Search products...");
+        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.addValueChangeListener(e -> filterGrid(e.getValue()));
+        searchField.setWidth("300px");
+
         var header = new ViewHeader("Products")
                 .withFilters(searchField);
         if (isAdmin) {
             header.withAction("New product", () -> openDialog(new ProductSummary()));
         }
 
-        // Grid container with padding
         var gridContainer = new Div();
         gridContainer.addClassNames(LumoUtility.Padding.MEDIUM, LumoUtility.BoxSizing.BORDER);
         gridContainer.setSizeFull();
 
-        grid = createGrid();
-        gridContainer.add(grid);
-
-        add(header, gridContainer);
-        setFlexGrow(1, gridContainer);
-        refreshGrid();
-    }
-
-    private TextField createSearchField() {
-        var field = new TextField();
-        field.setPlaceholder("Search products...");
-        field.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
-        field.setValueChangeMode(ValueChangeMode.LAZY);
-        field.addValueChangeListener(e -> filterGrid(e.getValue()));
-        field.setWidth("300px");
-        return field;
-    }
-
-    private Grid<ProductSummary> createGrid() {
-        var grid = new Grid<>(ProductSummary.class, false);
+        grid = new Grid<>(ProductSummary.class, false);
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
         grid.setSizeFull();
-
         grid.addComponentColumn(this::createProductImage)
                 .setHeader("Image")
                 .setFlexGrow(0)
                 .setAutoWidth(true);
-
         grid.addColumn(ProductSummary::getName)
                 .setHeader("Name")
                 .setSortable(true)
                 .setFlexGrow(2);
-
         grid.addColumn(ProductSummary::getSize)
                 .setHeader("Size")
                 .setSortable(true)
                 .setFlexGrow(1);
-
         grid.addColumn(product -> currencyFormat.format(product.getPrice()))
                 .setHeader("Price")
                 .setSortable(true)
                 .setFlexGrow(0)
                 .setAutoWidth(true);
-
         grid.addComponentColumn(product -> {
             var badge = new Span(product.isAvailable() ? "Available" : "Unavailable");
             badge.getElement().getThemeList().add("badge " + (product.isAvailable() ? "success" : "error"));
             return badge;
         }).setHeader("Status").setFlexGrow(0).setAutoWidth(true);
-
         if (isAdmin) {
             grid.addItemClickListener(event -> openDialog(event.getItem()));
         }
 
-        return grid;
+        // Layout assembly
+        gridContainer.add(grid);
+        add(header, gridContainer);
+        setFlexGrow(1, gridContainer);
+
+        // Data loading
+        refreshGrid();
     }
 
     private Image createProductImage(ProductSummary product) {

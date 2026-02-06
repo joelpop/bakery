@@ -29,10 +29,9 @@ import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.type.UserRole;
 
-import java.util.List;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Dialog for creating and editing users.
@@ -40,33 +39,29 @@ import java.io.IOException;
 public class UserDialog extends Dialog {
 
     private final UserService userService;
-    private final LocationService locationService;
     private final UserDetail user;
     private final boolean isNew;
-    private final String currentUserEmail;
     private final boolean isEditingSelf;
 
-    private final TextField emailField = new TextField("Email");
-    private final TextField firstNameField = new TextField("First Name");
-    private final TextField lastNameField = new TextField("Last Name");
-    private final PasswordField passwordField = new PasswordField("Password");
-    private final ComboBox<UserRole> roleComboBox = new ComboBox<>("Role");
-    private final ComboBox<LocationSummary> primaryLocationComboBox = new ComboBox<>("Primary Location");
+    private final TextField emailField;
+    private final TextField firstNameField;
+    private final TextField lastNameField;
+    private final PasswordField passwordField;
+    private final ComboBox<UserRole> roleComboBox;
+    private final ComboBox<LocationSummary> primaryLocationComboBox;
 
-    private List<LocationSummary> locations;
+    private final List<LocationSummary> locations;
 
-    private final Div photoContainer = new Div();
+    private final Div photoContainerDiv;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
-    private final Binder<UserDetail> binder = new Binder<>(UserDetail.class);
+    private final Binder<UserDetail> binder;
 
     public UserDialog(UserDetail user, UserService userService, LocationService locationService, String currentUserEmail) {
         this.userService = userService;
-        this.locationService = locationService;
-        this.currentUserEmail = currentUserEmail;
 
-        // Create new user if null
+        // Determine user state
         if (user == null) {
             this.user = new UserDetail();
             this.isNew = true;
@@ -78,66 +73,89 @@ public class UserDialog extends Dialog {
         this.isEditingSelf = !isNew && this.user.getEmail() != null &&
                 this.user.getEmail().equalsIgnoreCase(currentUserEmail);
 
-        setHeaderTitle(isNew ? "New User" : "Edit User");
-        setModal(true);
-        setCloseOnOutsideClick(false);
-        // Responsive sizing: max-width on desktop, full-screen on mobile via CSS theme
-        getElement().getThemeList().add("responsive-dialog");
-        setWidth("100%");
-        setMaxWidth("600px");
+        // Load data
+        locations = locationService.listActive();
 
-        configureFields();
-        configureBinder();
-        createLayout();
-        createFooter();
-
-        binder.readBean(this.user);
-        updatePhotoPreview();
-    }
-
-    private void configureFields() {
+        // Component initializations
+        emailField = new TextField("Email");
         emailField.setRequired(true);
         emailField.setWidthFull();
 
+        firstNameField = new TextField("First Name");
         firstNameField.setRequired(true);
         firstNameField.setWidthFull();
 
+        lastNameField = new TextField("Last Name");
         lastNameField.setRequired(true);
         lastNameField.setWidthFull();
 
+        passwordField = new PasswordField("Password");
         passwordField.setWidthFull();
         passwordField.setHelperText(isNew ?
                 "Required for new users" :
                 "Leave empty to keep current password");
         passwordField.setRevealButtonVisible(true);
 
+        roleComboBox = new ComboBox<>("Role");
         roleComboBox.setItems(UserRole.values());
         roleComboBox.setItemLabelGenerator(UserRole::getDisplayName);
         roleComboBox.setRequired(true);
         roleComboBox.setWidthFull();
+        if (isEditingSelf) {
+            roleComboBox.setEnabled(false);
+            roleComboBox.setHelperText("You cannot change your own role");
+        }
 
-        // Primary location (optional)
-        locations = locationService.listActive();
+        primaryLocationComboBox = new ComboBox<>("Primary Location");
         primaryLocationComboBox.setItems(locations);
         primaryLocationComboBox.setItemLabelGenerator(LocationSummary::getName);
         primaryLocationComboBox.setClearButtonVisible(true);
         primaryLocationComboBox.setWidthFull();
         primaryLocationComboBox.setPlaceholder("Select primary location...");
 
-        // Self-edit restrictions
-        if (isEditingSelf) {
-            roleComboBox.setEnabled(false);
-            roleComboBox.setHelperText("You cannot change your own role");
-        }
-    }
+        photoContainerDiv = new Div();
+        photoContainerDiv.getStyle()
+                .set("width", "80px")
+                .set("height", "80px");
 
-    private void configureBinder() {
+        var buffer = new MemoryBuffer();
+        var upload = new Upload(buffer);
+        upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
+        upload.setMaxFileSize(2 * 1024 * 1024); // 2MB
+        upload.addSucceededListener(event -> {
+            try {
+                uploadedPhoto = buffer.getInputStream().readAllBytes();
+                uploadedPhotoContentType = event.getMIMEType();
+                updatePhotoPreview();
+            } catch (IOException e) {
+                Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        var photoSection = new Div();
+        photoSection.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.Gap.MEDIUM,
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Margin.Bottom.MEDIUM
+        );
+        photoSection.add(photoContainerDiv, upload);
+
+        var cancelButton = new Button("Cancel", e -> close());
+
+        var saveButton = new Button("Save", e -> save());
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        // Binder bindings
+        binder = new Binder<>(UserDetail.class);
+
         binder.forField(emailField)
                 .asRequired("Email is required")
                 .withValidator(email -> email.contains("@"), "Please enter a valid email address")
                 .withValidator(email -> isNew ?
                                 !userService.emailExists(email) :
-                                !userService.emailExistsForOtherUser(email, user.getId()),
+                                !userService.emailExistsForOtherUser(email, this.user.getId()),
                         "A user with this email already exists")
                 .bind(UserDetail::getEmail, UserDetail::setEmail);
 
@@ -176,19 +194,18 @@ public class UserDialog extends Dialog {
                                 location != null ? location.getId() : null
                         )
                 );
-    }
 
-    private void createLayout() {
+        // Value settings
+        binder.readBean(this.user);
+        updatePhotoPreview();
+
+        // Layout assembly
         var form = new FormLayout();
         form.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
                 new FormLayout.ResponsiveStep("400px", 2)
         );
-
-        // Photo upload section
-        var photoSection = createPhotoSection();
         form.add(photoSection, 2);
-
         form.add(emailField, 2);
         form.add(firstNameField, 1);
         form.add(lastNameField, 1);
@@ -196,44 +213,38 @@ public class UserDialog extends Dialog {
         form.add(roleComboBox, 1);
         form.add(primaryLocationComboBox, 1);
 
-        add(form);
-    }
+        var footer = new HorizontalLayout();
+        footer.setWidthFull();
+        footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
 
-    private Div createPhotoSection() {
-        var section = new Div();
-        section.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.Gap.MEDIUM,
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Margin.Bottom.MEDIUM
-        );
-
-        photoContainer.getStyle()
-                .set("width", "80px")
-                .set("height", "80px");
-
-        var buffer = new MemoryBuffer();
-        var upload = new Upload(buffer);
-        upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
-        upload.setMaxFileSize(2 * 1024 * 1024); // 2MB
-
-        upload.addSucceededListener(event -> {
-            try {
-                uploadedPhoto = buffer.getInputStream().readAllBytes();
-                uploadedPhotoContentType = event.getMIMEType();
-                updatePhotoPreview();
-            } catch (IOException e) {
-                Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        if (!isNew) {
+            var deleteButton = new Button("Delete", e -> confirmDelete());
+            deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+            if (isEditingSelf) {
+                deleteButton.setEnabled(false);
+                deleteButton.setTooltipText("You cannot delete your own account");
             }
-        });
 
-        section.add(photoContainer, upload);
-        return section;
+            var spacer = new Span();
+            footer.add(deleteButton, spacer, cancelButton, saveButton);
+            footer.setFlexGrow(1, spacer);
+        } else {
+            footer.add(cancelButton, saveButton);
+        }
+
+        // Dialog configuration
+        setHeaderTitle(isNew ? "New User" : "Edit User");
+        setModal(true);
+        setCloseOnOutsideClick(false);
+        getElement().getThemeList().add("responsive-dialog");
+        setWidth("100%");
+        setMaxWidth("600px");
+        add(form);
+        getFooter().add(footer);
     }
 
     private void updatePhotoPreview() {
-        photoContainer.removeAll();
+        photoContainerDiv.removeAll();
 
         byte[] photoData = uploadedPhoto != null ? uploadedPhoto : user.getPhoto();
         String name = (user.getFirstName() != null ? user.getFirstName() : "") + " " +
@@ -249,37 +260,7 @@ public class UserDialog extends Dialog {
             avatar.setImageResource(resource);
         }
 
-        photoContainer.add(avatar);
-    }
-
-    private void createFooter() {
-        var footer = new HorizontalLayout();
-        footer.setWidthFull();
-        footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-
-        var cancelButton = new Button("Cancel", e -> close());
-
-        var saveButton = new Button("Save", e -> save());
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-        if (!isNew) {
-            var deleteButton = new Button("Delete", e -> confirmDelete());
-            deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-
-            // Cannot delete yourself
-            if (isEditingSelf) {
-                deleteButton.setEnabled(false);
-                deleteButton.setTooltipText("You cannot delete your own account");
-            }
-
-            var spacer = new Span();
-            footer.add(deleteButton, spacer, cancelButton, saveButton);
-            footer.setFlexGrow(1, spacer);
-        } else {
-            footer.add(cancelButton, saveButton);
-        }
-
-        getFooter().add(footer);
+        photoContainerDiv.add(avatar);
     }
 
     private void save() {

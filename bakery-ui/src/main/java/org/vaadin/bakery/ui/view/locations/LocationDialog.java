@@ -30,59 +30,51 @@ public class LocationDialog extends Dialog {
     private final LocationSummary location;
     private final boolean isNew;
 
-    private final TextField nameField = new TextField("Name");
-    private final TextArea addressField = new TextArea("Address");
-    private final TextField defaultCountryCodeField = new TextField("Default Country Code");
-    private final TextField defaultAreaCodeField = new TextField("Default Area Code");
-    private final Checkbox activeCheckbox = new Checkbox("Active");
-    private final IntegerField sortOrderField = new IntegerField("Sort Order");
+    private final TextField nameField;
+    private final TextArea addressField;
+    private final TextField defaultCountryCodeField;
+    private final TextField defaultAreaCodeField;
+    private final Checkbox activeCheckbox;
+    private final IntegerField sortOrderField;
 
-    private final Binder<LocationSummary> binder = new Binder<>(LocationSummary.class);
+    private final Binder<LocationSummary> binder;
 
     public LocationDialog(LocationSummary location, LocationService locationService) {
         this.locationService = locationService;
         this.location = location;
         this.isNew = location.getId() == null;
 
-        setHeaderTitle(isNew ? "New Location" : "Edit Location");
-        setModal(true);
-        setCloseOnOutsideClick(false);
-        // Responsive sizing: max-width on desktop, full-screen on mobile via CSS theme
-        getElement().getThemeList().add("responsive-dialog");
-        setWidth("100%");
-        setMaxWidth("500px");
-
-        configureFields();
-        configureBinder();
-        createLayout();
-        createFooter();
-
-        binder.readBean(location);
-    }
-
-    private void configureFields() {
+        // Component initializations
+        nameField = new TextField("Name");
         nameField.setRequired(true);
         nameField.setWidthFull();
 
+        addressField = new TextArea("Address");
         addressField.setWidthFull();
         addressField.setMinHeight("100px");
 
+        defaultCountryCodeField = new TextField("Default Country Code");
         defaultCountryCodeField.setPlaceholder("e.g., 1");
         defaultCountryCodeField.setHelperText("For phone number formatting");
 
+        defaultAreaCodeField = new TextField("Default Area Code");
         defaultAreaCodeField.setPlaceholder("e.g., 212");
         defaultAreaCodeField.setHelperText("For 7-digit phone numbers");
 
+        activeCheckbox = new Checkbox("Active");
+
+        sortOrderField = new IntegerField("Sort Order");
         sortOrderField.setMin(0);
         sortOrderField.setStepButtonsVisible(true);
-        sortOrderField.setValue(0);
 
-        if (isNew) {
-            activeCheckbox.setValue(true);
-        }
-    }
+        var cancelButton = new Button("Cancel", e -> close());
 
-    private void configureBinder() {
+        var saveButton = new Button("Save", e -> save());
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        // Binder bindings
+        binder = new Binder<>(LocationSummary.class);
+
         binder.forField(nameField)
                 .asRequired("Name is required")
                 .withValidator(name -> isNew ?
@@ -105,15 +97,22 @@ public class LocationDialog extends Dialog {
 
         binder.forField(sortOrderField)
                 .bind(LocationSummary::getSortOrder, LocationSummary::setSortOrder);
-    }
 
-    private void createLayout() {
+        // Value settings
+        sortOrderField.setValue(0);
+
+        if (isNew) {
+            activeCheckbox.setValue(true);
+        }
+
+        binder.readBean(location);
+
+        // Layout assembly
         var form = new FormLayout();
         form.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
                 new FormLayout.ResponsiveStep("400px", 2)
         );
-
         form.add(nameField, 2);
         form.add(sortOrderField, 1);
         form.add(addressField, 2);
@@ -121,18 +120,9 @@ public class LocationDialog extends Dialog {
         form.add(defaultAreaCodeField, 1);
         form.add(activeCheckbox, 2);
 
-        add(form);
-    }
-
-    private void createFooter() {
         var footer = new HorizontalLayout();
         footer.setWidthFull();
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-
-        var cancelButton = new Button("Cancel", e -> close());
-
-        var saveButton = new Button("Save", e -> save());
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         if (!isNew) {
             var deleteButton = new Button("Delete", e -> confirmDelete());
@@ -145,6 +135,14 @@ public class LocationDialog extends Dialog {
             footer.add(cancelButton, saveButton);
         }
 
+        // Dialog configuration
+        setHeaderTitle(isNew ? "New Location" : "Edit Location");
+        setModal(true);
+        setCloseOnOutsideClick(false);
+        getElement().getThemeList().add("responsive-dialog");
+        setWidth("100%");
+        setMaxWidth("500px");
+        add(form);
         getFooter().add(footer);
     }
 

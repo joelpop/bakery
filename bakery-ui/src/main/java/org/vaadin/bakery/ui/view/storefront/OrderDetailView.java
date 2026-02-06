@@ -42,20 +42,20 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     private final OrderService orderService;
     private OrderDetail order;
 
-    private final Span orderIdLabel = new Span();
-    private final Span statusBadge = new Span();
-    private final Span customerNameLabel = new Span();
-    private final Span customerPhoneLabel = new Span();
-    private final Span locationLabel = new Span();
-    private final Span dueDateTimeLabel = new Span();
-    private final Span additionalDetailsLabel = new Span();
-    private final Span totalLabel = new Span();
-    private final Span paidBadge = new Span();
-    private final Span createdByLabel = new Span();
-    private final Span updatedByLabel = new Span();
+    private final Span orderIdLabel;
+    private final Span statusBadge;
+    private final Span customerNameLabel;
+    private final Span customerPhoneLabel;
+    private final Span locationLabel;
+    private final Span dueDateTimeLabel;
+    private final Span additionalDetailsLabel;
+    private final Span totalLabel;
+    private final Span paidBadge;
+    private final Span createdByLabel;
+    private final Span updatedByLabel;
 
-    private final Grid<OrderItemDetail> itemsGrid = new Grid<>();
-    private final HorizontalLayout actionButtons = new HorizontalLayout();
+    private final Grid<OrderItemDetail> itemsGrid;
+    private final HorizontalLayout actionButtons;
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d 'at' h:mm a");
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
@@ -63,35 +63,113 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     public OrderDetailView(OrderService orderService) {
         this.orderService = orderService;
 
+        // Component initializations
         addClassName("order-detail-view");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
+        orderIdLabel = new Span();
+        orderIdLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
+
+        statusBadge = new Span();
+        customerNameLabel = new Span();
+        customerPhoneLabel = new Span();
+        locationLabel = new Span();
+        dueDateTimeLabel = new Span();
+        additionalDetailsLabel = new Span();
+        totalLabel = new Span();
+        paidBadge = new Span();
+        createdByLabel = new Span();
+        updatedByLabel = new Span();
+
+        itemsGrid = new Grid<>();
+        itemsGrid.setSizeFull();
+        itemsGrid.addColumn(OrderItemDetail::getProductName)
+                .setHeader("Product")
+                .setFlexGrow(2);
+        itemsGrid.addColumn(OrderItemDetail::getProductSize)
+                .setHeader("Size")
+                .setFlexGrow(1);
+        itemsGrid.addColumn(OrderItemDetail::getQuantity)
+                .setHeader("Qty")
+                .setFlexGrow(0)
+                .setWidth("60px");
+        itemsGrid.addColumn(item -> CURRENCY_FORMAT.format(item.getUnitPrice()))
+                .setHeader("Unit Price")
+                .setFlexGrow(0)
+                .setWidth("100px");
+        itemsGrid.addColumn(item -> CURRENCY_FORMAT.format(item.getLineTotal()))
+                .setHeader("Total")
+                .setFlexGrow(0)
+                .setWidth("100px");
+        itemsGrid.addColumn(OrderItemDetail::getDetails)
+                .setHeader("Notes")
+                .setFlexGrow(1);
+
+        actionButtons = new HorizontalLayout();
+        actionButtons.setWidthFull();
+        actionButtons.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+        actionButtons.setSpacing(true);
+        actionButtons.addClassNames(LumoUtility.Margin.Top.MEDIUM);
+
         // Header
-        add(createHeader());
+        var backButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
+        backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        backButton.addClickListener(e -> navigateBack());
 
-        // Main content with padding
-        var contentWrapper = new Div();
-        contentWrapper.addClassNames(LumoUtility.Padding.MEDIUM);
-        contentWrapper.setSizeFull();
+        var title = new Span("Order Details");
+        title.addClassNames(
+                LumoUtility.FontSize.XLARGE,
+                LumoUtility.FontWeight.SEMIBOLD
+        );
 
+        var leftSection = new Div();
+        leftSection.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Gap.SMALL
+        );
+        leftSection.add(backButton, title, orderIdLabel);
+
+        var header = new Div();
+        header.addClassName("view-header");
+        header.add(leftSection, statusBadge);
+
+        // Order info section
+        var orderInfoSection = new VerticalLayout();
+        orderInfoSection.setWidth("350px");
+        orderInfoSection.setPadding(false);
+        orderInfoSection.setSpacing(false);
+        orderInfoSection.add(createInfoCard("Customer", customerNameLabel, customerPhoneLabel));
+        orderInfoSection.add(createInfoCard("Pickup", locationLabel, dueDateTimeLabel));
+        orderInfoSection.add(createInfoCard("Notes", additionalDetailsLabel));
+        orderInfoSection.add(createInfoCard("Payment", totalLabel, paidBadge));
+        orderInfoSection.add(createInfoCard("History", createdByLabel, updatedByLabel));
+
+        // Items section
+        var itemsHeader = new H3("Order Items");
+        itemsHeader.addClassNames(LumoUtility.Margin.NONE, LumoUtility.Margin.Bottom.MEDIUM);
+
+        var itemsSection = new VerticalLayout();
+        itemsSection.setSizeFull();
+        itemsSection.setPadding(false);
+        itemsSection.add(itemsHeader, itemsGrid);
+        itemsSection.setFlexGrow(1, itemsGrid);
+
+        // Layout assembly
         var content = new HorizontalLayout();
         content.setSizeFull();
         content.setSpacing(true);
+        content.add(orderInfoSection, itemsSection);
 
-        // Left: Order info
-        content.add(createOrderInfoSection());
-
-        // Right: Items
-        content.add(createItemsSection());
-
+        var contentWrapper = new Div();
+        contentWrapper.addClassNames(LumoUtility.Padding.MEDIUM);
+        contentWrapper.setSizeFull();
         contentWrapper.add(content);
-        add(contentWrapper);
-        setFlexGrow(1, contentWrapper);
 
-        // Actions
-        add(createActionsSection());
+        add(header, contentWrapper, actionButtons);
+        setFlexGrow(1, contentWrapper);
     }
 
     @Override
@@ -118,49 +196,6 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         }
     }
 
-    private Div createHeader() {
-        var header = new Div();
-        header.addClassName("view-header");
-
-        var leftSection = new Div();
-        leftSection.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Gap.SMALL
-        );
-
-        var backButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
-        backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        backButton.addClickListener(e -> navigateBack());
-
-        var title = new Span("Order Details");
-        title.addClassNames(
-                LumoUtility.FontSize.XLARGE,
-                LumoUtility.FontWeight.SEMIBOLD
-        );
-
-        orderIdLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
-
-        leftSection.add(backButton, title, orderIdLabel);
-        header.add(leftSection, statusBadge);
-        return header;
-    }
-
-    private VerticalLayout createOrderInfoSection() {
-        var section = new VerticalLayout();
-        section.setWidth("350px");
-        section.setPadding(false);
-        section.setSpacing(false);
-
-        section.add(createInfoCard("Customer", customerNameLabel, customerPhoneLabel));
-        section.add(createInfoCard("Pickup", locationLabel, dueDateTimeLabel));
-        section.add(createInfoCard("Notes", additionalDetailsLabel));
-        section.add(createInfoCard("Payment", totalLabel, paidBadge));
-        section.add(createInfoCard("History", createdByLabel, updatedByLabel));
-
-        return section;
-    }
-
     private Div createInfoCard(String title, Span... content) {
         var card = new Div();
         card.addClassName("card");
@@ -182,61 +217,6 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         }
 
         return card;
-    }
-
-    private VerticalLayout createItemsSection() {
-        var section = new VerticalLayout();
-        section.setSizeFull();
-        section.setPadding(false);
-
-        var header = new H3("Order Items");
-        header.addClassNames(LumoUtility.Margin.NONE, LumoUtility.Margin.Bottom.MEDIUM);
-        section.add(header);
-
-        configureItemsGrid();
-        section.add(itemsGrid);
-        section.setFlexGrow(1, itemsGrid);
-
-        return section;
-    }
-
-    private void configureItemsGrid() {
-        itemsGrid.setSizeFull();
-
-        itemsGrid.addColumn(OrderItemDetail::getProductName)
-                .setHeader("Product")
-                .setFlexGrow(2);
-
-        itemsGrid.addColumn(OrderItemDetail::getProductSize)
-                .setHeader("Size")
-                .setFlexGrow(1);
-
-        itemsGrid.addColumn(OrderItemDetail::getQuantity)
-                .setHeader("Qty")
-                .setFlexGrow(0)
-                .setWidth("60px");
-
-        itemsGrid.addColumn(item -> CURRENCY_FORMAT.format(item.getUnitPrice()))
-                .setHeader("Unit Price")
-                .setFlexGrow(0)
-                .setWidth("100px");
-
-        itemsGrid.addColumn(item -> CURRENCY_FORMAT.format(item.getLineTotal()))
-                .setHeader("Total")
-                .setFlexGrow(0)
-                .setWidth("100px");
-
-        itemsGrid.addColumn(OrderItemDetail::getDetails)
-                .setHeader("Notes")
-                .setFlexGrow(1);
-    }
-
-    private HorizontalLayout createActionsSection() {
-        actionButtons.setWidthFull();
-        actionButtons.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-        actionButtons.setSpacing(true);
-        actionButtons.addClassNames(LumoUtility.Margin.Top.MEDIUM);
-        return actionButtons;
     }
 
     private void populateView() {

@@ -50,60 +50,42 @@ public class UsersView extends VerticalLayout {
         this.currentUserService = currentUserService;
         this.locationService = locationService;
 
+        // Component initializations
         addClassName("users-view");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
-        // Header with title, search, and add button
-        searchField = createSearchField();
+        searchField = new TextField();
+        searchField.setPlaceholder("Search users...");
+        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.addValueChangeListener(e -> filterGrid(e.getValue()));
+        searchField.setWidth("300px");
+
         var header = new ViewHeader("Users")
                 .withFilters(searchField)
                 .withAction("New user", () -> openDialog(null));
 
-        // Grid container with padding
         var gridContainer = new Div();
         gridContainer.addClassNames(LumoUtility.Padding.MEDIUM, LumoUtility.BoxSizing.BORDER);
         gridContainer.setSizeFull();
 
-        grid = createGrid();
-        gridContainer.add(grid);
-
-        add(header, gridContainer);
-        setFlexGrow(1, gridContainer);
-        refreshGrid();
-    }
-
-    private TextField createSearchField() {
-        var field = new TextField();
-        field.setPlaceholder("Search users...");
-        field.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
-        field.setValueChangeMode(ValueChangeMode.LAZY);
-        field.addValueChangeListener(e -> filterGrid(e.getValue()));
-        field.setWidth("300px");
-        return field;
-    }
-
-    private Grid<UserSummary> createGrid() {
-        var grid = new Grid<>(UserSummary.class, false);
+        grid = new Grid<>(UserSummary.class, false);
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES);
         grid.setSizeFull();
-
         grid.addComponentColumn(this::createUserAvatar)
                 .setHeader("")
                 .setFlexGrow(0)
                 .setAutoWidth(true);
-
         grid.addColumn(UserSummary::getEmail)
                 .setHeader("Email")
                 .setSortable(true)
                 .setFlexGrow(2);
-
         grid.addColumn(UserSummary::getFullName)
                 .setHeader("Name")
                 .setSortable(true)
                 .setFlexGrow(2);
-
         grid.addComponentColumn(user -> {
             var badge = new Span(user.getRole().getDisplayName());
             String badgeColor = switch (user.getRole()) {
@@ -114,10 +96,15 @@ public class UsersView extends VerticalLayout {
             badge.getElement().getThemeList().add("badge pill " + badgeColor);
             return badge;
         }).setHeader("Role").setFlexGrow(0).setAutoWidth(true);
-
         grid.addItemClickListener(event -> openDialogForEdit(event.getItem().getId()));
 
-        return grid;
+        // Layout assembly
+        gridContainer.add(grid);
+        add(header, gridContainer);
+        setFlexGrow(1, gridContainer);
+
+        // Data loading
+        refreshGrid();
     }
 
     private Avatar createUserAvatar(UserSummary user) {

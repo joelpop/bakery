@@ -45,71 +45,48 @@ public class PreferencesView extends VerticalLayout {
     private String uploadedPhotoContentType;
 
     // Password fields
-    private final PasswordField currentPasswordField = new PasswordField("Current Password");
-    private final PasswordField newPasswordField = new PasswordField("New Password");
-    private final PasswordField confirmPasswordField = new PasswordField("Confirm Password");
+    private final PasswordField currentPasswordField;
+    private final PasswordField newPasswordField;
+    private final PasswordField confirmPasswordField;
 
     public PreferencesView(CurrentUserService currentUserService, UserService userService) {
         this.currentUserService = currentUserService;
         this.userService = userService;
 
+        // Component initializations
         addClassName("preferences-view");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
-        // Header
         var header = new ViewHeader("Preferences");
-        add(header);
 
-        // Main content (scrollable)
-        var content = new VerticalLayout();
-        content.setWidthFull();
-        content.setMaxWidth("800px");
-        content.setPadding(true);
-        content.setSpacing(true);
-
-        // Profile section
         profileAvatar = new Avatar();
         profileAvatar.setWidth("100px");
         profileAvatar.setHeight("100px");
-        var profileSection = createProfileSection();
-        content.add(profileSection);
 
-        // Password section
-        var passwordSection = createPasswordSection();
-        content.add(passwordSection);
+        currentPasswordField = new PasswordField("Current Password");
+        currentPasswordField.setWidthFull();
+        currentPasswordField.setRequired(true);
 
-        var scroller = new Scroller(content);
-        scroller.setSizeFull();
-        scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
-        add(scroller);
-        setFlexGrow(1, scroller);
+        newPasswordField = new PasswordField("New Password");
+        newPasswordField.setWidthFull();
+        newPasswordField.setRequired(true);
+        newPasswordField.setHelperText("Minimum 8 characters");
+        newPasswordField.addValueChangeListener(e -> updatePasswordStrength());
 
-        // Load current user data
-        loadCurrentUser();
-    }
+        confirmPasswordField = new PasswordField("Confirm Password");
+        confirmPasswordField.setWidthFull();
+        confirmPasswordField.setRequired(true);
 
-    private Div createProfileSection() {
-        var section = createSection("Profile");
-
-        var profileLayout = new HorizontalLayout();
-        profileLayout.setAlignItems(Alignment.START);
-        profileLayout.setSpacing(true);
-
-        // Avatar and upload
-        var avatarSection = new VerticalLayout();
-        avatarSection.setPadding(false);
-        avatarSection.setSpacing(true);
-        avatarSection.setAlignItems(Alignment.CENTER);
-        avatarSection.setWidth("auto");
+        // Profile section
+        var profileSection = createSection("Profile");
 
         var buffer = new MemoryBuffer();
         var upload = new Upload(buffer);
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
         upload.setMaxFileSize(2 * 1024 * 1024); // 2MB
         upload.setUploadButton(new Button("Change Photo"));
-
         upload.addSucceededListener(event -> {
             try {
                 uploadedPhoto = buffer.getInputStream().readAllBytes();
@@ -122,15 +99,12 @@ public class PreferencesView extends VerticalLayout {
             }
         });
 
+        var avatarSection = new VerticalLayout();
+        avatarSection.setPadding(false);
+        avatarSection.setSpacing(true);
+        avatarSection.setAlignItems(Alignment.CENTER);
+        avatarSection.setWidth("auto");
         avatarSection.add(profileAvatar, upload);
-        profileLayout.add(avatarSection);
-
-        // Profile info (read-only)
-        var infoForm = new FormLayout();
-        infoForm.setResponsiveSteps(
-                new FormLayout.ResponsiveStep("0", 1),
-                new FormLayout.ResponsiveStep("400px", 2)
-        );
 
         var nameField = new TextField("Name");
         nameField.setReadOnly(true);
@@ -144,46 +118,25 @@ public class PreferencesView extends VerticalLayout {
         roleField.setReadOnly(true);
         roleField.setWidthFull();
 
+        var infoForm = new FormLayout();
+        infoForm.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1),
+                new FormLayout.ResponsiveStep("400px", 2)
+        );
         infoForm.add(nameField, 2);
         infoForm.add(emailField, 2);
         infoForm.add(roleField, 1);
 
-        // Store references to update later
-        infoForm.getElement().setProperty("nameField", "");
-        profileLayout.add(infoForm);
+        var profileLayout = new HorizontalLayout();
+        profileLayout.setAlignItems(Alignment.START);
+        profileLayout.setSpacing(true);
+        profileLayout.add(avatarSection, infoForm);
         profileLayout.setFlexGrow(1, infoForm);
 
-        section.add(profileLayout);
+        profileSection.add(profileLayout);
 
-        // Update fields when user loads
-        currentUserService.getCurrentUser().ifPresent(user -> {
-            nameField.setValue(user.getFirstName() + " " + user.getLastName());
-            emailField.setValue(user.getEmail());
-            roleField.setValue(user.getRole().getDisplayName());
-        });
-
-        return section;
-    }
-
-    private Div createPasswordSection() {
-        var section = createSection("Change Password");
-
-        var form = new FormLayout();
-        form.setResponsiveSteps(
-                new FormLayout.ResponsiveStep("0", 1)
-        );
-        form.setMaxWidth("400px");
-
-        currentPasswordField.setWidthFull();
-        currentPasswordField.setRequired(true);
-
-        newPasswordField.setWidthFull();
-        newPasswordField.setRequired(true);
-        newPasswordField.setHelperText("Minimum 8 characters");
-        newPasswordField.addValueChangeListener(e -> updatePasswordStrength());
-
-        confirmPasswordField.setWidthFull();
-        confirmPasswordField.setRequired(true);
+        // Password section
+        var passwordSection = createSection("Change Password");
 
         var strengthIndicator = new Div();
         strengthIndicator.setId("password-strength");
@@ -192,13 +145,42 @@ public class PreferencesView extends VerticalLayout {
         var changePasswordButton = new Button("Change Password", e -> changePassword());
         changePasswordButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        form.add(currentPasswordField, newPasswordField, strengthIndicator, confirmPasswordField);
+        var passwordForm = new FormLayout();
+        passwordForm.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1)
+        );
+        passwordForm.setMaxWidth("400px");
+        passwordForm.add(currentPasswordField, newPasswordField, strengthIndicator, confirmPasswordField);
 
         var buttonLayout = new HorizontalLayout(changePasswordButton);
         buttonLayout.addClassNames(LumoUtility.Margin.Top.MEDIUM);
 
-        section.add(form, buttonLayout);
-        return section;
+        passwordSection.add(passwordForm, buttonLayout);
+
+        // Layout assembly
+        var content = new VerticalLayout();
+        content.setWidthFull();
+        content.setMaxWidth("800px");
+        content.setPadding(true);
+        content.setSpacing(true);
+        content.add(profileSection, passwordSection);
+
+        var scroller = new Scroller(content);
+        scroller.setSizeFull();
+        scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
+
+        add(header, scroller);
+        setFlexGrow(1, scroller);
+
+        // Value settings
+        currentUserService.getCurrentUser().ifPresent(user -> {
+            nameField.setValue(user.getFirstName() + " " + user.getLastName());
+            emailField.setValue(user.getEmail());
+            roleField.setValue(user.getRole().getDisplayName());
+        });
+
+        // Data loading
+        loadCurrentUser();
     }
 
     private Div createSection(String title) {

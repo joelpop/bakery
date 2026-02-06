@@ -40,59 +40,82 @@ public class ProductDialog extends Dialog {
     private final ProductSummary product;
     private final boolean isNew;
 
-    private final TextField nameField = new TextField("Name");
-    private final TextArea descriptionField = new TextArea("Description");
-    private final TextField sizeField = new TextField("Size");
-    private final BigDecimalField priceField = new BigDecimalField("Price");
-    private final Checkbox availableCheckbox = new Checkbox("Available");
+    private final TextField nameField;
+    private final TextArea descriptionField;
+    private final TextField sizeField;
+    private final BigDecimalField priceField;
+    private final Checkbox availableCheckbox;
 
-    private final Div photoContainer = new Div();
+    private final Div photoContainerDiv;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
-    private final Binder<ProductSummary> binder = new Binder<>(ProductSummary.class);
+    private final Binder<ProductSummary> binder;
 
     public ProductDialog(ProductSummary product, ProductService productService) {
         this.productService = productService;
         this.product = product;
         this.isNew = product.getId() == null;
 
-        setHeaderTitle(isNew ? "New Product" : "Edit Product");
-        setModal(true);
-        setCloseOnOutsideClick(false);
-        // Responsive sizing: max-width on desktop, full-screen on mobile via CSS theme
-        getElement().getThemeList().add("responsive-dialog");
-        setWidth("100%");
-        setMaxWidth("600px");
-
-        configureFields();
-        configureBinder();
-        createLayout();
-        createFooter();
-
-        binder.readBean(product);
-        updatePhotoPreview();
-    }
-
-    private void configureFields() {
+        // Component initializations
+        nameField = new TextField("Name");
         nameField.setRequired(true);
         nameField.setWidthFull();
 
+        descriptionField = new TextArea("Description");
         descriptionField.setWidthFull();
         descriptionField.setMinHeight("80px");
 
+        sizeField = new TextField("Size");
         sizeField.setWidthFull();
         sizeField.setHelperText("e.g., \"12 ppl\", \"individual\"");
 
+        priceField = new BigDecimalField("Price");
         priceField.setWidthFull();
         priceField.setPrefixComponent(new Span("$"));
 
-        if (isNew) {
-            availableCheckbox.setValue(true);
-        }
-    }
+        availableCheckbox = new Checkbox("Available");
 
-    private void configureBinder() {
+        photoContainerDiv = new Div();
+        photoContainerDiv.getStyle()
+                .set("width", "100px")
+                .set("height", "100px")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("background", "var(--lumo-contrast-10pct)")
+                .set("overflow", "hidden");
+
+        var buffer = new MemoryBuffer();
+        var upload = new Upload(buffer);
+        upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
+        upload.setMaxFileSize(5 * 1024 * 1024); // 5MB
+        upload.addSucceededListener(event -> {
+            try {
+                uploadedPhoto = buffer.getInputStream().readAllBytes();
+                uploadedPhotoContentType = event.getMIMEType();
+                updatePhotoPreview();
+            } catch (IOException e) {
+                Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        var photoSection = new Div();
+        photoSection.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.Gap.MEDIUM,
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Margin.Bottom.MEDIUM
+        );
+        photoSection.add(photoContainerDiv, upload);
+
+        var cancelButton = new Button("Cancel", e -> close());
+
+        var saveButton = new Button("Save", e -> save());
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        // Binder bindings
+        binder = new Binder<>(ProductSummary.class);
+
         binder.forField(nameField)
                 .asRequired("Name is required")
                 .withValidator(name -> isNew ?
@@ -115,88 +138,31 @@ public class ProductDialog extends Dialog {
 
         binder.forField(availableCheckbox)
                 .bind(ProductSummary::isAvailable, ProductSummary::setAvailable);
-    }
 
-    private void createLayout() {
+        // Value settings
+        if (isNew) {
+            availableCheckbox.setValue(true);
+        }
+
+        binder.readBean(product);
+        updatePhotoPreview();
+
+        // Layout assembly
         var form = new FormLayout();
         form.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
                 new FormLayout.ResponsiveStep("400px", 2)
         );
-
-        // Photo upload section
-        var photoSection = createPhotoSection();
         form.add(photoSection, 2);
-
         form.add(nameField, 2);
         form.add(descriptionField, 2);
         form.add(sizeField, 1);
         form.add(priceField, 1);
         form.add(availableCheckbox, 2);
 
-        add(form);
-    }
-
-    private Div createPhotoSection() {
-        var section = new Div();
-        section.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.Gap.MEDIUM,
-                LumoUtility.AlignItems.CENTER,
-                LumoUtility.Margin.Bottom.MEDIUM
-        );
-
-        photoContainer.getStyle()
-                .set("width", "100px")
-                .set("height", "100px")
-                .set("border-radius", "var(--lumo-border-radius-m)")
-                .set("background", "var(--lumo-contrast-10pct)")
-                .set("overflow", "hidden");
-
-        var buffer = new MemoryBuffer();
-        var upload = new Upload(buffer);
-        upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
-        upload.setMaxFileSize(5 * 1024 * 1024); // 5MB
-
-        upload.addSucceededListener(event -> {
-            try {
-                uploadedPhoto = buffer.getInputStream().readAllBytes();
-                uploadedPhotoContentType = event.getMIMEType();
-                updatePhotoPreview();
-            } catch (IOException e) {
-                Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
-
-        section.add(photoContainer, upload);
-        return section;
-    }
-
-    private void updatePhotoPreview() {
-        photoContainer.removeAll();
-
-        byte[] photoData = uploadedPhoto != null ? uploadedPhoto : product.getPhoto();
-        if (photoData != null && photoData.length > 0) {
-            var resource = new StreamResource("product-photo",
-                    () -> new ByteArrayInputStream(photoData));
-            var image = new Image(resource, "Product photo");
-            image.setWidthFull();
-            image.setHeightFull();
-            image.getStyle().set("object-fit", "cover");
-            photoContainer.add(image);
-        }
-    }
-
-    private void createFooter() {
         var footer = new HorizontalLayout();
         footer.setWidthFull();
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-
-        var cancelButton = new Button("Cancel", e -> close());
-
-        var saveButton = new Button("Save", e -> save());
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         if (!isNew) {
             var deleteButton = new Button("Delete", e -> confirmDelete());
@@ -209,7 +175,30 @@ public class ProductDialog extends Dialog {
             footer.add(cancelButton, saveButton);
         }
 
+        // Dialog configuration
+        setHeaderTitle(isNew ? "New Product" : "Edit Product");
+        setModal(true);
+        setCloseOnOutsideClick(false);
+        getElement().getThemeList().add("responsive-dialog");
+        setWidth("100%");
+        setMaxWidth("600px");
+        add(form);
         getFooter().add(footer);
+    }
+
+    private void updatePhotoPreview() {
+        photoContainerDiv.removeAll();
+
+        byte[] photoData = uploadedPhoto != null ? uploadedPhoto : product.getPhoto();
+        if (photoData != null && photoData.length > 0) {
+            var resource = new StreamResource("product-photo",
+                    () -> new ByteArrayInputStream(photoData));
+            var image = new Image(resource, "Product photo");
+            image.setWidthFull();
+            image.setHeightFull();
+            image.getStyle().set("object-fit", "cover");
+            photoContainerDiv.add(image);
+        }
     }
 
     private void save() {

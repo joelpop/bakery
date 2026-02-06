@@ -47,13 +47,14 @@ import java.util.stream.Collectors;
 public class StorefrontView extends VerticalLayout {
 
     private final OrderService orderService;
-    private final LocationService locationService;
     private final ProductService productService;
     private final CustomerService customerService;
+    private final LocationService locationService;
     private final UserLocationService userLocationService;
     private final Div ordersContainer;
-    private FilterBar filterBar;
-    private TextField searchField;
+    private final FilterBar filterBar;
+    private final TextField searchField;
+
     private Registration locationChangeRegistration;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
@@ -67,24 +68,27 @@ public class StorefrontView extends VerticalLayout {
         this.customerService = customerService;
         this.userLocationService = userLocationService;
 
+        // Component initializations
         addClassName("storefront-view");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
-        // View header with title, search, and new order button
-        searchField = createSearchField();
+        searchField = new TextField();
+        searchField.setPlaceholder("Filter orders");
+        searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        searchField.setClearButtonVisible(true);
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.addValueChangeListener(e -> refresh());
+        searchField.setWidth("300px");
+
         var header = new ViewHeader("Storefront")
                 .withFilters(searchField)
                 .withAction("New order", this::openNewOrderDialog);
-        add(header);
 
-        // Filter bar
         filterBar = new FilterBar(locationService.listActive(), userLocationService);
         filterBar.addFilterChangedListener(e -> refresh());
-        add(filterBar);
 
-        // Orders container (scrollable)
         ordersContainer = new Div();
         ordersContainer.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -96,9 +100,14 @@ public class StorefrontView extends VerticalLayout {
         var scroller = new Scroller(ordersContainer);
         scroller.setSizeFull();
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
+
+        // Layout assembly
+        add(header);
+        add(filterBar);
         add(scroller);
         setFlexGrow(1, scroller);
 
+        // Data loading
         refresh();
     }
 
@@ -129,17 +138,6 @@ public class StorefrontView extends VerticalLayout {
             locationChangeRegistration.remove();
             locationChangeRegistration = null;
         }
-    }
-
-    private TextField createSearchField() {
-        var field = new TextField();
-        field.setPlaceholder("Filter orders");
-        field.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
-        field.setClearButtonVisible(true);
-        field.setValueChangeMode(ValueChangeMode.LAZY);
-        field.addValueChangeListener(e -> refresh());
-        field.setWidth("300px");
-        return field;
     }
 
     private void openNewOrderDialog() {

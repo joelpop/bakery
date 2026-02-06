@@ -46,25 +46,14 @@ public class DashboardView extends VerticalLayout {
     public DashboardView(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
 
+        // Component initializations
         addClassName("dashboard-view");
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
-        // Header
         var header = new ViewHeader("Dashboard");
-        add(header);
 
-        // Main content (scrollable)
-        var content = new Div();
-        content.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Gap.LARGE,
-                LumoUtility.Padding.MEDIUM
-        );
-
-        // KPI Cards row
         remainingTodayCard = new KpiCard("Remaining Today", VaadinIcon.CLOCK);
         unavailableCard = new KpiCard("Not Available", VaadinIcon.WARNING);
         newOrdersCard = new KpiCard("New Orders", VaadinIcon.INBOX);
@@ -72,53 +61,55 @@ public class DashboardView extends VerticalLayout {
         monthTotalCard = new KpiCard("Month Total", VaadinIcon.CHART);
         yearTotalCard = new KpiCard("Year Total", VaadinIcon.TRENDING_UP);
 
-        var kpiRow = createKpiRow();
-        content.add(kpiRow);
+        var kpiRow = new Div();
+        kpiRow.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(180px, 1fr))")
+                .set("gap", "var(--lumo-space-m)");
+        kpiRow.add(remainingTodayCard, unavailableCard, newOrdersCard,
+                tomorrowCard, monthTotalCard, yearTotalCard);
 
-        // Charts row (placeholder for now)
-        var chartsRow = createChartsPlaceholder();
-        content.add(chartsRow);
+        var chartsRow = new Div();
+        chartsRow.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
+                .set("gap", "var(--lumo-space-m)");
+        chartsRow.add(
+                createChartPlaceholder("Pickups This Month", "Daily pickup counts"),
+                createChartPlaceholder("Pickups This Year", "Monthly pickup counts")
+        );
 
-        // Bottom section: Upcoming orders + product breakdown
         upcomingOrdersPanel = new UpcomingOrdersPanel();
-        var bottomRow = createBottomRow();
-        content.add(bottomRow);
+
+        var bottomRow = new Div();
+        bottomRow.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
+                .set("gap", "var(--lumo-space-m)");
+        bottomRow.add(
+                upcomingOrdersPanel,
+                createChartPlaceholder("Products This Month", "Product distribution")
+        );
+
+        var content = new Div();
+        content.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.LARGE,
+                LumoUtility.Padding.MEDIUM
+        );
+        content.add(kpiRow, chartsRow, bottomRow);
 
         var scroller = new Scroller(content);
         scroller.setSizeFull();
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
-        add(scroller);
+
+        // Layout assembly
+        add(header, scroller);
         setFlexGrow(1, scroller);
 
-        // Load data
+        // Data loading
         refreshData();
-    }
-
-    private Div createKpiRow() {
-        var row = new Div();
-        row.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fit, minmax(180px, 1fr))")
-                .set("gap", "var(--lumo-space-m)");
-
-        row.add(remainingTodayCard, unavailableCard, newOrdersCard,
-                tomorrowCard, monthTotalCard, yearTotalCard);
-        return row;
-    }
-
-    private Div createChartsPlaceholder() {
-        var row = new Div();
-        row.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
-                .set("gap", "var(--lumo-space-m)");
-
-        // Pickups chart placeholder
-        var pickupsChart = createChartPlaceholder("Pickups This Month", "Daily pickup counts");
-        var yearlyChart = createChartPlaceholder("Pickups This Year", "Monthly pickup counts");
-
-        row.add(pickupsChart, yearlyChart);
-        return row;
     }
 
     private Div createChartPlaceholder(String title, String description) {
@@ -153,23 +144,6 @@ public class DashboardView extends VerticalLayout {
 
         card.add(header, desc, placeholder);
         return card;
-    }
-
-    private Div createBottomRow() {
-        var row = new Div();
-        row.getStyle()
-                .set("display", "grid")
-                .set("grid-template-columns", "repeat(auto-fit, minmax(300px, 1fr))")
-                .set("gap", "var(--lumo-space-m)");
-
-        // Upcoming orders panel
-        row.add(upcomingOrdersPanel);
-
-        // Product breakdown placeholder
-        var productBreakdown = createChartPlaceholder("Products This Month", "Product distribution");
-        row.add(productBreakdown);
-
-        return row;
     }
 
     private void refreshData() {
