@@ -74,8 +74,7 @@ public class FilterBar extends Composite<Div> {
         locationFilterComboBox = new ComboBox<>("Location");
         locationFilterComboBox.setItems(locationItems);
         locationFilterComboBox.setItemLabelGenerator(LocationSummary::getName);
-        locationFilterComboBox.setWidth("180px");
-        locationFilterComboBox.setPlaceholder("All locations");
+        locationFilterComboBox.setWidth("220px");
         locationFilterComboBox.setClearButtonVisible(true);
 
         // Signal definitions
@@ -85,7 +84,7 @@ public class FilterBar extends Composite<Div> {
         fromDateSignal = new ValueSignal<>(today);
         toDateSignal = new ValueSignal<>(weekFromNow);
         selectedStatusesSignal = new ValueSignal<>(Set.of());
-        selectedLocationSignal = new ValueSignal<>(null);
+        selectedLocationSignal = new ValueSignal<>(currentLocationSentinel);
 
         resolvedLocationSignal = Signal.computed(() -> {
             var selected = selectedLocationSignal.value();
@@ -119,6 +118,7 @@ public class FilterBar extends Composite<Div> {
         // Value settings (initial values)
         fromDatePicker.setValue(today);
         toDatePicker.setValue(weekFromNow);
+        locationFilterComboBox.setValue(currentLocationSentinel);
 
         // Layout assembly
         var content = getContent();
