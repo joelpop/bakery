@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.storefront;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -20,6 +21,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import com.vaadin.signals.local.ValueSignal;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
@@ -40,7 +42,9 @@ import java.util.Locale;
 public class OrderDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final OrderService orderService;
-    private OrderDetail order;
+
+    // Signal - primary state
+    private final transient ValueSignal<OrderDetail> orderSignal;
 
     private final Span orderIdLabel;
     private final Span statusBadge;
@@ -57,7 +61,6 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     private final Grid<OrderItemDetail> itemsGrid;
     private final HorizontalLayout actionButtons;
 
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d 'at' h:mm a");
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
 
     public OrderDetailView(OrderService orderService) {
@@ -72,16 +75,24 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         orderIdLabel = new Span();
         orderIdLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
 
+        // Signal definitions
+        orderSignal = new ValueSignal<>(null);
+
         statusBadge = new Span();
         customerNameLabel = new Span();
         customerPhoneLabel = new Span();
+        customerPhoneLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
         locationLabel = new Span();
         dueDateTimeLabel = new Span();
+        dueDateTimeLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
         additionalDetailsLabel = new Span();
         totalLabel = new Span();
+        totalLabel.addClassNames(LumoUtility.FontSize.XLARGE, LumoUtility.FontWeight.BOLD);
         paidBadge = new Span();
         createdByLabel = new Span();
+        createdByLabel.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
         updatedByLabel = new Span();
+        updatedByLabel.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
 
         itemsGrid = new Grid<>();
         itemsGrid.setSizeFull();
@@ -112,6 +123,87 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         actionButtons.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
         actionButtons.setSpacing(true);
         actionButtons.addClassNames(LumoUtility.Margin.Top.MEDIUM);
+
+        // Signal bindings
+        ComponentEffect.effect(this, () -> {
+            var order = orderSignal.value();
+            if (order == null) return;
+
+            orderIdLabel.setText("#" + order.getId());
+
+            // Status badge
+            statusBadge.setText(order.getStatus().getDisplayName());
+            statusBadge.getElement().getThemeList().clear();
+            statusBadge.getElement().getThemeList().add("badge " + mapStatusToTheme(order.getStatus()));
+
+            // Customer info
+            customerNameLabel.setText(order.getCustomerName());
+            customerPhoneLabel.setText(order.getCustomerPhone() != null ? order.getCustomerPhone() : "");
+
+            // Location and time
+            locationLabel.setText(order.getLocationName());
+            var dateTime = "";
+            if (order.getDueDate() != null) {
+                dateTime = order.getDueDate().format(DateTimeFormatter.ofPattern("EEEE, MMMM d"));
+                if (order.getDueTime() != null) {
+                    dateTime += " at " + order.getDueTime().format(DateTimeFormatter.ofPattern("h:mm a"));
+                }
+            }
+            dueDateTimeLabel.setText(dateTime);
+
+            // Additional details
+            additionalDetailsLabel.setText(order.getAdditionalDetails() != null ?
+                    order.getAdditionalDetails() : "None");
+            additionalDetailsLabel.getClassNames().remove(LumoUtility.TextColor.SECONDARY);
+            if (order.getAdditionalDetails() == null || order.getAdditionalDetails().isBlank()) {
+                additionalDetailsLabel.addClassName(LumoUtility.TextColor.SECONDARY);
+            }
+
+            // Payment
+            totalLabel.setText(CURRENCY_FORMAT.format(order.getTotal()));
+            paidBadge.setText(order.isPaid() ? "Paid" : "Unpaid");
+            paidBadge.getElement().getThemeList().clear();
+            paidBadge.getElement().getThemeList().add("badge " + (order.isPaid() ? "success" : "error"));
+
+            // History
+            createdByLabel.setText("Created by: " + (order.getCreatedByName() != null ?
+                    order.getCreatedByName() : "Unknown"));
+            updatedByLabel.setText("Updated by: " + (order.getUpdatedByName() != null ?
+                    order.getUpdatedByName() : "-"));
+
+            // Items
+            itemsGrid.setItems(order.getItems());
+        });
+
+        // Action buttons effect
+        ComponentEffect.effect(this, () -> {
+            var order = orderSignal.value();
+            actionButtons.removeAll();
+            if (order == null) return;
+
+            // Status change button
+            if (!order.getStatus().isTerminal()) {
+                var changeStatusButton = new Button("Change Status", new Icon(VaadinIcon.EDIT));
+                changeStatusButton.addClickListener(e -> openStatusChangeDialog());
+                actionButtons.add(changeStatusButton);
+            }
+
+            // Mark as paid button
+            if (!order.isPaid() && !order.getStatus().isTerminal()) {
+                var markPaidButton = new Button("Mark as Paid", new Icon(VaadinIcon.MONEY));
+                markPaidButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+                markPaidButton.addClickListener(e -> markAsPaid());
+                actionButtons.add(markPaidButton);
+            }
+
+            // Cancel button (only for pre-production orders)
+            if (order.getStatus().isPreProduction()) {
+                var cancelButton = new Button("Cancel Order", new Icon(VaadinIcon.CLOSE));
+                cancelButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+                cancelButton.addClickListener(e -> confirmCancel());
+                actionButtons.add(cancelButton);
+            }
+        });
 
         // Header
         var backButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
@@ -189,8 +281,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
                 navigateBack();
                 return;
             }
-            order = optOrder.get();
-            populateView();
+            orderSignal.value(optOrder.get());
         } catch (NumberFormatException e) {
             navigateBack();
         }
@@ -219,89 +310,10 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         return card;
     }
 
-    private void populateView() {
-        orderIdLabel.setText("#" + order.getId());
-
-        // Status badge
-        statusBadge.removeAll();
-        statusBadge.setText(order.getStatus().getDisplayName());
-        statusBadge.getElement().getThemeList().clear();
-        statusBadge.getElement().getThemeList().add("badge " + mapStatusToTheme(order.getStatus()));
-
-        // Customer info
-        customerNameLabel.setText(order.getCustomerName());
-        customerPhoneLabel.setText(order.getCustomerPhone() != null ? order.getCustomerPhone() : "");
-        customerPhoneLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
-
-        // Location and time
-        locationLabel.setText(order.getLocationName());
-        var dateTime = "";
-        if (order.getDueDate() != null) {
-            dateTime = order.getDueDate().format(DateTimeFormatter.ofPattern("EEEE, MMMM d"));
-            if (order.getDueTime() != null) {
-                dateTime += " at " + order.getDueTime().format(DateTimeFormatter.ofPattern("h:mm a"));
-            }
-        }
-        dueDateTimeLabel.setText(dateTime);
-        dueDateTimeLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
-
-        // Additional details
-        additionalDetailsLabel.setText(order.getAdditionalDetails() != null ?
-                order.getAdditionalDetails() : "None");
-        if (order.getAdditionalDetails() == null || order.getAdditionalDetails().isBlank()) {
-            additionalDetailsLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
-        }
-
-        // Payment
-        totalLabel.setText(CURRENCY_FORMAT.format(order.getTotal()));
-        totalLabel.addClassNames(LumoUtility.FontSize.XLARGE, LumoUtility.FontWeight.BOLD);
-        paidBadge.setText(order.isPaid() ? "Paid" : "Unpaid");
-        paidBadge.getElement().getThemeList().clear();
-        paidBadge.getElement().getThemeList().add("badge " + (order.isPaid() ? "success" : "error"));
-
-        // History
-        createdByLabel.setText("Created by: " + (order.getCreatedByName() != null ?
-                order.getCreatedByName() : "Unknown"));
-        createdByLabel.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
-        updatedByLabel.setText("Updated by: " + (order.getUpdatedByName() != null ?
-                order.getUpdatedByName() : "-"));
-        updatedByLabel.addClassNames(LumoUtility.FontSize.SMALL, LumoUtility.TextColor.SECONDARY);
-
-        // Items
-        itemsGrid.setItems(order.getItems());
-
-        // Action buttons
-        updateActionButtons();
-    }
-
-    private void updateActionButtons() {
-        actionButtons.removeAll();
-
-        // Status change button
-        if (!order.getStatus().isTerminal()) {
-            var changeStatusButton = new Button("Change Status", new Icon(VaadinIcon.EDIT));
-            changeStatusButton.addClickListener(e -> openStatusChangeDialog());
-            actionButtons.add(changeStatusButton);
-        }
-
-        // Mark as paid button
-        if (!order.isPaid() && !order.getStatus().isTerminal()) {
-            var markPaidButton = new Button("Mark as Paid", new Icon(VaadinIcon.MONEY));
-            markPaidButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-            markPaidButton.addClickListener(e -> markAsPaid());
-            actionButtons.add(markPaidButton);
-        }
-
-        // Cancel button (only for pre-production orders)
-        if (order.getStatus().isPreProduction()) {
-            var cancelButton = new Button("Cancel Order", new Icon(VaadinIcon.CLOSE));
-            cancelButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-            cancelButton.addClickListener(e -> confirmCancel());
-            actionButtons.add(cancelButton);
-        }
-    }
-
     private void openStatusChangeDialog() {
+        var order = orderSignal.value();
+        if (order == null) return;
+
         var dialog = new Dialog();
         dialog.setHeaderTitle("Change Order Status");
         dialog.setWidth("400px");
@@ -333,10 +345,13 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void updateStatus(OrderStatus newStatus) {
+        var order = orderSignal.value();
+        if (order == null) return;
+
         try {
             orderService.updateStatus(order.getId(), newStatus);
             order.setStatus(newStatus);
-            populateView();
+            orderSignal.value(order);
             Notification.show("Status updated", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (Exception e) {
@@ -347,10 +362,13 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void markAsPaid() {
+        var order = orderSignal.value();
+        if (order == null) return;
+
         try {
             orderService.markAsPaid(order.getId());
             order.setPaid(true);
-            populateView();
+            orderSignal.value(order);
             Notification.show("Order marked as paid", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (Exception e) {
@@ -361,6 +379,9 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void confirmCancel() {
+        var order = orderSignal.value();
+        if (order == null) return;
+
         var dialog = new Dialog();
         dialog.setHeaderTitle("Cancel Order");
         dialog.add(new Span("Are you sure you want to cancel order #" + order.getId() + "?"));
@@ -377,10 +398,13 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void cancelOrder() {
+        var order = orderSignal.value();
+        if (order == null) return;
+
         try {
             orderService.updateStatus(order.getId(), OrderStatus.CANCELLED);
             order.setStatus(OrderStatus.CANCELLED);
-            populateView();
+            orderSignal.value(order);
             Notification.show("Order cancelled", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (Exception e) {
