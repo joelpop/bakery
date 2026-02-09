@@ -142,8 +142,8 @@ public class ProductsView extends VerticalLayout {
         if (!isAdmin) return;
 
         var dialog = new ProductDialog(product, productService);
-        dialog.addSaveListener(e -> refreshGrid());
-        dialog.addDeleteListener(e -> refreshGrid());
+        dialog.addSaveListener(_ -> refreshGrid());
+        dialog.addDeleteListener(_ -> refreshGrid());
         dialog.open();
     }
 
@@ -153,7 +153,7 @@ public class ProductsView extends VerticalLayout {
     }
 
     private void filterGrid(String searchTerm) {
-        if (searchTerm == null || searchTerm.isEmpty()) {
+        if (searchTerm.isEmpty()) {
             grid.setItems(allProducts);
         } else {
             var lowerSearch = searchTerm.toLowerCase();

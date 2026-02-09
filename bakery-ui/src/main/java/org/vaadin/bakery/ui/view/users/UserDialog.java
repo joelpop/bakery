@@ -16,6 +16,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.data.binder.Binder;
@@ -53,6 +54,7 @@ public class UserDialog extends Dialog {
     private final List<LocationSummary> locations;
 
     private final Div photoContainerDiv;
+    private final MemoryBuffer photoUploadBuffer;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
@@ -118,20 +120,11 @@ public class UserDialog extends Dialog {
                 .set("width", "80px")
                 .set("height", "80px");
 
-        var buffer = new MemoryBuffer();
-        var upload = new Upload(buffer);
+        photoUploadBuffer = new MemoryBuffer();
+        var upload = new Upload(photoUploadBuffer);
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
         upload.setMaxFileSize(2 * 1024 * 1024); // 2MB
-        upload.addSucceededListener(event -> {
-            try {
-                uploadedPhoto = buffer.getInputStream().readAllBytes();
-                uploadedPhotoContentType = event.getMIMEType();
-                updatePhotoPreview();
-            } catch (IOException e) {
-                Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
+        upload.addSucceededListener(this::onPhotoUploadSucceeded);
 
         var photoSection = new Div();
         photoSection.addClassNames(
@@ -142,9 +135,9 @@ public class UserDialog extends Dialog {
         );
         photoSection.add(photoContainerDiv, upload);
 
-        var cancelButton = new Button("Cancel", e -> close());
+        var cancelButton = new Button("Cancel", _ -> close());
 
-        var saveButton = new Button("Save", e -> save());
+        var saveButton = new Button("Save", _ -> save());
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         // Binder bindings
@@ -168,9 +161,9 @@ public class UserDialog extends Dialog {
                 .bind(UserDetail::getLastName, UserDetail::setLastName);
 
         binder.forField(passwordField)
-                .withValidator(password -> !isNew || (password != null && !password.isEmpty()),
+                .withValidator(password -> !isNew || !password.isEmpty(),
                         "Password is required for new users")
-                .withValidator(password -> password == null || password.isEmpty() || password.length() >= 8,
+                .withValidator(password -> password.isEmpty() || password.length() >= 8,
                         "Password must be at least 8 characters")
                 .bind(UserDetail::getPassword, UserDetail::setPassword);
 
@@ -218,7 +211,7 @@ public class UserDialog extends Dialog {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
 
         if (!isNew) {
-            var deleteButton = new Button("Delete", e -> confirmDelete());
+            var deleteButton = new Button("Delete", _ -> confirmDelete());
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
             if (isEditingSelf) {
                 deleteButton.setEnabled(false);
@@ -285,7 +278,7 @@ public class UserDialog extends Dialog {
 
             fireEvent(new SaveEvent(this));
             close();
-        } catch (ValidationException e) {
+        } catch (ValidationException _) {
             Notification.show("Please fix the validation errors", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
@@ -303,8 +296,8 @@ public class UserDialog extends Dialog {
         confirmDialog.add(new Span("Are you sure you want to delete \"" +
                 user.getFirstName() + " " + user.getLastName() + "\"?"));
 
-        var cancelButton = new Button("Cancel", e -> confirmDialog.close());
-        var deleteButton = new Button("Delete", e -> {
+        var cancelButton = new Button("Cancel", _ -> confirmDialog.close());
+        var deleteButton = new Button("Delete", _ -> {
             confirmDialog.close();
             delete();
         });
@@ -323,6 +316,19 @@ public class UserDialog extends Dialog {
             close();
         } catch (Exception e) {
             Notification.show("Cannot delete user: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    // Event Handlers
+
+    private void onPhotoUploadSucceeded(SucceededEvent event) {
+        try {
+            uploadedPhoto = photoUploadBuffer.getInputStream().readAllBytes();
+            uploadedPhotoContentType = event.getMIMEType();
+            updatePhotoPreview();
+        } catch (IOException _) {
+            Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }

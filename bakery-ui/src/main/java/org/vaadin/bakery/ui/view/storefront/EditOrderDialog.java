@@ -1,5 +1,7 @@
 package org.vaadin.bakery.ui.view.storefront;
 
+import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
+import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
@@ -28,6 +30,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.data.renderer.LitRenderer;
+import com.vaadin.flow.data.selection.SelectionEvent;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.Signal;
@@ -185,7 +188,7 @@ public class EditOrderDialog implements NonComponent {
 
         addUpdateButton = new Button();
         addUpdateButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addUpdateButton.addClickListener(e -> addOrUpdateItem());
+        addUpdateButton.addClickListener(_ -> addOrUpdateItem());
         addUpdateButton.addClickShortcut(Key.ENTER);
 
         var addItemRow = new HorizontalLayout(productComboBox, quantityField, addUpdateButton);
@@ -230,7 +233,7 @@ public class EditOrderDialog implements NonComponent {
         itemsGrid.addComponentColumn(item -> {
             var removeButton = new Button(new Icon(VaadinIcon.TRASH));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            removeButton.addClickListener(e -> removeItem(item));
+            removeButton.addClickListener(_ -> removeItem(item));
             return removeButton;
         }).setFlexGrow(0).setWidth("50px");
 
@@ -282,12 +285,9 @@ public class EditOrderDialog implements NonComponent {
         content.setPadding(false);
         content.setSpacing(false);
 
-        var cancelButton = new Button("Cancel", e -> {
-            fireEvent(new CancelEvent(this));
-            close();
-        });
+        var cancelButton = new Button("Cancel", this::onCancelButtonClick);
 
-        var saveButton = new Button("Save", e -> save());
+        var saveButton = new Button("Save", this::onSaveButtonClick);
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         // Signal definitions
@@ -312,7 +312,7 @@ public class EditOrderDialog implements NonComponent {
         Signal<BigDecimal> discountValueSignal = Signal.computed(() -> {
             var sub = subtotalValueSignal.value();
             var amount = discountAmountSignal.value();
-            if (amount == null || amount <= 0) {
+            if (amount <= 0) {
                 return BigDecimal.ZERO;
             }
             var value = BigDecimal.valueOf(amount);
@@ -339,15 +339,12 @@ public class EditOrderDialog implements NonComponent {
 
         discountTypeGroup.addValueChangeListener(e -> discountTypeSignal.value(e.getValue()));
 
-        discountAmountField.addValueChangeListener(e -> {
-            var val = e.getValue();
-            discountAmountSignal.value(val != null ? val : 0.0);
-        });
+        discountAmountField.addValueChangeListener(this::onDiscountAmountFieldValueChanged);
 
         ComponentEffect.effect(discountAmountField, () -> {
             var sub = subtotalValueSignal.value();
             var amount = discountAmountSignal.value();
-            if (amount == null || amount == 0) {
+            if (amount == 0) {
                 discountAmountField.setInvalid(false);
                 return;
             }
@@ -368,15 +365,7 @@ public class EditOrderDialog implements NonComponent {
             }
         });
 
-        itemsGrid.addSelectionListener(e -> {
-            var selected = e.getFirstSelectedItem().orElse(null);
-            editingItemSignal.value(selected);
-            if (selected != null) {
-                quantityField.focus();
-            } else {
-                productComboBox.focus();
-            }
-        });
+        itemsGrid.addSelectionListener(this::onItemsGridSelectionChanged);
 
         ComponentEffect.effect(addUpdateButton, () -> {
             var editingItem = editingItemSignal.value();
@@ -442,11 +431,7 @@ public class EditOrderDialog implements NonComponent {
         dialog.getFooter().add(cancelButton, saveButton);
 
         // Focus phone field when dialog opens
-        dialog.addOpenedChangeListener(e -> {
-            if (e.isOpened()) {
-                customerPhoneComboBox.focus();
-            }
-        });
+        dialog.addOpenedChangeListener(this::onDialogOpenedChanged);
     }
 
     // ========== Public API ==========
@@ -521,7 +506,7 @@ public class EditOrderDialog implements NonComponent {
 
         // Custom filter that matches phone digits only
         ComboBox.ItemFilter<CustomerSummary> phoneFilter = (customer, filterText) -> {
-            if (filterText == null || filterText.isBlank()) {
+            if (filterText.isBlank()) {
                 return true; // Show all when no filter
             }
             var filterDigits = filterText.replaceAll("\\D", "");
@@ -581,7 +566,7 @@ public class EditOrderDialog implements NonComponent {
      * - Formats as: +1 (212) 555-1234
      */
     private String formatPhoneNumber(String phone) {
-        if (phone == null || phone.isBlank()) {
+        if (phone.isBlank()) {
             return phone;
         }
 
@@ -657,7 +642,7 @@ public class EditOrderDialog implements NonComponent {
         locationComboBox.setItems(locations);
 
         // Pre-select from user's current location, or first location if only one
-        var currentLocation = userLocationService != null ? userLocationService.getCurrentLocation() : null;
+        var currentLocation = userLocationService.getCurrentLocation();
         if (currentLocation != null) {
             locations.stream()
                     .filter(loc -> loc.getId().equals(currentLocation.getId()))
@@ -690,7 +675,7 @@ public class EditOrderDialog implements NonComponent {
         }
 
         var details = itemDetailsField.getValue();
-        var detailsNormalized = details == null ? "" : details.trim();
+        var detailsNormalized = details.trim();
 
         // Check if another item has same product and notes (for combining)
         var matchingSignal = orderItemsListSignal.value().stream()
@@ -740,7 +725,7 @@ public class EditOrderDialog implements NonComponent {
         }
 
         var details = itemDetailsField.getValue();
-        var detailsNormalized = details == null ? "" : details.trim();
+        var detailsNormalized = details.trim();
 
         // Check for existing item with same product and notes
         var existingSignal = orderItemsListSignal.value().stream()
@@ -830,7 +815,7 @@ public class EditOrderDialog implements NonComponent {
         var requiredMessage = "Required";
 
         var phoneValue = getCustomerPhone();
-        if (phoneValue == null || phoneValue.isBlank()) {
+        if (phoneValue.isBlank()) {
             customerPhoneComboBox.setInvalid(true);
             customerPhoneComboBox.setErrorMessage(requiredMessage);
             valid = false;
@@ -838,7 +823,7 @@ public class EditOrderDialog implements NonComponent {
             customerPhoneComboBox.setInvalid(false);
         }
 
-        if (customerNameField.getValue() == null || customerNameField.getValue().isBlank()) {
+        if (customerNameField.getValue().isBlank()) {
             customerNameField.setInvalid(true);
             customerNameField.setErrorMessage(requiredMessage);
             valid = false;
@@ -923,6 +908,40 @@ public class EditOrderDialog implements NonComponent {
         } catch (Exception e) {
             Notification.show("Failed: " + e.getMessage(), 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    // ========== Event Handlers ==========
+
+    private void onCancelButtonClick(ClickEvent<Button> event) {
+        fireEvent(new CancelEvent(this));
+        close();
+    }
+
+    private void onSaveButtonClick(ClickEvent<Button> event) {
+        save();
+    }
+
+    private void onDiscountAmountFieldValueChanged(
+            ComponentValueChangeEvent<NumberField, Double> event) {
+        var val = event.getValue();
+        discountAmountSignal.value(val != null ? val : 0.0);
+    }
+
+    private void onItemsGridSelectionChanged(
+            SelectionEvent<Grid<OrderItemDetail>, OrderItemDetail> event) {
+        var selected = event.getFirstSelectedItem().orElse(null);
+        editingItemSignal.value(selected);
+        if (selected != null) {
+            quantityField.focus();
+        } else {
+            productComboBox.focus();
+        }
+    }
+
+    private void onDialogOpenedChanged(Dialog.OpenedChangeEvent event) {
+        if (event.isOpened()) {
+            customerPhoneComboBox.focus();
         }
     }
 

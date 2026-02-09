@@ -759,6 +759,77 @@ public class EditOrderDialog {
 
 Use `private` visibility for enums that are only used internally.
 
+### Lambdas and Method References
+
+Prefer method references over inline lambdas for multi-line logic and event handlers. For event handlers, use the naming pattern `on{ComponentName}{EventType}`:
+
+```java
+// Preferred: method reference
+saveButton.addClickListener(this::onSaveButtonClick);
+discountAmountField.addValueChangeListener(this::onDiscountAmountFieldValueChanged);
+upload.addSucceededListener(this::onPhotoUploadSucceeded);
+
+// Avoid: inline multi-line lambda
+saveButton.addClickListener(e -> {
+    validate();
+    save();
+});
+```
+
+When the handler needs access to a local variable (e.g., a locally created dialog), an inline lambda is acceptable:
+
+```java
+// Acceptable: lambda captures local variable
+var confirmDialog = new Dialog();
+var deleteButton = new Button("Delete", e -> {
+    confirmDialog.close();
+    delete();
+});
+```
+
+If extracting a lambda to a method reference requires promoting a local variable to a field, use a descriptive field name (e.g., `photoUploadBuffer` instead of `buffer`).
+
+### Unused Parameters
+
+Use `_` (Java unnamed variable) for unused lambda parameters and catch clause exception variables:
+
+```java
+// Preferred: unnamed unused parameters
+saveButton.addClickListener(_ -> save());
+var cancelButton = new Button("Cancel", _ -> close());
+
+// Preferred: unnamed unused exception
+} catch (ValidationException _) {
+    Notification.show("Please fix the validation errors");
+}
+
+// Avoid: named but unused parameters
+saveButton.addClickListener(e -> save());
+} catch (ValidationException e) {
+    Notification.show("Please fix the validation errors");
+}
+```
+
+Keep the exception variable named when it is used (e.g., `e.getMessage()`).
+
+### Null Checks
+
+Do not add null checks where the value is guaranteed non-null by the framework or maintained invariants:
+
+- **Vaadin text fields** (`TextField`, `TextArea`, `PasswordField`): `getValue()` returns `""`, never `null`
+- **`MultiSelectComboBox`**: `getValue()` returns an empty `Set`, never `null`
+- **Signals with non-null initialization**: If a `ValueSignal` is initialized with a non-null value and all writes maintain non-null, readers should not check for null
+
+```java
+// Preferred: trust framework guarantees
+var searchTerm = searchField.getValue();
+if (!searchTerm.isBlank()) { ... }
+
+// Avoid: unnecessary null check
+var searchTerm = searchField.getValue();
+if (searchTerm != null && !searchTerm.isBlank()) { ... }
+```
+
 ### Stream Operations
 
 Avoid unnecessary operations in streams:

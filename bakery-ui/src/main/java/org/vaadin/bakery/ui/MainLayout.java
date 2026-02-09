@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui;
 
+import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ComponentEvent;
@@ -272,14 +273,17 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                     .ifPresent(comboBox::setValue);
         }
 
-        comboBox.addValueChangeListener(e -> {
-            if (e.isFromClient() && e.getValue() != null) {
-                userLocationService.setCurrentLocation(e.getValue());
-                fireEvent(new CurrentLocationChangedEvent(this, e.getValue()));
-            }
-        });
+        comboBox.addValueChangeListener(this::onLocationSelectorValueChanged);
 
         return comboBox;
+    }
+
+    private void onLocationSelectorValueChanged(
+            ComponentValueChangeEvent<ComboBox<LocationSummary>, LocationSummary> event) {
+        if (event.isFromClient() && event.getValue() != null) {
+            userLocationService.setCurrentLocation(event.getValue());
+            fireEvent(new CurrentLocationChangedEvent(this, event.getValue()));
+        }
     }
 
     /**

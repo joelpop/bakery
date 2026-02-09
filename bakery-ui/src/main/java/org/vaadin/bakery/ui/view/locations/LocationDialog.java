@@ -67,9 +67,9 @@ public class LocationDialog extends Dialog {
         sortOrderField.setMin(0);
         sortOrderField.setStepButtonsVisible(true);
 
-        var cancelButton = new Button("Cancel", e -> close());
+        var cancelButton = new Button("Cancel", _ -> close());
 
-        var saveButton = new Button("Save", e -> save());
+        var saveButton = new Button("Save", _ -> save());
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         // Binder bindings
@@ -125,7 +125,7 @@ public class LocationDialog extends Dialog {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
 
         if (!isNew) {
-            var deleteButton = new Button("Delete", e -> confirmDelete());
+            var deleteButton = new Button("Delete", _ -> confirmDelete());
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
 
             var spacer = new Span();
@@ -162,7 +162,7 @@ public class LocationDialog extends Dialog {
 
             fireEvent(new SaveEvent(this));
             close();
-        } catch (ValidationException e) {
+        } catch (ValidationException _) {
             Notification.show("Please fix the validation errors", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
@@ -173,8 +173,8 @@ public class LocationDialog extends Dialog {
         confirmDialog.setHeaderTitle("Delete Location");
         confirmDialog.add(new Span("Are you sure you want to delete \"" + location.getName() + "\"?"));
 
-        var cancelButton = new Button("Cancel", e -> confirmDialog.close());
-        var deleteButton = new Button("Delete", e -> {
+        var cancelButton = new Button("Cancel", _ -> confirmDialog.close());
+        var deleteButton = new Button("Delete", _ -> {
             confirmDialog.close();
             delete();
         });

@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.storefront;
 
+import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.Composite;
@@ -95,25 +96,10 @@ public class FilterBar extends Composite<Div> {
         });
 
         // Signal bindings (UI → Signal)
-        fromDatePicker.addValueChangeListener(_ -> {
-            fromDateSignal.value(fromDatePicker.getValue());
-            fireFilterChanged();
-        });
-
-        toDatePicker.addValueChangeListener(_ -> {
-            toDateSignal.value(toDatePicker.getValue());
-            fireFilterChanged();
-        });
-
-        statusFilterComboBox.addValueChangeListener(_ -> {
-            selectedStatusesSignal.value(statusFilterComboBox.getValue());
-            fireFilterChanged();
-        });
-
-        locationFilterComboBox.addValueChangeListener(_ -> {
-            selectedLocationSignal.value(locationFilterComboBox.getValue());
-            fireFilterChanged();
-        });
+        fromDatePicker.addValueChangeListener(this::onFromDatePickerValueChanged);
+        toDatePicker.addValueChangeListener(this::onToDatePickerValueChanged);
+        statusFilterComboBox.addValueChangeListener(this::onStatusFilterComboBoxValueChanged);
+        locationFilterComboBox.addValueChangeListener(this::onLocationFilterComboBoxValueChanged);
 
         // Value settings (initial values)
         fromDatePicker.setValue(today);
@@ -134,6 +120,30 @@ public class FilterBar extends Composite<Div> {
         content.getStyle().set("background", "var(--lumo-contrast-5pct)");
         content.getStyle().set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
         content.add(fromDatePicker, toDatePicker, statusFilterComboBox, locationFilterComboBox);
+    }
+
+    private void onFromDatePickerValueChanged(
+            ComponentValueChangeEvent<DatePicker, LocalDate> event) {
+        fromDateSignal.value(event.getValue());
+        fireFilterChanged();
+    }
+
+    private void onToDatePickerValueChanged(
+            ComponentValueChangeEvent<DatePicker, LocalDate> event) {
+        toDateSignal.value(event.getValue());
+        fireFilterChanged();
+    }
+
+    private void onStatusFilterComboBoxValueChanged(
+            ComponentValueChangeEvent<MultiSelectComboBox<OrderStatus>, Set<OrderStatus>> event) {
+        selectedStatusesSignal.value(event.getValue());
+        fireFilterChanged();
+    }
+
+    private void onLocationFilterComboBoxValueChanged(
+            ComponentValueChangeEvent<ComboBox<LocationSummary>, LocationSummary> event) {
+        selectedLocationSignal.value(event.getValue());
+        fireFilterChanged();
     }
 
     private void fireFilterChanged() {

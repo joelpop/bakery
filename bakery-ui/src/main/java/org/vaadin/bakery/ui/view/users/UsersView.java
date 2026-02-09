@@ -122,8 +122,8 @@ public class UsersView extends VerticalLayout {
     private void openDialog(UserDetail user) {
         var currentUserEmail = currentUserService.getCurrentUserEmail().orElse(null);
         var dialog = new UserDialog(user, userService, locationService, currentUserEmail);
-        dialog.addSaveListener(e -> refreshGrid());
-        dialog.addDeleteListener(e -> refreshGrid());
+        dialog.addSaveListener(_ -> refreshGrid());
+        dialog.addDeleteListener(_ -> refreshGrid());
         dialog.open();
     }
 
@@ -137,7 +137,7 @@ public class UsersView extends VerticalLayout {
     }
 
     private void filterGrid(String searchTerm) {
-        if (searchTerm == null || searchTerm.isEmpty()) {
+        if (searchTerm.isEmpty()) {
             grid.setItems(allUsers);
         } else {
             var lowerSearch = searchTerm.toLowerCase();

@@ -184,7 +184,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             // Status change button
             if (!order.getStatus().isTerminal()) {
                 var changeStatusButton = new Button("Change Status", new Icon(VaadinIcon.EDIT));
-                changeStatusButton.addClickListener(e -> openStatusChangeDialog());
+                changeStatusButton.addClickListener(_ -> openStatusChangeDialog());
                 actionButtons.add(changeStatusButton);
             }
 
@@ -192,7 +192,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             if (!order.isPaid() && !order.getStatus().isTerminal()) {
                 var markPaidButton = new Button("Mark as Paid", new Icon(VaadinIcon.MONEY));
                 markPaidButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-                markPaidButton.addClickListener(e -> markAsPaid());
+                markPaidButton.addClickListener(_ -> markAsPaid());
                 actionButtons.add(markPaidButton);
             }
 
@@ -200,7 +200,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             if (order.getStatus().isPreProduction()) {
                 var cancelButton = new Button("Cancel Order", new Icon(VaadinIcon.CLOSE));
                 cancelButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
-                cancelButton.addClickListener(e -> confirmCancel());
+                cancelButton.addClickListener(_ -> confirmCancel());
                 actionButtons.add(cancelButton);
             }
         });
@@ -208,7 +208,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         // Header
         var backButton = new Button(new Icon(VaadinIcon.ARROW_LEFT));
         backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        backButton.addClickListener(e -> navigateBack());
+        backButton.addClickListener(_ -> navigateBack());
 
         var title = new Span("Order Details");
         title.addClassNames(
@@ -282,7 +282,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
                 return;
             }
             orderSignal.value(optOrder.get());
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             navigateBack();
         }
     }
@@ -331,8 +331,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         dialog.add(statusCombo);
 
-        var cancelButton = new Button("Cancel", e -> dialog.close());
-        var confirmButton = new Button("Update", e -> {
+        var cancelButton = new Button("Cancel", _ -> dialog.close());
+        var confirmButton = new Button("Update", _ -> {
             if (statusCombo.getValue() != null) {
                 updateStatus(statusCombo.getValue());
                 dialog.close();
@@ -386,8 +386,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         dialog.setHeaderTitle("Cancel Order");
         dialog.add(new Span("Are you sure you want to cancel order #" + order.getId() + "?"));
 
-        var cancelButton = new Button("No, keep it", e -> dialog.close());
-        var confirmButton = new Button("Yes, cancel order", e -> {
+        var cancelButton = new Button("No, keep it", _ -> dialog.close());
+        var confirmButton = new Button("Yes, cancel order", _ -> {
             dialog.close();
             cancelOrder();
         });
