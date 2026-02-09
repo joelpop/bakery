@@ -376,7 +376,7 @@ public class EditOrderDialog implements NonComponent {
                         .ifPresent(productComboBox::setValue);
                 productComboBox.setEnabled(false);
                 quantityField.setValue(editingItem.getQuantity());
-                itemDetailsField.setValue(editingItem.getDetails() != null ? editingItem.getDetails() : "");
+                itemDetailsField.setValue(editingItem.getDetails());
                 addUpdateButton.setIcon(new Icon(VaadinIcon.CHECK));
             } else {
                 productComboBox.clear();
@@ -478,7 +478,7 @@ public class EditOrderDialog implements NonComponent {
         // First line: Product name (size)
         var productLine = new Span();
         var nameText = item.getProductName();
-        if (item.getProductSize() != null && !item.getProductSize().isBlank()) {
+        if (!item.getProductSize().isBlank()) {
             nameText += " (" + item.getProductSize() + ")";
         }
         productLine.setText(nameText);
@@ -486,7 +486,7 @@ public class EditOrderDialog implements NonComponent {
 
         // Second line: Notes (if any)
         var details = item.getDetails();
-        if (details != null && !details.isBlank()) {
+        if (!details.isBlank()) {
             var notesLine = new Span(details);
             notesLine.addClassNames(
                     LumoUtility.FontSize.SMALL,
@@ -513,9 +513,7 @@ public class EditOrderDialog implements NonComponent {
             if (filterDigits.isEmpty()) {
                 return true; // Show all if filter has no digits
             }
-            var phoneDigits = customer.getPhoneNumber() != null
-                    ? customer.getPhoneNumber().replaceAll("\\D", "")
-                    : "";
+            var phoneDigits = customer.getPhoneNumber().replaceAll("\\D", "");
             return phoneDigits.contains(filterDigits);
         };
 
@@ -682,7 +680,7 @@ public class EditOrderDialog implements NonComponent {
                 .filter(s -> s.value() != editingItem) // Exclude the editing item
                 .filter(s -> s.value().getProductId().equals(editingItem.getProductId()))
                 .filter(s -> {
-                    var existingDetails = s.value().getDetails() == null ? "" : s.value().getDetails().trim();
+                    var existingDetails = s.value().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
@@ -731,7 +729,7 @@ public class EditOrderDialog implements NonComponent {
         var existingSignal = orderItemsListSignal.value().stream()
                 .filter(s -> s.value().getProductId().equals(product.getId()))
                 .filter(s -> {
-                    var existingDetails = s.value().getDetails() == null ? "" : s.value().getDetails().trim();
+                    var existingDetails = s.value().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
