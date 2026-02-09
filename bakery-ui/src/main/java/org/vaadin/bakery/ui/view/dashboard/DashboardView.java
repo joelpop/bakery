@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.dashboard;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
@@ -9,6 +10,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.DashboardService;
@@ -40,6 +42,9 @@ public class DashboardView extends VerticalLayout {
 
     // Panels
     private final UpcomingOrdersPanel upcomingOrdersPanel;
+
+    // Signal - refresh trigger
+    private final transient ValueSignal<Integer> refreshTriggerSignal;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
 
@@ -104,12 +109,25 @@ public class DashboardView extends VerticalLayout {
         scroller.setSizeFull();
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
 
+        // Signal definitions
+        refreshTriggerSignal = new ValueSignal<>(0);
+
+        // Signal bindings
+        ComponentEffect.effect(this, () -> {
+            refreshTriggerSignal.value(); // Establish dependency
+            refreshData();
+        });
+
         // Layout assembly
         add(header, scroller);
         setFlexGrow(1, scroller);
+    }
 
-        // Data loading
-        refreshData();
+    /**
+     * Refresh the dashboard data.
+     */
+    public void refresh() {
+        refreshTriggerSignal.value(refreshTriggerSignal.value() + 1);
     }
 
     private Div createChartPlaceholder(String title, String description) {
