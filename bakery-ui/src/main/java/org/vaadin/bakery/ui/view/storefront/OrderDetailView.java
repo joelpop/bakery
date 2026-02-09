@@ -21,7 +21,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import com.vaadin.signals.local.ValueSignal;
+import com.vaadin.flow.signals.local.ValueSignal;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
