@@ -1,6 +1,7 @@
 package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
@@ -18,6 +19,7 @@ import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import com.vaadin.flow.signals.local.ValueSignal;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.ui.MainLayout;
 import org.vaadin.bakery.service.CustomerService;
@@ -55,6 +57,9 @@ public class StorefrontView extends VerticalLayout {
     private final FilterBar filterBar;
     private final TextField searchField;
 
+    // Signal - refresh trigger
+    private final transient ValueSignal<Integer> refreshTriggerSignal;
+
     private Registration locationChangeRegistration;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
@@ -79,7 +84,6 @@ public class StorefrontView extends VerticalLayout {
         searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
         searchField.setClearButtonVisible(true);
         searchField.setValueChangeMode(ValueChangeMode.LAZY);
-        searchField.addValueChangeListener(e -> refresh());
         searchField.setWidth("300px");
 
         var header = new ViewHeader("Storefront")
@@ -87,7 +91,6 @@ public class StorefrontView extends VerticalLayout {
                 .withAction("New order", this::openNewOrderDialog);
 
         filterBar = new FilterBar(locationService.listActive(), userLocationService);
-        filterBar.addFilterChangedListener(e -> refresh());
 
         ordersContainer = new Div();
         ordersContainer.addClassNames(
@@ -101,14 +104,23 @@ public class StorefrontView extends VerticalLayout {
         scroller.setSizeFull();
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
 
+        // Signal definitions
+        refreshTriggerSignal = new ValueSignal<>(0);
+
+        // Signal bindings
+        searchField.addValueChangeListener(_ -> triggerRefresh());
+        filterBar.addFilterChangedListener(_ -> triggerRefresh());
+
+        ComponentEffect.effect(this, () -> {
+            refreshTriggerSignal.value(); // Establish dependency
+            rebuildOrdersDisplay();
+        });
+
         // Layout assembly
         add(header);
         add(filterBar);
         add(scroller);
         setFlexGrow(1, scroller);
-
-        // Data loading
-        refresh();
     }
 
     @Override
@@ -121,10 +133,10 @@ public class StorefrontView extends VerticalLayout {
                     .map(MainLayout.class::cast)
                     .findFirst()
                     .ifPresent(mainLayout -> {
-                        locationChangeRegistration = mainLayout.addCurrentLocationChangedListener(e -> {
+                        locationChangeRegistration = mainLayout.addCurrentLocationChangedListener(_ -> {
                             // Refresh if "Current Location" is selected in the filter
                             if (filterBar.isCurrentLocationSelected()) {
-                                refresh();
+                                triggerRefresh();
                             }
                         });
                     });
@@ -143,14 +155,22 @@ public class StorefrontView extends VerticalLayout {
     private void openNewOrderDialog() {
         var dialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
         dialog.setAvailableProducts(productService.listAvailable());
-        dialog.addSaveListener(_ -> refresh());
+        dialog.addSaveListener(_ -> triggerRefresh());
         dialog.open();
+    }
+
+    private void triggerRefresh() {
+        refreshTriggerSignal.value(refreshTriggerSignal.value() + 1);
     }
 
     /**
      * Refresh the orders display. Called by MainLayout after order creation.
      */
     public void refresh() {
+        triggerRefresh();
+    }
+
+    private void rebuildOrdersDisplay() {
         ordersContainer.removeAll();
 
         var fromDate = filterBar.getFromDate();
