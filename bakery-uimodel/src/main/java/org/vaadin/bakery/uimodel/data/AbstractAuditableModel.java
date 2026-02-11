@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
  * Base class for UI models that include audit information.
  * Uses LocalDateTime for display purposes (converted from Instant at the service layer).
  */
-public abstract class AbstractAuditableModel {
+public abstract class AbstractAuditableModel extends AbstractModel {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

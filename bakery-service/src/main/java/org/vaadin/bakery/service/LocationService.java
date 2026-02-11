@@ -22,6 +22,8 @@ public interface LocationService {
 
     void delete(Long id);
 
+    Optional<Integer> getVersion(Long id);
+
     boolean nameExists(String name);
 
     boolean nameExistsForOtherLocation(String name, Long locationId);

@@ -13,7 +13,6 @@ import java.util.List;
  */
 public class OrderDetail extends AbstractAuditableModel {
 
-    private Long id;
     private OrderStatus status;
     private LocalDate dueDate;
     private LocalTime dueTime;
@@ -30,14 +29,6 @@ public class OrderDetail extends AbstractAuditableModel {
 
     // Transient field set during create to indicate if a new customer was created
     private boolean newCustomerCreated;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public OrderStatus getStatus() {
         return status;
@@ -141,10 +132,6 @@ public class OrderDetail extends AbstractAuditableModel {
 
     public void setItems(List<OrderItemDetail> items) {
         this.items = items;
-    }
-
-    public boolean isNew() {
-        return id == null;
     }
 
     public boolean isNewCustomerCreated() {

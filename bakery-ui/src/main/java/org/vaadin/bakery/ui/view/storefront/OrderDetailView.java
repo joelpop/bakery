@@ -23,7 +23,13 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.local.ValueSignal;
 import jakarta.annotation.security.RolesAllowed;
+import org.vaadin.bakery.service.CustomerService;
+import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
+import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.service.StaleDataException;
+import org.vaadin.bakery.service.UserLocationService;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderItemDetail;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
@@ -42,9 +48,17 @@ import java.util.Locale;
 public class OrderDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final OrderService orderService;
+    private final ProductService productService;
+    private final LocationService locationService;
+    private final CustomerService customerService;
+    private final UserLocationService userLocationService;
 
-    // Signal - primary state
+    // Signal holding the currently displayed order; all display fields react to changes in this signal
     private final transient ValueSignal<OrderDetail> orderSignal;
+
+    // Cross-session refresh state: used to avoid redundant UI updates when the version hasn't changed
+    private Long currentOrderId;
+    private Integer currentOrderVersion;
 
     private final Span orderIdLabel;
     private final Span statusBadge;
@@ -63,8 +77,14 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
 
-    public OrderDetailView(OrderService orderService) {
+    public OrderDetailView(OrderService orderService, ProductService productService,
+                           LocationService locationService, CustomerService customerService,
+                           UserLocationService userLocationService) {
         this.orderService = orderService;
+        this.productService = productService;
+        this.locationService = locationService;
+        this.customerService = customerService;
+        this.userLocationService = userLocationService;
 
         // Component initializations
         addClassName("order-detail-view");
@@ -124,7 +144,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         actionButtons.setSpacing(true);
         actionButtons.addClassNames(LumoUtility.Margin.Top.MEDIUM);
 
-        // Signal bindings
+        // Reactive effect: updates all display fields (status, customer, location, items, payment, history)
+        // whenever the orderSignal value changes
         ComponentEffect.effect(this, () -> {
             var order = orderSignal.value();
             if (order == null) return;
@@ -175,22 +196,30 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             itemsGrid.setItems(order.getItems());
         });
 
-        // Action buttons effect
+        // Reactive effect: rebuilds the action buttons (edit, change status, mark paid, cancel)
+        // based on the current order status and payment state
         ComponentEffect.effect(this, () -> {
             var order = orderSignal.value();
             actionButtons.removeAll();
             if (order == null) return;
 
+            // Edit button (enabled for non-terminal orders)
+            var editButton = createActionButton("Edit Order", VaadinIcon.EDIT);
+            editButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            editButton.setEnabled(!order.getStatus().isTerminal());
+            editButton.addClickListener(_ -> openEditDialog());
+            actionButtons.add(editButton);
+
             // Status change button
             if (!order.getStatus().isTerminal()) {
-                var changeStatusButton = new Button("Change Status", new Icon(VaadinIcon.EDIT));
+                var changeStatusButton = createActionButton("Change Status", VaadinIcon.ARROWS_LONG_H);
                 changeStatusButton.addClickListener(_ -> openStatusChangeDialog());
                 actionButtons.add(changeStatusButton);
             }
 
             // Mark as paid button
             if (!order.isPaid() && !order.getStatus().isTerminal()) {
-                var markPaidButton = new Button("Mark as Paid", new Icon(VaadinIcon.MONEY));
+                var markPaidButton = createActionButton("Mark as Paid", VaadinIcon.MONEY);
                 markPaidButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
                 markPaidButton.addClickListener(_ -> markAsPaid());
                 actionButtons.add(markPaidButton);
@@ -198,11 +227,18 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
             // Cancel button (only for pre-production orders)
             if (order.getStatus().isPreProduction()) {
-                var cancelButton = new Button("Cancel Order", new Icon(VaadinIcon.CLOSE));
+                var cancelButton = createActionButton("Cancel Order", VaadinIcon.CLOSE);
                 cancelButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
                 cancelButton.addClickListener(_ -> confirmCancel());
                 actionButtons.add(cancelButton);
             }
+        });
+
+        // Reactive effect: re-fetches the order from the database whenever any session modifies
+        // order data (via shared orderVersion signal), keeping this view in sync across sessions
+        ComponentEffect.effect(this, () -> {
+            DataChangeSignals.orderVersion().value();
+            refreshOrder();
         });
 
         // Header
@@ -281,7 +317,10 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
                 navigateBack();
                 return;
             }
-            orderSignal.value(optOrder.get());
+            var order = optOrder.get();
+            currentOrderId = order.getId();
+            currentOrderVersion = order.getVersion();
+            orderSignal.value(order);
         } catch (NumberFormatException _) {
             navigateBack();
         }
@@ -310,6 +349,17 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         return card;
     }
 
+    private void openEditDialog() {
+        var order = orderSignal.value();
+        if (order == null) return;
+
+        var editDialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
+        editDialog.setAvailableProducts(productService.listAvailable());
+        editDialog.editOrder(order);
+        editDialog.addSaveListener(_ -> refreshOrder());
+        editDialog.open();
+    }
+
     private void openStatusChangeDialog() {
         var order = orderSignal.value();
         if (order == null) return;
@@ -321,13 +371,13 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         var statusCombo = new ComboBox<OrderStatus>("New Status");
         statusCombo.setWidthFull();
 
-        // Filter available statuses based on current status
+        // Filter available statuses: current + non-terminal + cancelled
         var availableStatuses = Arrays.stream(OrderStatus.values())
-                .filter(s -> s != order.getStatus())
-                .filter(s -> !s.isTerminal() || s == OrderStatus.CANCELLED)
+                .filter(s -> s == order.getStatus() || !s.isTerminal() || s == OrderStatus.CANCELLED)
                 .toList();
         statusCombo.setItems(availableStatuses);
         statusCombo.setItemLabelGenerator(OrderStatus::getDisplayName);
+        statusCombo.setValue(order.getStatus());
 
         dialog.add(statusCombo);
 
@@ -344,21 +394,43 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         dialog.open();
     }
 
+    /** Re-fetches the order from the database and updates the signal if the version has changed. */
+    private void refreshOrder() {
+        if (currentOrderId == null) return;
+        orderService.get(currentOrderId).ifPresentOrElse(
+                order -> {
+                    if (!order.getVersion().equals(currentOrderVersion)) {
+                        currentOrderVersion = order.getVersion();
+                        orderSignal.value(order);
+                    }
+                },
+                () -> {
+                    Notification.show("Order has been deleted", 5000, Notification.Position.BOTTOM_START)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    navigateBack();
+                }
+        );
+    }
+
     private void updateStatus(OrderStatus newStatus) {
         var order = orderSignal.value();
         if (order == null) return;
 
         try {
-            orderService.updateStatus(order.getId(), newStatus);
-            order.setStatus(newStatus);
-            orderSignal.value(order);
+            orderService.updateStatus(order.getId(), newStatus, order.getVersion());
             Notification.show("Status updated", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (StaleDataException _) {
+            // Optimistic lock failed: the order was modified by another session since this view loaded
+            Notification.show("Order was modified by another user. View refreshed.",
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
         } catch (Exception e) {
             Notification.show("Failed to update status: " + e.getMessage(),
                     5000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+        refreshOrder();
     }
 
     private void markAsPaid() {
@@ -366,16 +438,20 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         if (order == null) return;
 
         try {
-            orderService.markAsPaid(order.getId());
-            order.setPaid(true);
-            orderSignal.value(order);
+            orderService.markAsPaid(order.getId(), order.getVersion());
             Notification.show("Order marked as paid", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (StaleDataException _) {
+            // Optimistic lock failed: the order was modified by another session since this view loaded
+            Notification.show("Order was modified by another user. View refreshed.",
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
         } catch (Exception e) {
             Notification.show("Failed to mark as paid: " + e.getMessage(),
                     5000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+        refreshOrder();
     }
 
     private void confirmCancel() {
@@ -402,16 +478,29 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         if (order == null) return;
 
         try {
-            orderService.updateStatus(order.getId(), OrderStatus.CANCELLED);
-            order.setStatus(OrderStatus.CANCELLED);
-            orderSignal.value(order);
+            orderService.updateStatus(order.getId(), OrderStatus.CANCELLED, order.getVersion());
             Notification.show("Order cancelled", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (StaleDataException _) {
+            // Optimistic lock failed: the order was modified by another session since this view loaded
+            Notification.show("Order was modified by another user. View refreshed.",
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
         } catch (Exception e) {
             Notification.show("Failed to cancel order: " + e.getMessage(),
                     5000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+        refreshOrder();
+    }
+
+    private static Button createActionButton(String text, VaadinIcon icon) {
+        var textSpan = new Span(text);
+        textSpan.addClassName("button-text");
+        var button = new Button(new Icon(icon));
+        button.setSuffixComponent(textSpan);
+        button.addClassName("order-detail-button");
+        return button;
     }
 
     private String mapStatusToTheme(OrderStatus status) {

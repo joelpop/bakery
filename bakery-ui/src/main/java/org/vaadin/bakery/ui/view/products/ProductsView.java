@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.products;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -14,11 +15,14 @@ import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.ui.component.ChangeTracker;
 import org.vaadin.bakery.ui.component.ViewHeader;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.ProductSummary;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
@@ -43,6 +47,12 @@ public class ProductsView extends VerticalLayout {
     private final TextField searchField;
     private final boolean isAdmin;
     private final NumberFormat currencyFormat;
+
+    // Signal incremented to trigger a same-session data refresh (e.g., after dialog save or delete)
+    private final transient ValueSignal<Integer> refreshTriggerSignal;
+
+    // Tracks version changes between refreshes to identify new and modified products for row highlight
+    private final transient ChangeTracker<ProductSummary> changeTracker;
 
     private List<ProductSummary> allProducts;
 
@@ -104,13 +114,25 @@ public class ProductsView extends VerticalLayout {
             grid.addItemClickListener(event -> openDialog(event.getItem()));
         }
 
+        // Signal definitions
+        refreshTriggerSignal = new ValueSignal<>(0);
+        changeTracker = new ChangeTracker<>();
+
+        // Signal bindings - apply "row-highlight" CSS part to changed rows for animated highlight
+        grid.setPartNameGenerator(product -> changeTracker.isHighlighted(product.getId()) ? "row-highlight" : null);
+
+        // Reactive effect: re-fetches and rebuilds the grid whenever product data changes
+        // in any session (via shared productVersion signal) or locally (via refreshTriggerSignal)
+        ComponentEffect.effect(this, () -> {
+            DataChangeSignals.productVersion().value();
+            refreshTriggerSignal.value();
+            refreshGrid();
+        });
+
         // Layout assembly
         gridContainer.add(grid);
         add(header, gridContainer);
         setFlexGrow(1, gridContainer);
-
-        // Data loading
-        refreshGrid();
     }
 
     private Image createProductImage(ProductSummary product) {
@@ -142,13 +164,19 @@ public class ProductsView extends VerticalLayout {
         if (!isAdmin) return;
 
         var dialog = new ProductDialog(product, productService);
-        dialog.addSaveListener(_ -> refreshGrid());
-        dialog.addDeleteListener(_ -> refreshGrid());
+        dialog.addSaveListener(_ -> triggerRefresh());
+        dialog.addDeleteListener(_ -> triggerRefresh());
         dialog.open();
     }
 
+    private void triggerRefresh() {
+        refreshTriggerSignal.value(refreshTriggerSignal.value() + 1);
+    }
+
     private void refreshGrid() {
-        allProducts = productService.list();
+        var newData = productService.list();
+        changeTracker.detectChanges(newData);
+        allProducts = newData;
         filterGrid(searchField.getValue());
     }
 

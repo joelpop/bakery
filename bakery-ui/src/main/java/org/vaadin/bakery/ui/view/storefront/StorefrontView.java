@@ -27,7 +27,9 @@ import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
+import org.vaadin.bakery.ui.component.ChangeTracker;
 import org.vaadin.bakery.ui.component.ViewHeader;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderList;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
@@ -57,8 +59,11 @@ public class StorefrontView extends VerticalLayout {
     private final FilterBar filterBar;
     private final TextField searchField;
 
-    // Signal - refresh trigger
+    // Signal incremented to trigger a same-session data refresh (e.g., after local filter change or save)
     private final transient ValueSignal<Integer> refreshTriggerSignal;
+
+    // Tracks version changes between refreshes to identify new and modified orders for highlight animation
+    private final transient ChangeTracker<OrderList> changeTracker;
 
     private Registration locationChangeRegistration;
 
@@ -106,13 +111,17 @@ public class StorefrontView extends VerticalLayout {
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
+        changeTracker = new ChangeTracker<>();
 
-        // Signal bindings
+        // Signal bindings - trigger a local refresh when user changes search text or filter criteria
         searchField.addValueChangeListener(_ -> triggerRefresh());
         filterBar.addFilterChangedListener(_ -> triggerRefresh());
 
+        // Reactive effect: re-fetches and rebuilds the orders display whenever order data changes
+        // in any session (via shared orderVersion signal) or locally (via refreshTriggerSignal)
         ComponentEffect.effect(this, () -> {
-            refreshTriggerSignal.value(); // Establish dependency
+            DataChangeSignals.orderVersion().value();
+            refreshTriggerSignal.value();
             rebuildOrdersDisplay();
         });
 
@@ -184,6 +193,9 @@ public class StorefrontView extends VerticalLayout {
         }
 
         var orders = orderService.listByDateRange(fromDate, toDate);
+
+        // Compare current data versions against previous snapshot to identify new/changed orders
+        changeTracker.detectChanges(orders);
 
         // Apply search filter (customer name)
         var searchTerm = searchField.getValue();
@@ -266,6 +278,12 @@ public class StorefrontView extends VerticalLayout {
 
         for (var order : orders) {
             var card = new OrderCard(order);
+            // Apply CSS highlight classes to visually indicate new or modified orders (animated fade)
+            if (changeTracker.isNew(order.getId())) {
+                card.addClassName("card-new");
+            } else if (changeTracker.isHighlighted(order.getId())) {
+                card.addClassName("card-highlight");
+            }
             card.addOrderClickListener(e -> openOrderDetail(e.getOrder().getId()));
             cardsContainer.add(card);
         }

@@ -34,7 +34,6 @@ public abstract class UserMapper {
 
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "version", ignore = true)
     @Mapping(target = "primaryLocation", source = "primaryLocationId", qualifiedByName = "locationIdToEntity")
     public abstract UserEntity toEntity(UserDetail detail, @MappingTarget UserEntity entity);
 

@@ -25,7 +25,6 @@ public interface LocationMapper {
     List<LocationSummary> toSummaryListFromEntities(List<LocationEntity> entities);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "version", ignore = true)
     LocationEntity toEntity(LocationSummary summary, @MappingTarget LocationEntity entity);
 
     @Mapping(target = "version", ignore = true)

@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.bakery.jpaclient.repository.ProductRepository;
 import org.vaadin.bakery.jpamodel.projection.ProductSelectProjection;
 import org.vaadin.bakery.jpaservice.mapper.ProductMapper;
+import org.vaadin.bakery.service.DataChangeNotifier;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.uimodel.data.ProductSelect;
 import org.vaadin.bakery.uimodel.data.ProductSummary;
@@ -21,10 +22,13 @@ public class JpaProductService implements ProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final DataChangeNotifier dataChangeNotifier;
 
-    public JpaProductService(ProductRepository productRepository, ProductMapper productMapper) {
+    public JpaProductService(ProductRepository productRepository, ProductMapper productMapper,
+                             DataChangeNotifier dataChangeNotifier) {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
+        this.dataChangeNotifier = dataChangeNotifier;
     }
 
     @Override
@@ -49,6 +53,7 @@ public class JpaProductService implements ProductService {
     public ProductSummary create(ProductSummary product) {
         var entity = productMapper.toNewEntity(product);
         var saved = productRepository.save(entity);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT);
         return productMapper.toSummary(saved);
     }
 
@@ -57,12 +62,21 @@ public class JpaProductService implements ProductService {
         var entity = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
         productMapper.toEntity(product, entity);
+        JpaServiceHelper.flushOrThrowStale(productRepository, "product", id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT);
         return productMapper.toSummary(entity);
     }
 
     @Override
     public void delete(Long id) {
         productRepository.deleteById(id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Integer> getVersion(Long id) {
+        return productRepository.findById(id).map(e -> e.getVersion());
     }
 
     @Override

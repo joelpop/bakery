@@ -5,9 +5,8 @@ import java.math.BigDecimal;
 /**
  * UI model for product admin grid.
  */
-public class ProductSummary {
+public class ProductSummary extends AbstractModel {
 
-    private Long id;
     private String name;
     private String description;
     private String size;
@@ -15,14 +14,6 @@ public class ProductSummary {
     private boolean available;
     private byte[] photo;
     private String photoContentType;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public String getName() {
         return name;

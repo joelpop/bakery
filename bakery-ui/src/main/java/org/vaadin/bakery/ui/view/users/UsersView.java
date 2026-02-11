@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.users;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -14,12 +15,15 @@ import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.UserService;
+import org.vaadin.bakery.ui.component.ChangeTracker;
 import org.vaadin.bakery.ui.component.ViewHeader;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.data.UserSummary;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
@@ -42,6 +46,12 @@ public class UsersView extends VerticalLayout {
     private final LocationService locationService;
     private final Grid<UserSummary> grid;
     private final TextField searchField;
+
+    // Signal incremented to trigger a same-session data refresh (e.g., after dialog save or delete)
+    private final transient ValueSignal<Integer> refreshTriggerSignal;
+
+    // Tracks version changes between refreshes to identify new and modified users for row highlight
+    private final transient ChangeTracker<UserSummary> changeTracker;
 
     private List<UserSummary> allUsers;
 
@@ -98,13 +108,25 @@ public class UsersView extends VerticalLayout {
         }).setHeader("Role").setFlexGrow(0).setAutoWidth(true);
         grid.addItemClickListener(event -> openDialogForEdit(event.getItem().getId()));
 
+        // Signal definitions
+        refreshTriggerSignal = new ValueSignal<>(0);
+        changeTracker = new ChangeTracker<>();
+
+        // Signal bindings - apply "row-highlight" CSS part to changed rows for animated highlight
+        grid.setPartNameGenerator(user -> changeTracker.isHighlighted(user.getId()) ? "row-highlight" : null);
+
+        // Reactive effect: re-fetches and rebuilds the grid whenever user data changes
+        // in any session (via shared userVersion signal) or locally (via refreshTriggerSignal)
+        ComponentEffect.effect(this, () -> {
+            DataChangeSignals.userVersion().value();
+            refreshTriggerSignal.value();
+            refreshGrid();
+        });
+
         // Layout assembly
         gridContainer.add(grid);
         add(header, gridContainer);
         setFlexGrow(1, gridContainer);
-
-        // Data loading
-        refreshGrid();
     }
 
     private Avatar createUserAvatar(UserSummary user) {
@@ -122,8 +144,8 @@ public class UsersView extends VerticalLayout {
     private void openDialog(UserDetail user) {
         var currentUserEmail = currentUserService.getCurrentUserEmail().orElse(null);
         var dialog = new UserDialog(user, userService, locationService, currentUserEmail);
-        dialog.addSaveListener(_ -> refreshGrid());
-        dialog.addDeleteListener(_ -> refreshGrid());
+        dialog.addSaveListener(_ -> triggerRefresh());
+        dialog.addDeleteListener(_ -> triggerRefresh());
         dialog.open();
     }
 
@@ -131,8 +153,14 @@ public class UsersView extends VerticalLayout {
         userService.get(userId).ifPresent(this::openDialog);
     }
 
+    private void triggerRefresh() {
+        refreshTriggerSignal.value(refreshTriggerSignal.value() + 1);
+    }
+
     private void refreshGrid() {
-        allUsers = userService.list();
+        var newData = userService.list();
+        changeTracker.detectChanges(newData);
+        allUsers = newData;
         filterGrid(searchField.getValue());
     }
 

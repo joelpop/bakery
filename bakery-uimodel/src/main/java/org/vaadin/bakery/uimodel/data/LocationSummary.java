@@ -3,9 +3,8 @@ package org.vaadin.bakery.uimodel.data;
 /**
  * UI model for location dropdown.
  */
-public class LocationSummary {
+public class LocationSummary extends AbstractModel {
 
-    private Long id;
     private String name;
     private String address;
     private String timezone;
@@ -13,14 +12,6 @@ public class LocationSummary {
     private String defaultAreaCode;
     private boolean active;
     private Integer sortOrder;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public String getName() {
         return name;

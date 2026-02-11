@@ -12,6 +12,7 @@ import org.vaadin.bakery.jpaclient.repository.OrderRepository;
 import org.vaadin.bakery.jpaclient.repository.ProductRepository;
 import org.vaadin.bakery.jpaservice.mapper.EnumMapper;
 import org.vaadin.bakery.jpaservice.mapper.OrderMapper;
+import org.vaadin.bakery.service.DataChangeNotifier;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderList;
@@ -39,16 +40,19 @@ public class JpaOrderService implements OrderService {
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
     private final EnumMapper enumMapper;
+    private final DataChangeNotifier dataChangeNotifier;
 
     public JpaOrderService(OrderRepository orderRepository, CustomerRepository customerRepository,
                            LocationRepository locationRepository, ProductRepository productRepository,
-                           OrderMapper orderMapper, EnumMapper enumMapper) {
+                           OrderMapper orderMapper, EnumMapper enumMapper,
+                           DataChangeNotifier dataChangeNotifier) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.locationRepository = locationRepository;
         this.productRepository = productRepository;
         this.orderMapper = orderMapper;
         this.enumMapper = enumMapper;
+        this.dataChangeNotifier = dataChangeNotifier;
     }
 
     @Override
@@ -132,6 +136,7 @@ public class JpaOrderService implements OrderService {
         }
 
         var saved = orderRepository.save(entity);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
         var result = orderMapper.toDetail(saved);
         result.setNewCustomerCreated(newCustomerCreated);
         return result;
@@ -156,21 +161,50 @@ public class JpaOrderService implements OrderService {
             entity.setLocation(location);
         }
 
+        // Sync items: clear existing, re-add from UI model (orphanRemoval handles deletes)
+        entity.getItems().clear();
+        for (var itemDetail : order.getItems()) {
+            var product = productRepository.findById(itemDetail.getProductId())
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + itemDetail.getProductId()));
+            var itemEntity = new OrderItemEntity();
+            itemEntity.setQuantity(itemDetail.getQuantity());
+            itemEntity.setDetails(itemDetail.getDetails());
+            itemEntity.setUnitPrice(itemDetail.getUnitPrice());
+            itemEntity.setLineTotal(itemDetail.getLineTotal());
+            itemEntity.setProduct(product);
+            entity.addItem(itemEntity);
+        }
+
+        JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
+
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
         return orderMapper.toDetail(entity);
     }
 
     @Override
-    public void updateStatus(Long id, OrderStatus newStatus) {
+    public void updateStatus(Long id, OrderStatus newStatus, Integer expectedVersion) {
         var entity = orderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + id));
+        entity.setVersion(expectedVersion);
         entity.setStatus(enumMapper.toOrderStatusCode(newStatus));
+        JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
     }
 
     @Override
-    public void markAsPaid(Long id) {
+    public void markAsPaid(Long id, Integer expectedVersion) {
         var entity = orderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + id));
+        entity.setVersion(expectedVersion);
         entity.setPaid(true);
+        JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Integer> getVersion(Long id) {
+        return orderRepository.findById(id).map(e -> e.getVersion());
     }
 
     @Override

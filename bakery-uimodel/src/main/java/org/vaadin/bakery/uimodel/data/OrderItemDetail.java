@@ -5,9 +5,8 @@ import java.math.BigDecimal;
 /**
  * UI model for order item create/edit.
  */
-public class OrderItemDetail {
+public class OrderItemDetail extends AbstractModel {
 
-    private Long id;
     private Long productId;
     private String productName;
     private String productSize;
@@ -15,14 +14,6 @@ public class OrderItemDetail {
     private String details;
     private BigDecimal unitPrice;
     private BigDecimal lineTotal;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Long getProductId() {
         return productId;
@@ -86,9 +77,5 @@ public class OrderItemDetail {
         if (quantity != null && unitPrice != null) {
             lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
         }
-    }
-
-    public boolean isNew() {
-        return id == null;
     }
 }

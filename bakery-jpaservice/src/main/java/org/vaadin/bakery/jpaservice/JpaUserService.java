@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.bakery.jpamodel.entity.UserEntity;
 import org.vaadin.bakery.jpaclient.repository.UserRepository;
 import org.vaadin.bakery.jpaservice.mapper.UserMapper;
+import org.vaadin.bakery.service.DataChangeNotifier;
 import org.vaadin.bakery.service.UserService;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.data.UserSummary;
@@ -23,11 +24,14 @@ public class JpaUserService implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final DataChangeNotifier dataChangeNotifier;
 
-    public JpaUserService(UserRepository userRepository, UserMapper userMapper, PasswordEncoder passwordEncoder) {
+    public JpaUserService(UserRepository userRepository, UserMapper userMapper,
+                          PasswordEncoder passwordEncoder, DataChangeNotifier dataChangeNotifier) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
+        this.dataChangeNotifier = dataChangeNotifier;
     }
 
     @Override
@@ -67,6 +71,7 @@ public class JpaUserService implements UserService {
         var entity = userMapper.toNewEntity(user);
         entity.setPasswordHash(passwordEncoder.encode(user.getPassword()));
         var saved = userRepository.save(entity);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER);
         return userMapper.toDetail(saved);
     }
 
@@ -78,12 +83,15 @@ public class JpaUserService implements UserService {
         if (user.getPassword() != null && !user.getPassword().isBlank()) {
             entity.setPasswordHash(passwordEncoder.encode(user.getPassword()));
         }
+        JpaServiceHelper.flushOrThrowStale(userRepository, "user", id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER);
         return userMapper.toDetail(entity);
     }
 
     @Override
     public void delete(Long id) {
         userRepository.deleteById(id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER);
     }
 
     @Override
@@ -91,6 +99,12 @@ public class JpaUserService implements UserService {
         var entity = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
         entity.setPasswordHash(passwordEncoder.encode(newPassword));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Integer> getVersion(Long id) {
+        return userRepository.findById(id).map(e -> e.getVersion());
     }
 
     @Override

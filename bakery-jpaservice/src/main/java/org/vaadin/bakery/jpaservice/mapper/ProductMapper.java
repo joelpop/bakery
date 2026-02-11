@@ -29,7 +29,6 @@ public interface ProductMapper {
     List<ProductSelect> toSelectList(List<ProductSelectProjection> projections);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "version", ignore = true)
     ProductEntity toEntity(ProductSummary summary, @MappingTarget ProductEntity entity);
 
     @Mapping(target = "version", ignore = true)
