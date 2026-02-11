@@ -16,18 +16,33 @@ import java.util.List;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface CustomerMapper {
 
+    /**
+     * Converts a {@link CustomerSummaryProjection} to a {@link CustomerSummary} UI model.
+     */
     CustomerSummary toSummary(CustomerSummaryProjection projection);
 
+    /**
+     * Converts a list of {@link CustomerSummaryProjection}s to a list of {@link CustomerSummary} UI models.
+     */
     List<CustomerSummary> toSummaryList(List<CustomerSummaryProjection> projections);
 
+    /**
+     * Converts a {@link CustomerEntity} to a {@link CustomerSummary} UI model.
+     */
     CustomerSummary toSummary(CustomerEntity entity);
 
+    /**
+     * Updates an existing {@link CustomerEntity} from a {@link CustomerSummary} UI model.
+     */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "active", ignore = true)
     @Mapping(target = "orders", ignore = true)
     CustomerEntity toEntity(CustomerSummary summary, @MappingTarget CustomerEntity entity);
 
+    /**
+     * Creates a new {@link CustomerEntity} from a {@link CustomerSummary} UI model.
+     */
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "active", constant = "true")
     @Mapping(target = "orders", ignore = true)

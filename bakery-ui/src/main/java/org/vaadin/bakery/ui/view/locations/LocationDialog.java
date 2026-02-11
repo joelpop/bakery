@@ -46,6 +46,13 @@ public class LocationDialog extends Dialog {
 
     private final Binder<LocationSummary> binder;
 
+    /**
+     * Creates a location dialog. Opens in create mode if the location has no ID,
+     * or edit mode if it has an existing ID.
+     *
+     * @param location        the location to create or edit
+     * @param locationService service for persisting location changes
+     */
     public LocationDialog(LocationSummary location, LocationService locationService) {
         this.locationService = locationService;
         this.location = location;
@@ -252,22 +259,27 @@ public class LocationDialog extends Dialog {
     }
 
     // Events
+
+    /** Event fired when a location is successfully saved. */
     public static class SaveEvent extends ComponentEvent<LocationDialog> {
         public SaveEvent(LocationDialog source) {
             super(source, false);
         }
     }
 
+    /** Event fired when a location is successfully deleted. */
     public static class DeleteEvent extends ComponentEvent<LocationDialog> {
         public DeleteEvent(LocationDialog source) {
             super(source, false);
         }
     }
 
+    /** Registers a listener for save events. */
     public Registration addSaveListener(ComponentEventListener<SaveEvent> listener) {
         return addListener(SaveEvent.class, listener);
     }
 
+    /** Registers a listener for delete events. */
     public Registration addDeleteListener(ComponentEventListener<DeleteEvent> listener) {
         return addListener(DeleteEvent.class, listener);
     }

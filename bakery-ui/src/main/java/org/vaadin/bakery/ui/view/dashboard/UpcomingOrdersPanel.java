@@ -21,6 +21,7 @@ public class UpcomingOrdersPanel extends Div {
 
     private final Div ordersContainer;
 
+    /** Creates the upcoming orders panel with an empty orders container. */
     public UpcomingOrdersPanel() {
         addClassName("upcoming-orders-panel");
         getStyle()

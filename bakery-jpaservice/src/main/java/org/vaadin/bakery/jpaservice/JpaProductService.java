@@ -24,6 +24,7 @@ public class JpaProductService implements ProductService {
     private final ProductMapper productMapper;
     private final DataChangeNotifier dataChangeNotifier;
 
+    /** Creates the product service with injected repository, mapper, and change notifier dependencies. */
     public JpaProductService(ProductRepository productRepository, ProductMapper productMapper,
                              DataChangeNotifier dataChangeNotifier) {
         this.productRepository = productRepository;

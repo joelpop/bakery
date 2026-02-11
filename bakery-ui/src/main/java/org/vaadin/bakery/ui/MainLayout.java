@@ -80,6 +80,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final Map<String, Tab> routeToTab = new HashMap<>();
     private ComboBox<LocationSummary> locationSelector;
 
+    /** Creates the main application layout with navigation, location selector, and user menu. */
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
                       OrderService orderService, LocationService locationService,
                       ProductService productService, CustomerService customerService,

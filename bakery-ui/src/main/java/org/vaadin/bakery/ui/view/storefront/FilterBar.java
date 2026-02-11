@@ -47,6 +47,12 @@ public class FilterBar extends Composite<Div> {
     // Signals - computed/derived
     private final transient Signal<LocationSummary> resolvedLocationSignal;
 
+    /**
+     * Creates the storefront filter bar with date, status, and location filters.
+     *
+     * @param locations           the available locations for the location filter
+     * @param userLocationService service for resolving the "Current Location" sentinel
+     */
     public FilterBar(List<LocationSummary> locations, UserLocationService userLocationService) {
        // Services
 
@@ -188,13 +194,14 @@ public class FilterBar extends Composite<Div> {
         return selected != null && CURRENT_LOCATION_ID.equals(selected.getId());
     }
 
-    // Event for filter changes
+    /** Event fired when any filter value changes. */
     public static class FilterChangedEvent extends ComponentEvent<FilterBar> {
         public FilterChangedEvent(FilterBar source) {
             super(source, false);
         }
     }
 
+    /** Registers a listener for filter change events. */
     public Registration addFilterChangedListener(ComponentEventListener<FilterChangedEvent> listener) {
         return addListener(FilterChangedEvent.class, listener);
     }

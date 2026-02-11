@@ -56,6 +56,7 @@ public class ProductsView extends VerticalLayout {
 
     private List<ProductSummary> allProducts;
 
+    /** Creates the products management view with a searchable product grid. */
     public ProductsView(ProductService productService, CurrentUserService currentUserService) {
         this.productService = productService;
         this.isAdmin = currentUserService.isAdmin();

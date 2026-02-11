@@ -29,6 +29,7 @@ import org.vaadin.bakery.ui.component.ViewHeader;
 @RolesAllowed("ADMIN")
 public class AboutView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
+    /** Creates the about view with application and environment information cards. */
     public AboutView() {
         var content = getContent();
         content.setPadding(false);

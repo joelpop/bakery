@@ -55,6 +55,7 @@ public class UsersView extends VerticalLayout {
 
     private List<UserSummary> allUsers;
 
+    /** Creates the user management view with a searchable user grid. */
     public UsersView(UserService userService, CurrentUserService currentUserService, LocationService locationService) {
         this.userService = userService;
         this.currentUserService = currentUserService;

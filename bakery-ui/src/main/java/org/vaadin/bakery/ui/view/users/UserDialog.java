@@ -67,6 +67,15 @@ public class UserDialog extends Dialog {
 
     private final Binder<UserDetail> binder;
 
+    /**
+     * Creates a user dialog. Opens in create mode if the user is {@code null} or new,
+     * or edit mode for an existing user.
+     *
+     * @param user             the user to create or edit, or {@code null} for a new user
+     * @param userService      service for persisting user changes
+     * @param locationService  service for loading available locations
+     * @param currentUserEmail email of the currently logged-in user, used to prevent self-deletion and role changes
+     */
     public UserDialog(UserDetail user, UserService userService, LocationService locationService, String currentUserEmail) {
         this.userService = userService;
 
@@ -389,22 +398,27 @@ public class UserDialog extends Dialog {
     }
 
     // Events
+
+    /** Event fired when a user is successfully saved. */
     public static class SaveEvent extends ComponentEvent<UserDialog> {
         public SaveEvent(UserDialog source) {
             super(source, false);
         }
     }
 
+    /** Event fired when a user is successfully deleted. */
     public static class DeleteEvent extends ComponentEvent<UserDialog> {
         public DeleteEvent(UserDialog source) {
             super(source, false);
         }
     }
 
+    /** Registers a listener for save events. */
     public Registration addSaveListener(ComponentEventListener<SaveEvent> listener) {
         return addListener(SaveEvent.class, listener);
     }
 
+    /** Registers a listener for delete events. */
     public Registration addDeleteListener(ComponentEventListener<DeleteEvent> listener) {
         return addListener(DeleteEvent.class, listener);
     }

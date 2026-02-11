@@ -18,6 +18,7 @@ public class ChangeTracker<T extends AbstractModel> {
     private final Set<Long> highlightedIds;
     private final Set<Long> newIds;
 
+    /** Creates a new change tracker with no previous version history. */
     public ChangeTracker() {
         highlightedIds = new HashSet<>();
         newIds = new HashSet<>();
@@ -49,14 +50,23 @@ public class ChangeTracker<T extends AbstractModel> {
         }
     }
 
+    /**
+     * Returns whether the item with the given ID was new or modified in the last refresh.
+     */
     public boolean isHighlighted(Long id) {
         return highlightedIds.contains(id);
     }
 
+    /**
+     * Returns whether the item with the given ID was newly added in the last refresh.
+     */
     public boolean isNew(Long id) {
         return newIds.contains(id);
     }
 
+    /**
+     * Returns whether any items were highlighted (new or modified) in the last refresh.
+     */
     public boolean hasHighlights() {
         return !highlightedIds.isEmpty();
     }

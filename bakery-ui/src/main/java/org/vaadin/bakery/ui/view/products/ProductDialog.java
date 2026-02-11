@@ -61,6 +61,13 @@ public class ProductDialog extends Dialog {
 
     private final Binder<ProductSummary> binder;
 
+    /**
+     * Creates a product dialog. Opens in create mode if the product has no ID,
+     * or edit mode if it has an existing ID.
+     *
+     * @param product        the product to create or edit
+     * @param productService service for persisting product changes
+     */
     public ProductDialog(ProductSummary product, ProductService productService) {
         this.productService = productService;
         this.product = product;
@@ -320,22 +327,27 @@ public class ProductDialog extends Dialog {
     }
 
     // Events
+
+    /** Event fired when a product is successfully saved. */
     public static class SaveEvent extends ComponentEvent<ProductDialog> {
         public SaveEvent(ProductDialog source) {
             super(source, false);
         }
     }
 
+    /** Event fired when a product is successfully deleted. */
     public static class DeleteEvent extends ComponentEvent<ProductDialog> {
         public DeleteEvent(ProductDialog source) {
             super(source, false);
         }
     }
 
+    /** Registers a listener for save events. */
     public Registration addSaveListener(ComponentEventListener<SaveEvent> listener) {
         return addListener(SaveEvent.class, listener);
     }
 
+    /** Registers a listener for delete events. */
     public Registration addDeleteListener(ComponentEventListener<DeleteEvent> listener) {
         return addListener(DeleteEvent.class, listener);
     }

@@ -20,6 +20,7 @@ public class SessionUserLocationService implements UserLocationService {
 
     private LocationSummary currentLocation;
 
+    /** Creates the session-scoped location service with injected dependencies. */
     public SessionUserLocationService(CurrentUserService currentUserService, LocationService locationService) {
         this.currentUserService = currentUserService;
         this.locationService = locationService;

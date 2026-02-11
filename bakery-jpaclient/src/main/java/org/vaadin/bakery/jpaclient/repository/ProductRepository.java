@@ -15,17 +15,24 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
 
+    /** Finds a product by its exact name. */
     Optional<ProductEntity> findByName(String name);
 
+    /** Checks whether a product with the given name exists. */
     boolean existsByName(String name);
 
+    /** Checks whether a product with the given name exists, excluding the specified product ID. */
     boolean existsByNameAndIdNot(String name, Long id);
 
+    /** Finds all available products ordered by name ascending. */
     List<ProductEntity> findByAvailableTrueOrderByNameAsc();
 
+    /** Returns the count of unavailable products. */
     long countByAvailableFalse();
 
+    /** Returns summary projections for all products ordered by name ascending. */
     List<ProductSummaryProjection> findAllProjectedByOrderByNameAsc();
 
+    /** Returns select projections for all available products ordered by name ascending. */
     List<ProductSelectProjection> findByAvailableTrueOrderByNameAsc(Class<ProductSelectProjection> type);
 }

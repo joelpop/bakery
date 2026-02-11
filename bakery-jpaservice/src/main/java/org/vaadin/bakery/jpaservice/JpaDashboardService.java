@@ -35,6 +35,7 @@ public class JpaDashboardService implements DashboardService {
     private final ProductRepository productRepository;
     private final OrderMapper orderMapper;
 
+    /** Creates the dashboard service with injected repository and mapper dependencies. */
     public JpaDashboardService(OrderRepository orderRepository, ProductRepository productRepository,
                                OrderMapper orderMapper) {
         this.orderRepository = orderRepository;
