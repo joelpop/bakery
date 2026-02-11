@@ -146,11 +146,17 @@ public class OrderEntity extends AbstractAuditableEntity {
         this.items = items;
     }
 
+    /**
+     * Adds an item to this order and sets the item's back-reference to this order.
+     */
     public void addItem(OrderItemEntity item) {
         items.add(item);
         item.setOrder(this);
     }
 
+    /**
+     * Removes an item from this order and clears the item's back-reference.
+     */
     public void removeItem(OrderItemEntity item) {
         items.remove(item);
         item.setOrder(null);

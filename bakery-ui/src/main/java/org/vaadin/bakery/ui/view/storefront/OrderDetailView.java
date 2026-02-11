@@ -77,6 +77,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
 
+    /** Creates the order detail view with order information, items grid, and action buttons. */
     public OrderDetailView(OrderService orderService, ProductService productService,
                            LocationService locationService, CustomerService customerService,
                            UserLocationService userLocationService) {

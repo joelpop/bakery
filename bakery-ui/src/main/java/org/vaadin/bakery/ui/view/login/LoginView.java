@@ -36,6 +36,7 @@ public class LoginView extends Main implements BeforeEnterObserver {
 
     private final LoginForm loginForm;
 
+    /** Creates the login view with branding, login form, and passkey button. */
     public LoginView() {
         // Set explicit styles for full-page centering
         getStyle()

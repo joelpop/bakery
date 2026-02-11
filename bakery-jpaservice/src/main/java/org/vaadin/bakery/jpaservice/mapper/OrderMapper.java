@@ -17,12 +17,21 @@ import java.util.List;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING, uses = {EnumMapper.class, OrderItemMapper.class, InstantMapper.class})
 public interface OrderMapper {
 
+    /**
+     * Converts an {@link OrderEntity} to an {@link OrderList} UI model.
+     */
     @Mapping(source = "customer.name", target = "customerName")
     @Mapping(source = "location.name", target = "locationName")
     OrderList toList(OrderEntity entity);
 
+    /**
+     * Converts a list of {@link OrderEntity} instances to a list of {@link OrderList} UI models.
+     */
     List<OrderList> toListList(List<OrderEntity> entities);
 
+    /**
+     * Converts an {@link OrderEntity} to an {@link OrderDetail} UI model.
+     */
     @Mapping(source = "customer.id", target = "customerId")
     @Mapping(source = "customer.name", target = "customerName")
     @Mapping(source = "customer.phoneNumber", target = "customerPhone")
@@ -32,13 +41,22 @@ public interface OrderMapper {
     @Mapping(source = "updatedBy.firstName", target = "updatedByName")
     OrderDetail toDetail(OrderEntity entity);
 
+    /**
+     * Converts an {@link OrderEntity} to an {@link OrderDashboard} UI model.
+     */
     @Mapping(source = "customer.name", target = "customerName")
     @Mapping(source = "location.name", target = "locationName")
     @Mapping(target = "itemsSummary", expression = "java(buildItemsSummary(entity))")
     OrderDashboard toDashboard(OrderEntity entity);
 
+    /**
+     * Converts a list of {@link OrderEntity} instances to a list of {@link OrderDashboard} UI models.
+     */
     List<OrderDashboard> toDashboardList(List<OrderEntity> entities);
 
+    /**
+     * Updates an existing {@link OrderEntity} from an {@link OrderDetail} UI model.
+     */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "location", ignore = true)
@@ -48,6 +66,9 @@ public interface OrderMapper {
     @Mapping(target = "createdAt", ignore = true)
     OrderEntity toEntity(OrderDetail detail, @MappingTarget OrderEntity entity);
 
+    /**
+     * Creates a new {@link OrderEntity} from an {@link OrderDetail} UI model.
+     */
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "location", ignore = true)
@@ -58,6 +79,9 @@ public interface OrderMapper {
     @Mapping(target = "updatedAt", ignore = true)
     OrderEntity toNewEntity(OrderDetail detail);
 
+    /**
+     * Builds a comma-separated summary string of order items (e.g., "2x Croissant, 1x Baguette").
+     */
     default String buildItemsSummary(OrderEntity entity) {
         if (entity.getItems() == null || entity.getItems().isEmpty()) {
             return "";

@@ -22,6 +22,7 @@ public class JpaLocationService implements LocationService {
     private final LocationMapper locationMapper;
     private final DataChangeNotifier dataChangeNotifier;
 
+    /** Creates the location service with injected repository, mapper, and change notifier dependencies. */
     public JpaLocationService(LocationRepository locationRepository, LocationMapper locationMapper,
                               DataChangeNotifier dataChangeNotifier) {
         this.locationRepository = locationRepository;

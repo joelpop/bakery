@@ -17,6 +17,7 @@ public class StaleDataBanner extends HorizontalLayout {
     private final Span messageSpan;
     private final HorizontalLayout actionsLayout;
 
+    /** Creates a stale data banner, initially hidden. */
     public StaleDataBanner() {
         setVisible(false);
         addClassName("stale-data-banner");

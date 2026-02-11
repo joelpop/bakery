@@ -15,6 +15,12 @@ public class KpiCard extends Div {
     private final Span subtitleSpan;
     private final Div deltaContainer;
 
+    /**
+     * Creates a KPI card for the dashboard.
+     *
+     * @param title the metric title displayed in the card header
+     * @param icon  the icon displayed next to the title
+     */
     public KpiCard(String title, VaadinIcon icon) {
         addClassName("kpi-card");
         getStyle()

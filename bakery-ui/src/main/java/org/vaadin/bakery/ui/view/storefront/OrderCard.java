@@ -23,6 +23,11 @@ public class OrderCard extends Div {
 
     private final OrderList order;
 
+    /**
+     * Creates an order card displaying a summary of the given order.
+     *
+     * @param order the order to display
+     */
     public OrderCard(OrderList order) {
         this.order = order;
 
@@ -158,7 +163,7 @@ public class OrderCard extends Div {
         return order;
     }
 
-    // Event for order click
+    /** Event fired when the order card is clicked. */
     public static class OrderClickEvent extends ComponentEvent<OrderCard> {
         private final OrderList order;
 
@@ -172,6 +177,7 @@ public class OrderCard extends Div {
         }
     }
 
+    /** Registers a listener for order click events. */
     public Registration addOrderClickListener(ComponentEventListener<OrderClickEvent> listener) {
         return addListener(OrderClickEvent.class, listener);
     }

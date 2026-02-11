@@ -118,6 +118,14 @@ public class EditOrderDialog implements NonComponent {
     // Banner shown when another session modifies or deletes the order being edited
     private StaleDataBanner staleDataBanner;
 
+    /**
+     * Creates a new order dialog in create mode.
+     *
+     * @param orderService        service for persisting orders
+     * @param locationService     service for loading available locations
+     * @param customerService     service for searching and creating customers
+     * @param userLocationService service for resolving the user's current location
+     */
     public EditOrderDialog(OrderService orderService, LocationService locationService,
                            CustomerService customerService, UserLocationService userLocationService) {
         this.orderService = orderService;
@@ -449,18 +457,22 @@ public class EditOrderDialog implements NonComponent {
 
     // ========== Public API ==========
 
+    /** Opens the order dialog. */
     public void open() {
         dialog.open();
     }
 
+    /** Closes the order dialog. */
     public void close() {
         dialog.close();
     }
 
+    /** Sets the list of available products for the product combo box. */
     public void setAvailableProducts(List<ProductSelect> products) {
         productComboBox.setItems(products);
     }
 
+    /** Switches the dialog to edit mode and populates it with the given order. */
     public void editOrder(OrderDetail order) {
         editingOrder = order;
         dialog.setHeaderTitle("Edit Order");
@@ -499,10 +511,12 @@ public class EditOrderDialog implements NonComponent {
                 (Consumer<NonComponentEvent<EditOrderDialog>>) listener);
     }
 
+    /** Registers a listener for save events. */
     public Registration addSaveListener(Consumer<SaveEvent> listener) {
         return eventSupport.addListener(SaveEvent.class, listener);
     }
 
+    /** Registers a listener for cancel events. */
     public Registration addCancelListener(Consumer<CancelEvent> listener) {
         return eventSupport.addListener(CancelEvent.class, listener);
     }
@@ -1122,6 +1136,7 @@ public class EditOrderDialog implements NonComponent {
 
     // ========== Event Classes ==========
 
+    /** Event fired when an order is successfully saved. */
     public static class SaveEvent extends NonComponentEvent<EditOrderDialog> {
         private final OrderDetail order;
 
@@ -1139,6 +1154,7 @@ public class EditOrderDialog implements NonComponent {
         }
     }
 
+    /** Event fired when the dialog is cancelled without saving. */
     public static class CancelEvent extends NonComponentEvent<EditOrderDialog> {
         public CancelEvent(EditOrderDialog source) {
             super(source);

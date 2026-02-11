@@ -69,6 +69,7 @@ public class StorefrontView extends VerticalLayout {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
 
+    /** Creates the storefront view with filter bar and order cards grouped by date. */
     public StorefrontView(OrderService orderService, LocationService locationService,
                           ProductService productService, CustomerService customerService,
                           UserLocationService userLocationService) {

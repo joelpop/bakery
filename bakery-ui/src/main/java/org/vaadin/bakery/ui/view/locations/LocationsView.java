@@ -38,6 +38,7 @@ public class LocationsView extends VerticalLayout {
     // Tracks version changes between refreshes to identify new and modified locations for row highlight
     private final transient ChangeTracker<LocationSummary> changeTracker;
 
+    /** Creates the locations management view with a grid of pickup locations. */
     public LocationsView(LocationService locationService) {
         this.locationService = locationService;
 

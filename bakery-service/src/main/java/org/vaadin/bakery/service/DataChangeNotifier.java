@@ -6,6 +6,9 @@ package org.vaadin.bakery.service;
  */
 public interface DataChangeNotifier {
 
+    /**
+     * Broadcasts a change notification for the given entity type to all listeners.
+     */
     void notifyChange(EntityType entityType);
 
     enum EntityType {

@@ -26,6 +26,7 @@ import org.vaadin.bakery.ui.view.login.LoginView;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
+    /** Configures the security filter chain with Vaadin integration, login view, and session management. */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
@@ -38,6 +39,7 @@ public class SecurityConfig {
         .build();
     }
 
+    /** Provides a BCrypt password encoder for hashing user passwords. */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

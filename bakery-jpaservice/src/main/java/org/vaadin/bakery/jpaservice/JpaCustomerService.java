@@ -36,6 +36,7 @@ public class JpaCustomerService implements CustomerService {
     private final OrderRepository orderRepository;
     private final CustomerMapper customerMapper;
 
+    /** Creates the customer service with injected repository and mapper dependencies. */
     public JpaCustomerService(CustomerRepository customerRepository, OrderRepository orderRepository,
                               CustomerMapper customerMapper) {
         this.customerRepository = customerRepository;

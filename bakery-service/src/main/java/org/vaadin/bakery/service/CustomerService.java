@@ -10,6 +10,9 @@ import java.util.Optional;
  */
 public interface CustomerService {
 
+    /**
+     * Searches for customers matching the given query string.
+     */
     List<CustomerSummary> search(String query);
 
     /**
@@ -21,10 +24,19 @@ public interface CustomerService {
      */
     List<CustomerSummary> searchByPhone(String phoneDigits);
 
+    /**
+     * Returns the customer with the given exact phone number, if found.
+     */
     Optional<CustomerSummary> getByPhoneNumber(String phoneNumber);
 
+    /**
+     * Creates a new customer and returns the saved result.
+     */
     CustomerSummary create(CustomerSummary customer);
 
+    /**
+     * Updates an existing customer identified by the given ID.
+     */
     CustomerSummary update(Long id, CustomerSummary customer);
 
     /**
@@ -45,8 +57,14 @@ public interface CustomerService {
      */
     CustomerDeletionResult canDelete(Long id);
 
+    /**
+     * Checks whether the given phone number is already in use by any customer.
+     */
     boolean phoneNumberExists(String phoneNumber);
 
+    /**
+     * Checks whether the given phone number is in use by a customer other than the specified one.
+     */
     boolean phoneNumberExistsForOtherCustomer(String phoneNumber, Long customerId);
 
     /**

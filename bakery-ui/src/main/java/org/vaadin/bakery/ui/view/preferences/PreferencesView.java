@@ -51,6 +51,7 @@ public class PreferencesView extends VerticalLayout {
     private final PasswordField newPasswordField;
     private final PasswordField confirmPasswordField;
 
+    /** Creates the preferences view with profile and password change sections. */
     public PreferencesView(CurrentUserService currentUserService, UserService userService) {
         this.currentUserService = currentUserService;
         this.userService = userService;

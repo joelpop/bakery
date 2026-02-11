@@ -49,6 +49,7 @@ public class DashboardView extends VerticalLayout {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
 
+    /** Creates the dashboard view with KPI cards, charts, and upcoming orders panel. */
     public DashboardView(DashboardService dashboardService) {
         this.dashboardService = dashboardService;
 

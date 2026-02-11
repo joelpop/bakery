@@ -14,15 +14,21 @@ import java.util.Optional;
 @Repository
 public interface LocationRepository extends JpaRepository<LocationEntity, Long> {
 
+    /** Checks whether a location with the given name exists. */
     boolean existsByName(String name);
 
+    /** Checks whether a location with the given name exists, excluding the specified location ID. */
     boolean existsByNameAndIdNot(String name, Long id);
 
+    /** Finds all active locations ordered by sort order. */
     List<LocationEntity> findByActiveTrueOrderBySortOrderAsc();
 
+    /** Returns the count of active locations. */
     long countByActiveTrue();
 
+    /** Returns summary projections for all locations ordered by sort order. */
     List<LocationSummaryProjection> findAllProjectedByOrderBySortOrderAsc();
 
+    /** Returns summary projections for all active locations ordered by sort order. */
     List<LocationSummaryProjection> findByActiveTrueOrderBySortOrderAsc(Class<LocationSummaryProjection> type);
 }
