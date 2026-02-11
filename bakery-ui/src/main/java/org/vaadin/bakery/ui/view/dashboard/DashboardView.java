@@ -132,7 +132,7 @@ public class DashboardView extends VerticalLayout {
      * Refresh the dashboard data.
      */
     public void refresh() {
-        refreshTriggerSignal.value(refreshTriggerSignal.value() + 1);
+        refreshTriggerSignal.update(v -> v + 1);
     }
 
     private Div createChartPlaceholder(String title, String description) {

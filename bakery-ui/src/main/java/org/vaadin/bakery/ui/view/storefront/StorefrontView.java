@@ -170,7 +170,7 @@ public class StorefrontView extends VerticalLayout {
     }
 
     private void triggerRefresh() {
-        refreshTriggerSignal.value(refreshTriggerSignal.value() + 1);
+        refreshTriggerSignal.update(v -> v + 1);
     }
 
     /**

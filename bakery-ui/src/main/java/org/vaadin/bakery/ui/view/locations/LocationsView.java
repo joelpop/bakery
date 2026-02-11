@@ -107,7 +107,7 @@ public class LocationsView extends VerticalLayout {
     }
 
     private void triggerRefresh() {
-        refreshTriggerSignal.value(refreshTriggerSignal.value() + 1);
+        refreshTriggerSignal.update(v -> v + 1);
     }
 
     private void refreshGrid() {
