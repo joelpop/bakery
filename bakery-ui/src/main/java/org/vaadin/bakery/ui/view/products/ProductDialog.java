@@ -17,6 +17,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.data.binder.Binder;
@@ -47,6 +48,7 @@ public class ProductDialog extends Dialog {
     private final Checkbox availableCheckbox;
 
     private final Div photoContainerDiv;
+    private final MemoryBuffer photoUploadBuffer;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
@@ -84,20 +86,11 @@ public class ProductDialog extends Dialog {
                 .set("background", "var(--lumo-contrast-10pct)")
                 .set("overflow", "hidden");
 
-        var buffer = new MemoryBuffer();
-        var upload = new Upload(buffer);
+        photoUploadBuffer = new MemoryBuffer();
+        var upload = new Upload(photoUploadBuffer);
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
         upload.setMaxFileSize(5 * 1024 * 1024); // 5MB
-        upload.addSucceededListener(event -> {
-            try {
-                uploadedPhoto = buffer.getInputStream().readAllBytes();
-                uploadedPhotoContentType = event.getMIMEType();
-                updatePhotoPreview();
-            } catch (IOException e) {
-                Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
+        upload.addSucceededListener(this::onPhotoUploadSucceeded);
 
         var photoSection = new Div();
         photoSection.addClassNames(
@@ -108,9 +101,9 @@ public class ProductDialog extends Dialog {
         );
         photoSection.add(photoContainerDiv, upload);
 
-        var cancelButton = new Button("Cancel", e -> close());
+        var cancelButton = new Button("Cancel", _ -> close());
 
-        var saveButton = new Button("Save", e -> save());
+        var saveButton = new Button("Save", _ -> save());
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         // Binder bindings
@@ -165,7 +158,7 @@ public class ProductDialog extends Dialog {
         footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
 
         if (!isNew) {
-            var deleteButton = new Button("Delete", e -> confirmDelete());
+            var deleteButton = new Button("Delete", _ -> confirmDelete());
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
 
             var spacer = new Span();
@@ -223,7 +216,7 @@ public class ProductDialog extends Dialog {
 
             fireEvent(new SaveEvent(this));
             close();
-        } catch (ValidationException e) {
+        } catch (ValidationException _) {
             Notification.show("Please fix the validation errors", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
@@ -234,8 +227,8 @@ public class ProductDialog extends Dialog {
         confirmDialog.setHeaderTitle("Delete Product");
         confirmDialog.add(new Span("Are you sure you want to delete \"" + product.getName() + "\"?"));
 
-        var cancelButton = new Button("Cancel", e -> confirmDialog.close());
-        var deleteButton = new Button("Delete", e -> {
+        var cancelButton = new Button("Cancel", _ -> confirmDialog.close());
+        var deleteButton = new Button("Delete", _ -> {
             confirmDialog.close();
             delete();
         });
@@ -254,6 +247,19 @@ public class ProductDialog extends Dialog {
             close();
         } catch (Exception e) {
             Notification.show("Cannot delete product: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    // Event Handlers
+
+    private void onPhotoUploadSucceeded(SucceededEvent event) {
+        try {
+            uploadedPhoto = photoUploadBuffer.getInputStream().readAllBytes();
+            uploadedPhotoContentType = event.getMIMEType();
+            updatePhotoPreview();
+        } catch (IOException _) {
+            Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
     }

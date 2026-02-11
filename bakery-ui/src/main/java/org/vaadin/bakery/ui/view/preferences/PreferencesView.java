@@ -13,6 +13,7 @@ import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.router.PageTitle;
@@ -41,6 +42,7 @@ public class PreferencesView extends VerticalLayout {
 
     private UserDetail currentUser;
     private final Avatar profileAvatar;
+    private final MemoryBuffer photoUploadBuffer;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
@@ -82,22 +84,12 @@ public class PreferencesView extends VerticalLayout {
         // Profile section
         var profileSection = createSection("Profile");
 
-        var buffer = new MemoryBuffer();
-        var upload = new Upload(buffer);
+        photoUploadBuffer = new MemoryBuffer();
+        var upload = new Upload(photoUploadBuffer);
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
         upload.setMaxFileSize(2 * 1024 * 1024); // 2MB
         upload.setUploadButton(new Button("Change Photo"));
-        upload.addSucceededListener(event -> {
-            try {
-                uploadedPhoto = buffer.getInputStream().readAllBytes();
-                uploadedPhotoContentType = event.getMIMEType();
-                updateAvatarPreview();
-                savePhoto();
-            } catch (IOException e) {
-                Notification.show("Failed to upload photo", 3000, Notification.Position.BOTTOM_START)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
-        });
+        upload.addSucceededListener(this::onPhotoUploadSucceeded);
 
         var avatarSection = new VerticalLayout();
         avatarSection.setPadding(false);
@@ -142,7 +134,7 @@ public class PreferencesView extends VerticalLayout {
         strengthIndicator.setId("password-strength");
         strengthIndicator.addClassNames(LumoUtility.FontSize.SMALL);
 
-        var changePasswordButton = new Button("Change Password", e -> changePassword());
+        var changePasswordButton = new Button("Change Password", _ -> changePassword());
         changePasswordButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         var passwordForm = new FormLayout();
@@ -196,6 +188,18 @@ public class PreferencesView extends VerticalLayout {
         section.add(header);
 
         return section;
+    }
+
+    private void onPhotoUploadSucceeded(SucceededEvent event) {
+        try {
+            uploadedPhoto = photoUploadBuffer.getInputStream().readAllBytes();
+            uploadedPhotoContentType = event.getMIMEType();
+            updateAvatarPreview();
+            savePhoto();
+        } catch (IOException _) {
+            Notification.show("Failed to upload photo", 3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
     }
 
     private void loadCurrentUser() {
@@ -259,14 +263,14 @@ public class PreferencesView extends VerticalLayout {
         var confirmPassword = confirmPasswordField.getValue();
 
         // Validation
-        if (currentPassword == null || currentPassword.isBlank()) {
+        if (currentPassword.isBlank()) {
             currentPasswordField.setInvalid(true);
             currentPasswordField.setErrorMessage("Current password is required");
             return;
         }
         currentPasswordField.setInvalid(false);
 
-        if (newPassword == null || newPassword.length() < 8) {
+        if (newPassword.length() < 8) {
             newPasswordField.setInvalid(true);
             newPasswordField.setErrorMessage("Password must be at least 8 characters");
             return;

@@ -187,7 +187,7 @@ public class StorefrontView extends VerticalLayout {
 
         // Apply search filter (customer name)
         var searchTerm = searchField.getValue();
-        if (searchTerm != null && !searchTerm.isBlank()) {
+        if (!searchTerm.isBlank()) {
             var lowerSearch = searchTerm.toLowerCase();
             orders = orders.stream()
                     .filter(o -> o.getCustomerName().toLowerCase().contains(lowerSearch))
@@ -196,7 +196,7 @@ public class StorefrontView extends VerticalLayout {
 
         // Apply status filter
         var selectedStatuses = filterBar.getSelectedStatuses();
-        if (selectedStatuses != null && !selectedStatuses.isEmpty()) {
+        if (!selectedStatuses.isEmpty()) {
             orders = orders.stream()
                     .filter(o -> selectedStatuses.contains(o.getStatus()))
                     .toList();

@@ -78,8 +78,8 @@ public class LocationsView extends VerticalLayout {
 
     private void openDialog(LocationSummary location) {
         var dialog = new LocationDialog(location, locationService);
-        dialog.addSaveListener(e -> refreshGrid());
-        dialog.addDeleteListener(e -> refreshGrid());
+        dialog.addSaveListener(_ -> refreshGrid());
+        dialog.addDeleteListener(_ -> refreshGrid());
         dialog.open();
     }
 
