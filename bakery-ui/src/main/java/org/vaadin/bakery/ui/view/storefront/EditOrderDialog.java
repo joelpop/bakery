@@ -318,8 +318,7 @@ public class EditOrderDialog implements NonComponent {
 
         // Computed signal: sum of all line item totals, recomputed when items change
         Signal<BigDecimal> subtotalValueSignal = Signal.computed(() ->
-                orderItemsListSignal.value().stream()
-                        .map(ValueSignal::value)
+                getItemValues().stream()
                         .map(OrderItemDetail::getLineTotal)
                         .reduce(BigDecimal.ZERO, BigDecimal::add));
 
@@ -747,7 +746,7 @@ public class EditOrderDialog implements NonComponent {
             var target = targetSignal.value();
             target.setQuantity(target.getQuantity() + quantity);
             target.calculateLineTotal();
-            targetSignal.value(target); // Trigger reactivity
+            targetSignal.update(_ -> target); // Trigger reactivity
             removeItem(editingItem);
         } else {
             // Update editing item
@@ -796,7 +795,7 @@ public class EditOrderDialog implements NonComponent {
             var item = signal.value();
             item.setQuantity(item.getQuantity() + quantity);
             item.calculateLineTotal();
-            signal.value(item); // Trigger reactivity
+            signal.update(_ -> item); // Trigger reactivity
         } else {
             // Add new item
             var item = new OrderItemDetail();
@@ -834,15 +833,17 @@ public class EditOrderDialog implements NonComponent {
         orderItemsListSignal.value().stream()
                 .filter(s -> s.value() == item)
                 .findFirst()
-                .ifPresent(s -> s.value(item));
+                .ifPresent(s -> s.update(_ -> item));
+    }
+
+    private List<OrderItemDetail> getItemValues() {
+        return orderItemsListSignal.value().stream()
+                .map(ValueSignal::value)
+                .toList();
     }
 
     private void refreshItemsGrid() {
-        // Extract current items from signals for grid display
-        var items = orderItemsListSignal.value().stream()
-                .map(ValueSignal::value)
-                .toList();
-        itemsGrid.setItems(items);
+        itemsGrid.setItems(getItemValues());
     }
 
     private BigDecimal calculateDiscount(BigDecimal subtotal) {
@@ -986,9 +987,7 @@ public class EditOrderDialog implements NonComponent {
         order.setDueTime(dueTimePicker.getValue());
         order.setAdditionalDetails(additionalDetailsField.getValue());
 
-        var itemsList = orderItemsListSignal.value().stream()
-                .map(ValueSignal::value)
-                .toList();
+        var itemsList = getItemValues();
         order.setItems(new ArrayList<>(itemsList));
 
         var subtotal = itemsList.stream()
