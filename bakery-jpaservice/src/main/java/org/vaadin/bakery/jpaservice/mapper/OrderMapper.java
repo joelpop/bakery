@@ -40,7 +40,6 @@ public interface OrderMapper {
     List<OrderDashboard> toDashboardList(List<OrderEntity> entities);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "version", ignore = true)
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "location", ignore = true)
     @Mapping(target = "items", ignore = true)

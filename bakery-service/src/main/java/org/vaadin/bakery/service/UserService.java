@@ -27,6 +27,8 @@ public interface UserService {
 
     void changePassword(Long id, String newPassword);
 
+    Optional<Integer> getVersion(Long id);
+
     boolean emailExists(String email);
 
     boolean emailExistsForOtherUser(String email, Long userId);

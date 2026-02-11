@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.users;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.avatar.Avatar;
@@ -25,7 +26,11 @@ import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.LocationService;
+import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.service.UserService;
+import org.vaadin.bakery.ui.component.StaleDataBanner;
+import org.vaadin.bakery.ui.component.StaleDataHelper;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.type.UserRole;
@@ -40,9 +45,11 @@ import java.util.List;
 public class UserDialog extends Dialog {
 
     private final UserService userService;
-    private final UserDetail user;
+    private UserDetail user;
     private final boolean isNew;
     private final boolean isEditingSelf;
+    // Banner shown when another session modifies or deletes the user being edited
+    private StaleDataBanner staleDataBanner;
 
     private final TextField emailField;
     private final TextField firstNameField;
@@ -225,6 +232,18 @@ public class UserDialog extends Dialog {
             footer.add(cancelButton, saveButton);
         }
 
+        // Stale data detection - when editing an existing user, monitor for changes from other sessions
+        if (!isNew) {
+            staleDataBanner = new StaleDataBanner();
+
+            // Reactive effect: checks if the user was modified or deleted by another session
+            // whenever the shared userVersion signal changes
+            ComponentEffect.effect(this, () -> {
+                DataChangeSignals.userVersion().value();
+                checkForExternalChanges();
+            });
+        }
+
         // Dialog configuration
         setHeaderTitle(isNew ? "New User" : "Edit User");
         setModal(true);
@@ -232,6 +251,9 @@ public class UserDialog extends Dialog {
         getElement().getThemeList().add("responsive-dialog");
         setWidth("100%");
         setMaxWidth("600px");
+        if (!isNew) {
+            add(staleDataBanner);
+        }
         add(form);
         getFooter().add(footer);
     }
@@ -271,6 +293,14 @@ public class UserDialog extends Dialog {
                 Notification.show("User created", 3000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } else {
+                // Pre-save freshness check: abort save if the user was modified or deleted by another session
+                if (StaleDataHelper.isStale(
+                        () -> userService.getVersion(user.getId()),
+                        user.getVersion(), staleDataBanner,
+                        this::reloadData, this::close)) {
+                    return;
+                }
+
                 userService.update(user.getId(), user);
                 Notification.show("User updated", 3000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -278,10 +308,35 @@ public class UserDialog extends Dialog {
 
             fireEvent(new SaveEvent(this));
             close();
+        } catch (StaleDataException _) {
+            // Fallback: optimistic lock failed during flush — show stale data banner
+            staleDataBanner.showModified(this::reloadData);
         } catch (ValidationException _) {
             Notification.show("Please fix the validation errors", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    /** Live detection: compares the DB version against the version loaded into the form. */
+    private void checkForExternalChanges() {
+        if (!isOpened()) return;
+        StaleDataHelper.checkForExternalChanges(
+                () -> userService.getVersion(user.getId()),
+                user.getVersion(), staleDataBanner,
+                this::reloadData, this::close);
+    }
+
+    /** Reloads the latest user data from the database into the form, or shows deleted banner. */
+    private void reloadData() {
+        userService.get(user.getId()).ifPresentOrElse(
+                freshUser -> {
+                    user = freshUser;
+                    binder.readBean(user);
+                    updatePhotoPreview();
+                    staleDataBanner.hide();
+                },
+                () -> staleDataBanner.showDeleted(this::close)
+        );
     }
 
     private void confirmDelete() {

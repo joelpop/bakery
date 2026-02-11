@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.bakery.jpaclient.repository.LocationRepository;
 import org.vaadin.bakery.jpaservice.mapper.LocationMapper;
+import org.vaadin.bakery.service.DataChangeNotifier;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 
@@ -19,10 +20,13 @@ public class JpaLocationService implements LocationService {
 
     private final LocationRepository locationRepository;
     private final LocationMapper locationMapper;
+    private final DataChangeNotifier dataChangeNotifier;
 
-    public JpaLocationService(LocationRepository locationRepository, LocationMapper locationMapper) {
+    public JpaLocationService(LocationRepository locationRepository, LocationMapper locationMapper,
+                              DataChangeNotifier dataChangeNotifier) {
         this.locationRepository = locationRepository;
         this.locationMapper = locationMapper;
+        this.dataChangeNotifier = dataChangeNotifier;
     }
 
     @Override
@@ -47,6 +51,7 @@ public class JpaLocationService implements LocationService {
     public LocationSummary create(LocationSummary location) {
         var entity = locationMapper.toNewEntity(location);
         var saved = locationRepository.save(entity);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION);
         return locationMapper.toSummary(saved);
     }
 
@@ -55,12 +60,21 @@ public class JpaLocationService implements LocationService {
         var entity = locationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Location not found: " + id));
         locationMapper.toEntity(location, entity);
+        JpaServiceHelper.flushOrThrowStale(locationRepository, "location", id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION);
         return locationMapper.toSummary(entity);
     }
 
     @Override
     public void delete(Long id) {
         locationRepository.deleteById(id);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Integer> getVersion(Long id) {
+        return locationRepository.findById(id).map(e -> e.getVersion());
     }
 
     @Override

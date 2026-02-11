@@ -23,6 +23,8 @@ public interface ProductService {
 
     void delete(Long id);
 
+    Optional<Integer> getVersion(Long id);
+
     long countUnavailable();
 
     boolean nameExists(String name);

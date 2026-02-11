@@ -5,9 +5,8 @@ import org.vaadin.bakery.uimodel.type.UserRole;
 /**
  * UI model for user create/edit form.
  */
-public class UserDetail {
+public class UserDetail extends AbstractModel {
 
-    private Long id;
     private String email;
     private String firstName;
     private String lastName;
@@ -16,14 +15,6 @@ public class UserDetail {
     private byte[] photo;
     private String photoContentType;
     private Long primaryLocationId;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public String getEmail() {
         return email;
@@ -87,9 +78,5 @@ public class UserDetail {
 
     public void setPrimaryLocationId(Long primaryLocationId) {
         this.primaryLocationId = primaryLocationId;
-    }
-
-    public boolean isNew() {
-        return id == null;
     }
 }

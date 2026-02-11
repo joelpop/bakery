@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.locations;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
@@ -19,6 +20,10 @@ import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.shared.Registration;
 import org.vaadin.bakery.service.LocationService;
+import org.vaadin.bakery.service.StaleDataException;
+import org.vaadin.bakery.ui.component.StaleDataBanner;
+import org.vaadin.bakery.ui.component.StaleDataHelper;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 
 /**
@@ -27,8 +32,10 @@ import org.vaadin.bakery.uimodel.data.LocationSummary;
 public class LocationDialog extends Dialog {
 
     private final LocationService locationService;
-    private final LocationSummary location;
+    private LocationSummary location;
     private final boolean isNew;
+    // Banner shown when another session modifies or deletes the location being edited
+    private StaleDataBanner staleDataBanner;
 
     private final TextField nameField;
     private final TextArea addressField;
@@ -135,6 +142,18 @@ public class LocationDialog extends Dialog {
             footer.add(cancelButton, saveButton);
         }
 
+        // Stale data detection - when editing an existing location, monitor for changes from other sessions
+        if (!isNew) {
+            staleDataBanner = new StaleDataBanner();
+
+            // Reactive effect: checks if the location was modified or deleted by another session
+            // whenever the shared locationVersion signal changes
+            ComponentEffect.effect(this, () -> {
+                DataChangeSignals.locationVersion().value();
+                checkForExternalChanges();
+            });
+        }
+
         // Dialog configuration
         setHeaderTitle(isNew ? "New Location" : "Edit Location");
         setModal(true);
@@ -142,6 +161,9 @@ public class LocationDialog extends Dialog {
         getElement().getThemeList().add("responsive-dialog");
         setWidth("100%");
         setMaxWidth("500px");
+        if (!isNew) {
+            add(staleDataBanner);
+        }
         add(form);
         getFooter().add(footer);
     }
@@ -155,6 +177,14 @@ public class LocationDialog extends Dialog {
                 Notification.show("Location created", 3000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } else {
+                // Pre-save freshness check: abort save if the location was modified or deleted by another session
+                if (StaleDataHelper.isStale(
+                        () -> locationService.getVersion(location.getId()),
+                        location.getVersion(), staleDataBanner,
+                        this::reloadData, this::close)) {
+                    return;
+                }
+
                 locationService.update(location.getId(), location);
                 Notification.show("Location updated", 3000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -162,10 +192,34 @@ public class LocationDialog extends Dialog {
 
             fireEvent(new SaveEvent(this));
             close();
+        } catch (StaleDataException _) {
+            // Fallback: optimistic lock failed during flush — show stale data banner
+            staleDataBanner.showModified(this::reloadData);
         } catch (ValidationException _) {
             Notification.show("Please fix the validation errors", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    /** Live detection: compares the DB version against the version loaded into the form. */
+    private void checkForExternalChanges() {
+        if (!isOpened()) return;
+        StaleDataHelper.checkForExternalChanges(
+                () -> locationService.getVersion(location.getId()),
+                location.getVersion(), staleDataBanner,
+                this::reloadData, this::close);
+    }
+
+    /** Reloads the latest location data from the database into the form, or shows deleted banner. */
+    private void reloadData() {
+        locationService.get(location.getId()).ifPresentOrElse(
+                freshLocation -> {
+                    location = freshLocation;
+                    binder.readBean(location);
+                    staleDataBanner.hide();
+                },
+                () -> staleDataBanner.showDeleted(this::close)
+        );
     }
 
     private void confirmDelete() {

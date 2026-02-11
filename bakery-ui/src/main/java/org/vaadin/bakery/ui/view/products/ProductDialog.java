@@ -1,5 +1,6 @@
 package org.vaadin.bakery.ui.view.products;
 
+import com.vaadin.flow.component.ComponentEffect;
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
@@ -26,6 +27,10 @@ import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.ProductService;
+import org.vaadin.bakery.service.StaleDataException;
+import org.vaadin.bakery.ui.component.StaleDataBanner;
+import org.vaadin.bakery.ui.component.StaleDataHelper;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.ProductSummary;
 
 import java.io.ByteArrayInputStream;
@@ -38,8 +43,10 @@ import java.math.BigDecimal;
 public class ProductDialog extends Dialog {
 
     private final ProductService productService;
-    private final ProductSummary product;
+    private ProductSummary product;
     private final boolean isNew;
+    // Banner shown when another session modifies or deletes the product being edited
+    private StaleDataBanner staleDataBanner;
 
     private final TextField nameField;
     private final TextArea descriptionField;
@@ -168,6 +175,18 @@ public class ProductDialog extends Dialog {
             footer.add(cancelButton, saveButton);
         }
 
+        // Stale data detection - when editing an existing product, monitor for changes from other sessions
+        if (!isNew) {
+            staleDataBanner = new StaleDataBanner();
+
+            // Reactive effect: checks if the product was modified or deleted by another session
+            // whenever the shared productVersion signal changes
+            ComponentEffect.effect(this, () -> {
+                DataChangeSignals.productVersion().value();
+                checkForExternalChanges();
+            });
+        }
+
         // Dialog configuration
         setHeaderTitle(isNew ? "New Product" : "Edit Product");
         setModal(true);
@@ -175,6 +194,9 @@ public class ProductDialog extends Dialog {
         getElement().getThemeList().add("responsive-dialog");
         setWidth("100%");
         setMaxWidth("600px");
+        if (!isNew) {
+            add(staleDataBanner);
+        }
         add(form);
         getFooter().add(footer);
     }
@@ -209,6 +231,14 @@ public class ProductDialog extends Dialog {
                 Notification.show("Product created", 3000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } else {
+                // Pre-save freshness check: abort save if the product was modified or deleted by another session
+                if (StaleDataHelper.isStale(
+                        () -> productService.getVersion(product.getId()),
+                        product.getVersion(), staleDataBanner,
+                        this::reloadData, this::close)) {
+                    return;
+                }
+
                 productService.update(product.getId(), product);
                 Notification.show("Product updated", 3000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -216,10 +246,35 @@ public class ProductDialog extends Dialog {
 
             fireEvent(new SaveEvent(this));
             close();
+        } catch (StaleDataException _) {
+            // Fallback: optimistic lock failed during flush — show stale data banner
+            staleDataBanner.showModified(this::reloadData);
         } catch (ValidationException _) {
             Notification.show("Please fix the validation errors", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    /** Live detection: compares the DB version against the version loaded into the form. */
+    private void checkForExternalChanges() {
+        if (!isOpened()) return;
+        StaleDataHelper.checkForExternalChanges(
+                () -> productService.getVersion(product.getId()),
+                product.getVersion(), staleDataBanner,
+                this::reloadData, this::close);
+    }
+
+    /** Reloads the latest product data from the database into the form, or shows deleted banner. */
+    private void reloadData() {
+        productService.get(product.getId()).ifPresentOrElse(
+                freshProduct -> {
+                    product = freshProduct;
+                    binder.readBean(product);
+                    updatePhotoPreview();
+                    staleDataBanner.hide();
+                },
+                () -> staleDataBanner.showDeleted(this::close)
+        );
     }
 
     private void confirmDelete() {

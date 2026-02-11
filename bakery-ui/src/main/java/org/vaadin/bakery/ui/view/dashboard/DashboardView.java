@@ -15,6 +15,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.DashboardService;
 import org.vaadin.bakery.ui.component.ViewHeader;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.Duration;
@@ -43,7 +44,7 @@ public class DashboardView extends VerticalLayout {
     // Panels
     private final UpcomingOrdersPanel upcomingOrdersPanel;
 
-    // Signal - refresh trigger
+    // Signal incremented to trigger a same-session data refresh
     private final transient ValueSignal<Integer> refreshTriggerSignal;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
@@ -112,9 +113,12 @@ public class DashboardView extends VerticalLayout {
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
 
-        // Signal bindings
+        // Reactive effect: re-fetches and rebuilds the dashboard KPIs and upcoming orders
+        // whenever order or product data changes in any session, or when triggered locally
         ComponentEffect.effect(this, () -> {
-            refreshTriggerSignal.value(); // Establish dependency
+            DataChangeSignals.orderVersion().value();
+            DataChangeSignals.productVersion().value();
+            refreshTriggerSignal.value();
             refreshData();
         });
 

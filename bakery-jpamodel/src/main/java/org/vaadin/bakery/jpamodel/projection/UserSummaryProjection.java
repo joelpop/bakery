@@ -22,4 +22,6 @@ public interface UserSummaryProjection {
     String getPhotoContentType();
 
     Long getPrimaryLocationId();
+
+    Integer getVersion();
 }

@@ -27,9 +27,11 @@ public interface OrderService {
 
     OrderDetail update(Long id, OrderDetail order);
 
-    void updateStatus(Long id, OrderStatus newStatus);
+    void updateStatus(Long id, OrderStatus newStatus, Integer expectedVersion);
 
-    void markAsPaid(Long id);
+    void markAsPaid(Long id, Integer expectedVersion);
+
+    Optional<Integer> getVersion(Long id);
 
     long countByStatus(OrderStatus status);
 

@@ -33,7 +33,6 @@ public interface OrderItemMapper {
     List<OrderItemDetail> toDetailList(List<OrderItemEntity> entities);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "version", ignore = true)
     @Mapping(target = "order", ignore = true)
     @Mapping(target = "product", ignore = true)
     OrderItemEntity toEntity(OrderItemDetail detail, @MappingTarget OrderItemEntity entity);

@@ -39,7 +39,11 @@ import com.vaadin.flow.signals.local.ValueSignal;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
+import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.service.UserLocationService;
+import org.vaadin.bakery.ui.component.StaleDataBanner;
+import org.vaadin.bakery.ui.component.StaleDataHelper;
+import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.ui.event.NonComponent;
 import org.vaadin.bakery.ui.event.NonComponentEvent;
 import org.vaadin.bakery.ui.event.NonComponentEventSupport;
@@ -106,6 +110,14 @@ public class EditOrderDialog implements NonComponent {
     private final ValueSignal<DiscountType> discountTypeSignal;
     private final ValueSignal<Double> discountAmountSignal;
 
+    // Edit mode state
+    private final VerticalLayout content;
+    private final VerticalLayout addItemBlock;
+    private final Grid.Column<OrderItemDetail> trashColumn;
+    private OrderDetail editingOrder;
+    // Banner shown when another session modifies or deletes the order being edited
+    private StaleDataBanner staleDataBanner;
+
     public EditOrderDialog(OrderService orderService, LocationService locationService,
                            CustomerService customerService, UserLocationService userLocationService) {
         this.orderService = orderService;
@@ -118,19 +130,10 @@ public class EditOrderDialog implements NonComponent {
 
         currencyFormat = NumberFormat.getCurrencyInstance(Locale.US);
 
-        var titleSpan = new Span("New Order");
-        titleSpan.addClassNames(LumoUtility.FontSize.XLARGE, LumoUtility.FontWeight.SEMIBOLD);
-
         locationComboBox = new ComboBox<>();
         locationComboBox.setPlaceholder("Pickup location...");
         locationComboBox.setItemLabelGenerator(LocationSummary::getName);
         locationComboBox.setWidth("180px");
-        locationComboBox.addClassNames(LumoUtility.Margin.Left.AUTO);
-
-        var header = new HorizontalLayout(titleSpan, locationComboBox);
-        header.setWidthFull();
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
-        header.addClassNames(LumoUtility.Gap.MEDIUM);
 
         var form = new FormLayout();
         form.setResponsiveSteps(
@@ -200,7 +203,7 @@ public class EditOrderDialog implements NonComponent {
         itemDetailsField.setPlaceholder("Special instructions for this item");
         itemDetailsField.setWidthFull();
 
-        var addItemBlock = new VerticalLayout(addItemRow, itemDetailsField);
+        addItemBlock = new VerticalLayout(addItemRow, itemDetailsField);
         addItemBlock.setPadding(false);
         addItemBlock.setSpacing(false);
         addItemBlock.setWidthFull();
@@ -230,12 +233,14 @@ public class EditOrderDialog implements NonComponent {
                 .setTextAlign(ColumnTextAlign.END)
                 .setFlexGrow(0)
                 .setWidth("100px");
-        itemsGrid.addComponentColumn(item -> {
+        trashColumn = itemsGrid.addComponentColumn(item -> {
             var removeButton = new Button(new Icon(VaadinIcon.TRASH));
             removeButton.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             removeButton.addClickListener(_ -> removeItem(item));
             return removeButton;
-        }).setFlexGrow(0).setWidth("50px");
+        });
+        trashColumn.setFlexGrow(0);
+        trashColumn.setWidth("50px");
 
         var totalsSection = new Div();
         totalsSection.getStyle()
@@ -280,7 +285,7 @@ public class EditOrderDialog implements NonComponent {
         totalValueSpan.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.FontWeight.BOLD);
         totalValueSpan.getStyle().set("font-variant-numeric", "tabular-nums").set("text-align", "right");
 
-        var content = new VerticalLayout();
+        content = new VerticalLayout();
         content.setSizeFull();
         content.setPadding(false);
         content.setSpacing(false);
@@ -303,12 +308,14 @@ public class EditOrderDialog implements NonComponent {
 
         discountAmountSignal = new ValueSignal<>(0.0);
 
+        // Computed signal: sum of all line item totals, recomputed when items change
         Signal<BigDecimal> subtotalValueSignal = Signal.computed(() ->
                 orderItemsListSignal.value().stream()
                         .map(ValueSignal::value)
                         .map(OrderItemDetail::getLineTotal)
                         .reduce(BigDecimal.ZERO, BigDecimal::add));
 
+        // Computed signal: calculates the discount amount based on type (percent or dollar) and subtotal
         Signal<BigDecimal> discountValueSignal = Signal.computed(() -> {
             var sub = subtotalValueSignal.value();
             var amount = discountAmountSignal.value();
@@ -322,6 +329,7 @@ public class EditOrderDialog implements NonComponent {
             return discount.compareTo(sub) > 0 ? BigDecimal.ZERO : discount;
         });
 
+        // Computed signal: subtotal minus discount, floored at zero
         Signal<BigDecimal> totalValueSignal = Signal.computed(() -> {
             var sub = subtotalValueSignal.value();
             var disc = discountValueSignal.value();
@@ -341,6 +349,8 @@ public class EditOrderDialog implements NonComponent {
 
         discountAmountField.addValueChangeListener(this::onDiscountAmountFieldValueChanged);
 
+        // Reactive effect: validates the discount amount field whenever the discount or subtotal changes,
+        // showing an error if the discount is negative or exceeds the subtotal
         ComponentEffect.effect(discountAmountField, () -> {
             var sub = subtotalValueSignal.value();
             var amount = discountAmountSignal.value();
@@ -367,6 +377,8 @@ public class EditOrderDialog implements NonComponent {
 
         itemsGrid.addSelectionListener(this::onItemsGridSelectionChanged);
 
+        // Reactive effect: switches the item entry form between "add" and "edit" mode
+        // based on editingItemSignal (null = add mode, non-null = editing that item)
         ComponentEffect.effect(addUpdateButton, () -> {
             var editingItem = editingItemSignal.value();
             if (editingItem != null) {
@@ -426,7 +438,8 @@ public class EditOrderDialog implements NonComponent {
         dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("700px");
         dialog.setMaxWidth("95vw");
-        dialog.getHeader().add(header);
+        dialog.setHeaderTitle("New Order");
+        dialog.getHeader().add(locationComboBox);
         dialog.add(content);
         dialog.getFooter().add(cancelButton, saveButton);
 
@@ -446,6 +459,35 @@ public class EditOrderDialog implements NonComponent {
 
     public void setAvailableProducts(List<ProductSelect> products) {
         productComboBox.setItems(products);
+    }
+
+    public void editOrder(OrderDetail order) {
+        editingOrder = order;
+        dialog.setHeaderTitle("Edit Order");
+        populateFromOrder(order);
+
+        // Restricted edit mode: only date/time and additional details editable
+        if (!order.getStatus().isPreProduction()) {
+            customerPhoneComboBox.setReadOnly(true);
+            customerNameField.setReadOnly(true);
+            locationComboBox.setReadOnly(true);
+            addItemBlock.setVisible(false);
+            itemsGrid.setSelectionMode(Grid.SelectionMode.NONE);
+            trashColumn.setVisible(false);
+            discountTypeGroup.setReadOnly(true);
+            discountAmountField.setReadOnly(true);
+        }
+
+        // Stale data detection - monitor for changes from other sessions while editing
+        staleDataBanner = new StaleDataBanner();
+        content.addComponentAsFirst(staleDataBanner);
+
+        // Reactive effect: checks if the order was modified or deleted by another session
+        // whenever the shared orderVersion signal changes
+        ComponentEffect.effect(dialog, () -> {
+            DataChangeSignals.orderVersion().value();
+            checkForExternalChanges();
+        });
     }
 
     // ========== Event Registration (NonComponent interface) ==========
@@ -486,7 +528,7 @@ public class EditOrderDialog implements NonComponent {
 
         // Second line: Notes (if any)
         var details = item.getDetails();
-        if (!details.isBlank()) {
+        if (details != null && !details.isBlank()) {
             var notesLine = new Span(details);
             notesLine.addClassNames(
                     LumoUtility.FontSize.SMALL,
@@ -869,44 +911,179 @@ public class EditOrderDialog implements NonComponent {
         }
 
         try {
-            var order = new OrderDetail();
-            order.setStatus(OrderStatus.NEW);
-            order.setCustomerName(customerNameField.getValue());
-            order.setCustomerPhone(getCustomerPhone());
-            // Set customer ID if existing customer was selected
-            var selectedCustomer = selectedCustomerSignal.value();
-            if (selectedCustomer != null) {
-                order.setCustomerId(selectedCustomer.getId());
+            var order = buildOrderFromForm();
+
+            if (editingOrder != null) {
+                // Edit mode: update existing order
+                order.setId(editingOrder.getId());
+                order.setVersion(editingOrder.getVersion());
+                order.setStatus(editingOrder.getStatus());
+                order.setPaid(editingOrder.isPaid());
+
+                // Pre-save freshness check: abort save if the order was modified or deleted by another session
+                if (StaleDataHelper.isStale(
+                        () -> orderService.getVersion(editingOrder.getId()),
+                        editingOrder.getVersion(), staleDataBanner,
+                        this::reloadData, this::close)) {
+                    return;
+                }
+
+                var savedOrder = orderService.update(editingOrder.getId(), order);
+                Notification.show("Order updated", 2000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                fireEvent(new SaveEvent(this, savedOrder));
+                close();
+            } else {
+                // Create mode
+                order.setStatus(OrderStatus.NEW);
+                order.setPaid(false);
+
+                var savedOrder = orderService.create(order);
+                Notification.show("Order created", 2000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                fireEvent(new SaveEvent(this, savedOrder));
+                close();
             }
-            order.setLocationId(locationComboBox.getValue().getId());
-            order.setLocationName(locationComboBox.getValue().getName());
-            order.setDueDate(dueDatePicker.getValue());
-            order.setDueTime(dueTimePicker.getValue());
-            order.setAdditionalDetails(additionalDetailsField.getValue());
-            // Extract items from signals
-            var itemsList = orderItemsListSignal.value().stream()
-                    .map(ValueSignal::value)
-                    .toList();
-            order.setItems(new ArrayList<>(itemsList));
-            // Calculate discount based on subtotal
-            var subtotal = itemsList.stream()
-                    .map(OrderItemDetail::getLineTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            order.setDiscount(calculateDiscount(subtotal));
-            order.calculateTotal();
-            order.setPaid(false);
-
-            var savedOrder = orderService.create(order);
-
-            Notification.show("Order created", 2000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
-            fireEvent(new SaveEvent(this, savedOrder));
-            close();
+        } catch (StaleDataException _) {
+            // Fallback: optimistic lock failed during flush — show stale data banner
+            staleDataBanner.showModified(this::reloadData);
         } catch (Exception e) {
             Notification.show("Failed: " + e.getMessage(), 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    private OrderDetail buildOrderFromForm() {
+        var order = new OrderDetail();
+        order.setCustomerName(customerNameField.getValue());
+        order.setCustomerPhone(getCustomerPhone());
+
+        var selectedCustomer = selectedCustomerSignal.value();
+        if (selectedCustomer != null) {
+            order.setCustomerId(selectedCustomer.getId());
+        } else if (editingOrder != null) {
+            // Preserve existing customer ID if no new customer selected
+            order.setCustomerId(editingOrder.getCustomerId());
+        }
+
+        order.setLocationId(locationComboBox.getValue().getId());
+        order.setLocationName(locationComboBox.getValue().getName());
+        order.setDueDate(dueDatePicker.getValue());
+        order.setDueTime(dueTimePicker.getValue());
+        order.setAdditionalDetails(additionalDetailsField.getValue());
+
+        var itemsList = orderItemsListSignal.value().stream()
+                .map(ValueSignal::value)
+                .toList();
+        order.setItems(new ArrayList<>(itemsList));
+
+        var subtotal = itemsList.stream()
+                .map(OrderItemDetail::getLineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        order.setDiscount(calculateDiscount(subtotal));
+        order.calculateTotal();
+
+        return order;
+    }
+
+    // ========== Edit Mode Support ==========
+
+    private void populateFromOrder(OrderDetail order) {
+        // Customer - find in combo box items by ID
+        if (order.getCustomerId() != null) {
+            customerPhoneComboBox.getListDataView().getItems()
+                    .filter(c -> c.getId().equals(order.getCustomerId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            customerPhoneComboBox::setValue,
+                            () -> {
+                                // Customer not in combo box - set as custom value
+                                if (order.getCustomerPhone() != null) {
+                                    customPhoneSignal.value(order.getCustomerPhone());
+                                    customerPhoneComboBox.getElement()
+                                            .executeJs("this.inputElement.value = $0", order.getCustomerPhone());
+                                }
+                                customerNameField.setReadOnly(false);
+                                customerNameField.setValue(order.getCustomerName() != null ? order.getCustomerName() : "");
+                            }
+                    );
+        }
+
+        // Location
+        if (order.getLocationId() != null) {
+            locationComboBox.getListDataView().getItems()
+                    .filter(loc -> loc.getId().equals(order.getLocationId()))
+                    .findFirst()
+                    .ifPresent(locationComboBox::setValue);
+        }
+
+        // Date and time
+        if (order.getDueDate() != null) {
+            dueDatePicker.setMin(order.getDueDate().isBefore(LocalDate.now()) ? order.getDueDate() : LocalDate.now());
+            dueDatePicker.setValue(order.getDueDate());
+        }
+        if (order.getDueTime() != null) {
+            dueTimePicker.setValue(order.getDueTime());
+        }
+
+        // Additional details
+        if (order.getAdditionalDetails() != null) {
+            additionalDetailsField.setValue(order.getAdditionalDetails());
+        }
+
+        // Items
+        for (var item : order.getItems()) {
+            orderItemsListSignal.insertLast(item);
+        }
+        refreshItemsGrid();
+
+        // Discount (stored as dollar amount, default to DOLLAR type)
+        if (order.getDiscount() != null && order.getDiscount().compareTo(BigDecimal.ZERO) > 0) {
+            discountTypeGroup.setValue(DiscountType.DOLLAR);
+            discountAmountField.setValue(order.getDiscount().doubleValue());
+        }
+    }
+
+    /** Live detection: compares the DB version against the version loaded into the form. */
+    private void checkForExternalChanges() {
+        if (editingOrder == null || !dialog.isOpened()) return;
+        StaleDataHelper.checkForExternalChanges(
+                () -> orderService.getVersion(editingOrder.getId()),
+                editingOrder.getVersion(), staleDataBanner,
+                this::reloadData, this::close);
+    }
+
+    /** Reloads the latest order data from the database into the form, or shows deleted banner. */
+    private void reloadData() {
+        if (editingOrder == null) return;
+        orderService.get(editingOrder.getId()).ifPresentOrElse(
+                freshOrder -> {
+                    editingOrder = freshOrder;
+                    clearForm();
+                    populateFromOrder(freshOrder);
+                    staleDataBanner.hide();
+                },
+                () -> staleDataBanner.showDeleted(this::close)
+        );
+    }
+
+    private void clearForm() {
+        customerPhoneComboBox.clear();
+        selectedCustomerSignal.value(null);
+        customPhoneSignal.value(null);
+        customerNameField.clear();
+        customerNameField.setReadOnly(true);
+        additionalDetailsField.clear();
+
+        // Clear items
+        var itemSignals = new ArrayList<>(orderItemsListSignal.value());
+        itemSignals.forEach(orderItemsListSignal::remove);
+        refreshItemsGrid();
+
+        // Clear discount
+        discountAmountField.clear();
+        discountAmountSignal.value(0.0);
+        discountTypeGroup.setValue(DiscountType.PERCENT);
     }
 
     // ========== Event Handlers ==========

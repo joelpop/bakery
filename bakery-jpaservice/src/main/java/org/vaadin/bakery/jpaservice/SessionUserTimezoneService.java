@@ -1,17 +1,14 @@
 package org.vaadin.bakery.jpaservice;
 
-import org.springframework.stereotype.Service;
-import org.springframework.web.context.annotation.SessionScope;
 import org.vaadin.bakery.service.UserTimezoneService;
 
 import java.time.ZoneId;
 
 /**
- * Session-scoped implementation of UserTimezoneService.
- * Stores the browser timezone for the duration of the user's session.
+ * Simple field-based implementation of UserTimezoneService.
+ * Superseded by VaadinUserTimezoneService which stores timezone in VaadinSession
+ * (accessible from both HTTP request threads and Push threads).
  */
-@Service
-@SessionScope
 public class SessionUserTimezoneService implements UserTimezoneService {
 
     private ZoneId browserTimezone;

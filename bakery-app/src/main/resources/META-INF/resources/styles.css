@@ -288,6 +288,76 @@ vaadin-grid::part(cell numeric) {
 }
 
 /* =============================================================================
+   Data Change Highlights (pure CSS animation with fade-in and fade-out)
+   ============================================================================= */
+
+@keyframes highlight-fade {
+    0%   { background-color: var(--lumo-base-color); }
+    15%  { background-color: color-mix(in srgb, gold 15%, var(--lumo-base-color)); }
+    100% { background-color: var(--lumo-base-color); }
+}
+
+/* Grid row highlight - fades in over ~0.6s, then slowly fades out */
+vaadin-grid::part(row-highlight) {
+    animation: highlight-fade 4s ease;
+}
+
+/* Card highlight - fades in over ~0.6s, then slowly fades out */
+.card-highlight {
+    animation: highlight-fade 4s ease;
+}
+
+/* New card appearance animation */
+.card-new {
+    animation: card-appear 0.3s ease-out;
+}
+
+@keyframes card-appear {
+    from {
+        opacity: 0;
+        transform: scaleY(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scaleY(1);
+    }
+}
+
+/* =============================================================================
+   Stale Data Banner (in edit dialogs)
+   ============================================================================= */
+
+.stale-data-banner {
+    animation: stale-banner-appear 0.3s ease-out;
+}
+
+.stale-data-banner-warning {
+    background: hsl(45, 100%, 94%);
+    border: 1px solid hsl(45, 80%, 70%);
+    color: hsl(30, 80%, 25%);
+}
+
+.stale-data-banner-error {
+    background: var(--lumo-error-color-10pct);
+    border: 1px solid var(--lumo-error-color-50pct);
+    color: var(--lumo-error-text-color);
+}
+
+@keyframes stale-banner-appear {
+    from {
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 60px;
+    }
+}
+
+/* =============================================================================
    About View
    ============================================================================= */
 
@@ -302,5 +372,16 @@ vaadin-grid::part(cell numeric) {
 @media (max-width: 767px) {
     .about-cards-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================================================
+   Order Detail View - Action Buttons
+   ============================================================================= */
+
+/* Phone: icon-only action buttons */
+@media (max-width: 480px) and (pointer: coarse) {
+    .order-detail-button .button-text {
+        display: none !important;
     }
 }
