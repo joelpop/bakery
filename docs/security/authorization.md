@@ -32,7 +32,7 @@ public class StorefrontView extends VerticalLayout { }
 
 // Admin only
 @Route(value = "users", layout = MainLayout.class)
-@RolesAllowed("ADMIN")
+@RolesAllowed(UserRole.ROLE_ADMIN)
 public class UsersView extends VerticalLayout { }
 
 // Anonymous access (login page)
@@ -47,7 +47,7 @@ public class LoginView extends VerticalLayout { }
 |------------|-------------|
 | `@AnonymousAllowed` | No authentication required |
 | `@PermitAll` | Any authenticated user |
-| `@RolesAllowed("ADMIN")` | Specific role(s) required |
+| `@RolesAllowed(UserRole.ROLE_ADMIN)` | Specific role(s) required |
 | `@DenyAll` | No access (for testing) |
 
 ## Navigation Security

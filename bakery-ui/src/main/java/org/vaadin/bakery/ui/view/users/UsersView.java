@@ -26,6 +26,7 @@ import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.data.UserSummary;
+import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.io.ByteArrayInputStream;
@@ -38,7 +39,7 @@ import java.util.List;
 @Route("users")
 @PageTitle("Users")
 @Menu(order = 4, icon = LineAwesomeIconUrl.USERS_SOLID)
-@RolesAllowed("ADMIN")
+@RolesAllowed(UserRole.ROLE_ADMIN)
 public class UsersView extends VerticalLayout {
 
     private final UserService userService;

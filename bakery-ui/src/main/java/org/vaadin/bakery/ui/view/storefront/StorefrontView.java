@@ -18,19 +18,20 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.shared.Registration;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.local.ValueSignal;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
-import org.vaadin.bakery.ui.MainLayout;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
+import org.vaadin.bakery.ui.MainLayout;
 import org.vaadin.bakery.ui.component.ChangeTracker;
 import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderList;
+import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.LocalDate;
@@ -47,7 +48,7 @@ import java.util.stream.Collectors;
 @RouteAlias("")
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
-@RolesAllowed({"ADMIN", "BARISTA"})
+@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA})
 public class StorefrontView extends VerticalLayout {
 
     private final OrderService orderService;

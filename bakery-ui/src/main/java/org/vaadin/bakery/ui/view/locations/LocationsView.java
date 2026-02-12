@@ -17,6 +17,7 @@ import org.vaadin.bakery.ui.component.ChangeTracker;
 import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
+import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 /**
@@ -26,7 +27,7 @@ import org.vaadin.lineawesome.LineAwesomeIconUrl;
 @Route("locations")
 @PageTitle("Locations")
 @Menu(order = 3, icon = LineAwesomeIconUrl.MAP_MARKER_SOLID)
-@RolesAllowed("ADMIN")
+@RolesAllowed(UserRole.ROLE_ADMIN)
 public class LocationsView extends VerticalLayout {
 
     private final LocationService locationService;

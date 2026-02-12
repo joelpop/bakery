@@ -20,8 +20,8 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.local.ValueSignal;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
@@ -33,6 +33,7 @@ import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderItemDetail;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
+import org.vaadin.bakery.uimodel.type.UserRole;
 
 import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
@@ -44,7 +45,7 @@ import java.util.Locale;
  */
 @Route("orders/:orderId")
 @PageTitle("Order Details")
-@RolesAllowed({"ADMIN", "BARISTA", "BAKER"})
+@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA, UserRole.ROLE_BAKER})
 public class OrderDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final OrderService orderService;

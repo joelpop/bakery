@@ -24,6 +24,7 @@ import org.vaadin.bakery.ui.component.ChangeTracker;
 import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.ProductSummary;
+import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.io.ByteArrayInputStream;
@@ -39,7 +40,7 @@ import java.util.Locale;
 @Route("products")
 @PageTitle("Products")
 @Menu(order = 2, icon = LineAwesomeIconUrl.BIRTHDAY_CAKE_SOLID)
-@RolesAllowed({"ADMIN", "BAKER"})
+@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER})
 public class ProductsView extends VerticalLayout {
 
     private final ProductService productService;
