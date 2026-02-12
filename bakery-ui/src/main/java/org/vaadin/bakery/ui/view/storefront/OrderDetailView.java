@@ -25,6 +25,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
+import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.StaleDataException;
@@ -49,6 +50,7 @@ import java.util.Locale;
 public class OrderDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final OrderService orderService;
+    private final OrderActivityService orderActivityService;
     private final ProductService productService;
     private final LocationService locationService;
     private final CustomerService customerService;
@@ -75,14 +77,17 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     private final Grid<OrderItemDetail> itemsGrid;
     private final HorizontalLayout actionButtons;
+    private final Div timelineContainer;
 
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
 
-    /** Creates the order detail view with order information, items grid, and action buttons. */
-    public OrderDetailView(OrderService orderService, ProductService productService,
+    /** Creates the order detail view with order information, items grid, action buttons, and activity timeline. */
+    public OrderDetailView(OrderService orderService, OrderActivityService orderActivityService,
+                           ProductService productService,
                            LocationService locationService, CustomerService customerService,
                            UserLocationService userLocationService) {
         this.orderService = orderService;
+        this.orderActivityService = orderActivityService;
         this.productService = productService;
         this.locationService = locationService;
         this.customerService = customerService;
@@ -287,11 +292,16 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         itemsSection.add(itemsHeader, itemsGrid);
         itemsSection.setFlexGrow(1, itemsGrid);
 
+        // Activity timeline — populated with order-specific content in beforeEnter()
+        timelineContainer = new Div();
+        timelineContainer.setWidth("350px");
+        timelineContainer.setMinHeight("300px");
+
         // Layout assembly
         var content = new HorizontalLayout();
         content.setSizeFull();
         content.setSpacing(true);
-        content.add(orderInfoSection, itemsSection);
+        content.add(orderInfoSection, itemsSection, timelineContainer);
 
         var contentWrapper = new Div();
         contentWrapper.addClassNames(LumoUtility.Padding.MEDIUM);
@@ -323,6 +333,13 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             currentOrderId = order.getId();
             currentOrderVersion = order.getVersion();
             orderSignal.value(order);
+
+            // Mark messages as read and set up the activity timeline
+            orderActivityService.markOrderAsRead(orderId);
+            timelineContainer.removeAll();
+            var timeline = new OrderActivityTimeline(orderActivityService, orderId);
+            timeline.setSizeFull();
+            timelineContainer.add(timeline);
         } catch (NumberFormatException _) {
             navigateBack();
         }

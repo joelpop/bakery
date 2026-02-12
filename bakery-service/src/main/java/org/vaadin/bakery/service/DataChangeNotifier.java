@@ -11,10 +11,18 @@ public interface DataChangeNotifier {
      */
     void notifyChange(EntityType entityType);
 
+    /**
+     * Broadcasts a message notification for targeted toast delivery.
+     * Default no-op for implementations that don't support message notifications.
+     */
+    default void notifyMessage(MessageNotification notification) {
+    }
+
     enum EntityType {
         ORDER,
         USER,
         PRODUCT,
-        LOCATION
+        LOCATION,
+        MESSAGE
     }
 }

@@ -17,12 +17,14 @@ public final class DataChangeSignals {
     private static final SharedNumberSignal userVersion;
     private static final SharedNumberSignal productVersion;
     private static final SharedNumberSignal locationVersion;
+    private static final SharedNumberSignal messageVersion;
 
     static {
         orderVersion = new SharedNumberSignal();
         userVersion = new SharedNumberSignal();
         productVersion = new SharedNumberSignal();
         locationVersion = new SharedNumberSignal();
+        messageVersion = new SharedNumberSignal();
     }
 
     private DataChangeSignals() {
@@ -42,5 +44,9 @@ public final class DataChangeSignals {
 
     public static SharedNumberSignal locationVersion() {
         return locationVersion;
+    }
+
+    public static SharedNumberSignal messageVersion() {
+        return messageVersion;
     }
 }

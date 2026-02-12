@@ -2,12 +2,15 @@ package org.vaadin.bakery.jpaservice;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.vaadin.bakery.jpamodel.code.OrderActivityTypeCode;
 import org.vaadin.bakery.jpamodel.code.OrderStatusCode;
 import org.vaadin.bakery.jpamodel.entity.CustomerEntity;
+import org.vaadin.bakery.jpamodel.entity.OrderActivityEntity;
 import org.vaadin.bakery.jpamodel.entity.OrderEntity;
 import org.vaadin.bakery.jpamodel.entity.OrderItemEntity;
 import org.vaadin.bakery.jpaclient.repository.CustomerRepository;
 import org.vaadin.bakery.jpaclient.repository.LocationRepository;
+import org.vaadin.bakery.jpaclient.repository.OrderActivityRepository;
 import org.vaadin.bakery.jpaclient.repository.OrderRepository;
 import org.vaadin.bakery.jpaclient.repository.ProductRepository;
 import org.vaadin.bakery.jpaservice.mapper.EnumMapper;
@@ -18,6 +21,7 @@ import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderList;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +39,7 @@ public class JpaOrderService implements OrderService {
     );
 
     private final OrderRepository orderRepository;
+    private final OrderActivityRepository orderActivityRepository;
     private final CustomerRepository customerRepository;
     private final LocationRepository locationRepository;
     private final ProductRepository productRepository;
@@ -42,11 +47,15 @@ public class JpaOrderService implements OrderService {
     private final EnumMapper enumMapper;
     private final DataChangeNotifier dataChangeNotifier;
 
-    public JpaOrderService(OrderRepository orderRepository, CustomerRepository customerRepository,
-                           LocationRepository locationRepository, ProductRepository productRepository,
+    public JpaOrderService(OrderRepository orderRepository,
+                           OrderActivityRepository orderActivityRepository,
+                           CustomerRepository customerRepository,
+                           LocationRepository locationRepository,
+                           ProductRepository productRepository,
                            OrderMapper orderMapper, EnumMapper enumMapper,
                            DataChangeNotifier dataChangeNotifier) {
         this.orderRepository = orderRepository;
+        this.orderActivityRepository = orderActivityRepository;
         this.customerRepository = customerRepository;
         this.locationRepository = locationRepository;
         this.productRepository = productRepository;
@@ -136,6 +145,7 @@ public class JpaOrderService implements OrderService {
         }
 
         var saved = orderRepository.save(entity);
+        createSystemEvent(saved, "Order created");
         dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
         var result = orderMapper.toDetail(saved);
         result.setNewCustomerCreated(newCustomerCreated);
@@ -146,6 +156,13 @@ public class JpaOrderService implements OrderService {
     public OrderDetail update(Long id, OrderDetail order) {
         var entity = orderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + id));
+
+        // Capture current values before mapper overwrites them
+        var oldDueDate = entity.getDueDate();
+        var oldDueTime = entity.getDueTime();
+        var oldLocationName = entity.getLocation().getName();
+        var oldLocationId = entity.getLocation().getId();
+        var oldAdditionalDetails = entity.getAdditionalDetails();
 
         orderMapper.toEntity(order, entity);
 
@@ -177,6 +194,20 @@ public class JpaOrderService implements OrderService {
 
         JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
 
+        // Emit system events for changed fields
+        if (!entity.getDueDate().equals(oldDueDate) || !entity.getDueTime().equals(oldDueTime)) {
+            createSystemEvent(entity, "Due date/time changed from " + oldDueDate + " " + oldDueTime
+                    + " to " + entity.getDueDate() + " " + entity.getDueTime());
+        }
+        if (!entity.getLocation().getId().equals(oldLocationId)) {
+            createSystemEvent(entity, "Location changed from " + oldLocationName
+                    + " to " + entity.getLocation().getName());
+        }
+        var newDetails = entity.getAdditionalDetails();
+        if (oldAdditionalDetails == null ? newDetails != null : !oldAdditionalDetails.equals(newDetails)) {
+            createSystemEvent(entity, "Additional details updated");
+        }
+
         dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
         return orderMapper.toDetail(entity);
     }
@@ -186,8 +217,10 @@ public class JpaOrderService implements OrderService {
         var entity = orderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + id));
         entity.setVersion(expectedVersion);
-        entity.setStatus(enumMapper.toOrderStatusCode(newStatus));
+        var statusCode = enumMapper.toOrderStatusCode(newStatus);
+        entity.setStatus(statusCode);
         JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
+        createSystemEvent(entity, "Status changed to " + newStatus.getDisplayName());
         dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
     }
 
@@ -198,6 +231,7 @@ public class JpaOrderService implements OrderService {
         entity.setVersion(expectedVersion);
         entity.setPaid(true);
         JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
+        createSystemEvent(entity, "Marked as paid");
         dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
     }
 
@@ -226,5 +260,15 @@ public class JpaOrderService implements OrderService {
                 .map(enumMapper::toOrderStatusCode)
                 .toList();
         return orderRepository.countByDueDateAndStatusNotIn(date, excludedCodes);
+    }
+
+    private void createSystemEvent(OrderEntity order, String text) {
+        var event = new OrderActivityEntity();
+        event.setOrder(order);
+        event.setType(OrderActivityTypeCode.SYSTEM_EVENT);
+        event.setText(text);
+        event.setPostedAt(Instant.now());
+        event.setRead(true);
+        orderActivityRepository.save(event);
     }
 }
