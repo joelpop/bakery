@@ -334,8 +334,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             currentOrderVersion = order.getVersion();
             orderSignal.value(order);
 
-            // Mark messages as read and set up the activity timeline
-            orderActivityService.markOrderAsRead(orderId);
+            // Set up the activity timeline
             timelineContainer.removeAll();
             var timeline = new OrderActivityTimeline(orderActivityService, orderId);
             timeline.setSizeFull();

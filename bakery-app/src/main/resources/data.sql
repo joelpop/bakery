@@ -164,7 +164,7 @@ INSERT INTO order_activity (id, version, order_id, type, text, author_id, refere
 (1, 0, 4, 'SYSTEM_EVENT', 'Order created', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, true),
 (2, 0, 4, 'SYSTEM_EVENT', 'Status changed to In Progress', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '2' HOUR, true),
 (3, 0, 4, 'STAFF_MESSAGE', 'Customer just called — the inscription should be "Happy Birthday Sophie" not "Happy Birthday Sofia". Please double-check before decorating!', 3, 6, CURRENT_TIMESTAMP - INTERVAL '45' MINUTE, false),
-(4, 0, 4, 'STAFF_MESSAGE', 'Got it, changing now. Good catch!', 2, 6, CURRENT_TIMESTAMP - INTERVAL '40' MINUTE, true);
+(4, 0, 4, 'STAFF_MESSAGE', 'Got it, changing now. Good catch!', 2, 6, CURRENT_TIMESTAMP - INTERVAL '40' MINUTE, false);
 
 -- Order 5: Ready for pickup, routine activity
 INSERT INTO order_activity (id, version, order_id, type, text, author_id, referenced_item_id, posted_at, read) VALUES
@@ -173,7 +173,7 @@ INSERT INTO order_activity (id, version, order_id, type, text, author_id, refere
 (7, 0, 5, 'SYSTEM_EVENT', 'Status changed to In Progress', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '6' HOUR, true),
 (8, 0, 5, 'SYSTEM_EVENT', 'Status changed to Baked', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, true),
 (9, 0, 5, 'SYSTEM_EVENT', 'Status changed to Ready for Pick Up', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '2' HOUR, true),
-(10, 0, 5, 'STAFF_MESSAGE', 'Customer called asking if this is ready yet. Told them to come by at 11.', 3, NULL, CURRENT_TIMESTAMP - INTERVAL '1' HOUR, true);
+(10, 0, 5, 'STAFF_MESSAGE', 'Customer called asking if this is ready yet. Told them to come by at 11.', 3, NULL, CURRENT_TIMESTAMP - INTERVAL '1' HOUR, false);
 
 -- Order 9: New bread order with unread messages (for blue dot verification)
 INSERT INTO order_activity (id, version, order_id, type, text, author_id, referenced_item_id, posted_at, read) VALUES
@@ -186,4 +186,4 @@ INSERT INTO order_activity (id, version, order_id, type, text, author_id, refere
 (14, 0, 11, 'SYSTEM_EVENT', 'Order created', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '5' HOUR, true),
 (15, 0, 11, 'SYSTEM_EVENT', 'Marked as paid', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '5' HOUR, true),
 (16, 0, 11, 'SYSTEM_EVENT', 'Status changed to In Progress', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '4' HOUR, true),
-(17, 0, 11, 'STAFF_MESSAGE', 'Using the dark ganache for this one — it is Henry''s usual.', 2, 18, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, true);
+(17, 0, 11, 'STAFF_MESSAGE', 'Using the dark ganache for this one — it is Henry''s usual.', 2, 18, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, false);

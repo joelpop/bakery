@@ -32,9 +32,12 @@ public interface OrderActivityService {
     OrderActivity postMessage(Long orderId, String text, Long referencedItemId);
 
     /**
-     * Marks all unread staff messages for the given order as read.
+     * Marks the given activities as read in the current user's session
+     * and persists the global read flag for the first reader.
+     *
+     * @param activityIds the activity IDs to mark as read
      */
-    void markOrderAsRead(Long orderId);
+    void markActivitiesAsRead(Set<Long> activityIds);
 
     /**
      * Returns the IDs of orders (from the given set) that have unread staff messages.

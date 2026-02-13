@@ -415,10 +415,12 @@ vaadin-grid::part(row-highlight) {
 
 .timeline-staff-message {
     border-radius: var(--lumo-border-radius-m);
+    border-left: 3px solid transparent;
+    transition: border-left-color 0.3s ease;
 }
 
 .timeline-unread {
-    border-left: 3px solid var(--lumo-primary-color);
+    border-left-color: var(--lumo-primary-color);
 }
 
 .unread-divider {

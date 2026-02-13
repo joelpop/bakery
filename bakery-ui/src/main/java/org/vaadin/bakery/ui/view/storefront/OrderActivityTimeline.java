@@ -14,7 +14,10 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.dom.DebouncePhase;
+import com.vaadin.flow.dom.DomEvent;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import tools.jackson.databind.JsonNode;
 import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderActivity;
@@ -22,11 +25,17 @@ import org.vaadin.bakery.uimodel.type.OrderActivityType;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Activity timeline panel for an order, showing system events and staff messages
- * with a message input area at the bottom.
+ * with a message input area at the bottom. Unread messages are marked as read
+ * when they become visible in the scroller viewport.
  */
 public class OrderActivityTimeline extends VerticalLayout {
 
@@ -37,10 +46,13 @@ public class OrderActivityTimeline extends VerticalLayout {
     private final Div entriesContainer;
     private final Scroller scroller;
     private final Button newMessagesButton;
+    private final Map<Long, Div> unreadEntryComponents;
+    private final List<Long> entryActivityIds;
 
     private LocalDateTime lastLoadedTimestamp;
     private boolean initialLoadDone;
     private int previousEntryCount;
+    private Div unreadDivider;
 
     /**
      * Creates the activity timeline for the given order.
@@ -80,6 +92,9 @@ public class OrderActivityTimeline extends VerticalLayout {
         newMessagesButton.setVisible(false);
         newMessagesButton.addClickListener(_ -> scrollToBottom());
 
+        unreadEntryComponents = new HashMap<>();
+        entryActivityIds = new ArrayList<>();
+
         var inputArea = createInputArea();
 
         // Signal bindings
@@ -94,6 +109,13 @@ public class OrderActivityTimeline extends VerticalLayout {
         // Layout assembly
         add(titleHeader, scroller, newMessagesButton, inputArea);
         setFlexGrow(1, scroller);
+
+        // Scroll listener for visibility-based read marking
+        scroller.getElement().addEventListener("scroll", this::onTimelineScroll)
+                .debounce(300, DebouncePhase.TRAILING)
+                .addEventData("element.scrollTop")
+                .addEventData("element.scrollHeight")
+                .addEventData("element.clientHeight");
     }
 
     private HorizontalLayout createInputArea() {
@@ -132,6 +154,7 @@ public class OrderActivityTimeline extends VerticalLayout {
             var activities = orderActivityService.listByOrder(orderId);
             renderActivities(activities);
             scrollToFirstUnread(activities);
+            triggerVisibilityCheck();
             initialLoadDone = true;
         } else if (lastLoadedTimestamp != null) {
             // Incremental load for live updates
@@ -144,12 +167,17 @@ public class OrderActivityTimeline extends VerticalLayout {
                 } else {
                     scrollToBottom();
                 }
+                triggerVisibilityCheck();
             }
         }
     }
 
     private void renderActivities(List<OrderActivity> activities) {
         entriesContainer.removeAll();
+        entryActivityIds.clear();
+        unreadEntryComponents.clear();
+        unreadDivider = null;
+
         var firstUnreadFound = false;
 
         for (var activity : activities) {
@@ -159,10 +187,20 @@ public class OrderActivityTimeline extends VerticalLayout {
                 divider.addClassName("unread-divider");
                 divider.add(new Span("New"));
                 entriesContainer.add(divider);
+                entryActivityIds.add(null);
+                unreadDivider = divider;
                 firstUnreadFound = true;
             }
 
-            entriesContainer.add(createEntry(activity));
+            var entry = createEntry(activity);
+            entriesContainer.add(entry);
+
+            if (activity.getType() == OrderActivityType.STAFF_MESSAGE && !activity.isRead()) {
+                entryActivityIds.add(activity.getId());
+                unreadEntryComponents.put(activity.getId(), entry);
+            } else {
+                entryActivityIds.add(null);
+            }
         }
 
         previousEntryCount = activities.size();
@@ -173,7 +211,15 @@ public class OrderActivityTimeline extends VerticalLayout {
 
     private void appendActivities(List<OrderActivity> newActivities) {
         for (var activity : newActivities) {
-            entriesContainer.add(createEntry(activity));
+            var entry = createEntry(activity);
+            entriesContainer.add(entry);
+
+            if (activity.getType() == OrderActivityType.STAFF_MESSAGE && !activity.isRead()) {
+                entryActivityIds.add(activity.getId());
+                unreadEntryComponents.put(activity.getId(), entry);
+            } else {
+                entryActivityIds.add(null);
+            }
         }
         previousEntryCount += newActivities.size();
         lastLoadedTimestamp = newActivities.getLast().getPostedAt();
@@ -252,6 +298,75 @@ public class OrderActivityTimeline extends VerticalLayout {
                 LumoUtility.Whitespace.NOWRAP
         );
         return timeSpan;
+    }
+
+    /**
+     * Handles debounced scroll events on the timeline scroller.
+     * Extracts scroll dimensions from event data and marks visible entries as read.
+     */
+    private void onTimelineScroll(DomEvent event) {
+        var data = event.getEventData();
+        var scrollTop = data.get("element.scrollTop").doubleValue();
+        var scrollHeight = data.get("element.scrollHeight").doubleValue();
+        var clientHeight = data.get("element.clientHeight").doubleValue();
+        markVisibleEntries(scrollTop, scrollHeight, clientHeight);
+    }
+
+    /**
+     * Estimates which entries are visible based on scroll position and marks
+     * unread ones as read. Uses average entry height for visibility estimation.
+     */
+    private void markVisibleEntries(double scrollTop, double scrollHeight, double clientHeight) {
+        if (entryActivityIds.isEmpty() || unreadEntryComponents.isEmpty()) {
+            return;
+        }
+
+        var entryCount = entryActivityIds.size();
+        var avgHeight = scrollHeight / entryCount;
+        if (avgHeight <= 0) {
+            return;
+        }
+
+        // Estimate visible range with ±1 buffer for height variation
+        var firstVisible = Math.max(0, (int) (scrollTop / avgHeight) - 1);
+        var lastVisible = Math.min(entryCount - 1, (int) ((scrollTop + clientHeight) / avgHeight) + 1);
+
+        var readIds = new HashSet<Long>();
+        for (int i = firstVisible; i <= lastVisible; i++) {
+            var activityId = entryActivityIds.get(i);
+            if (activityId != null && unreadEntryComponents.containsKey(activityId)) {
+                readIds.add(activityId);
+                var div = unreadEntryComponents.remove(activityId);
+                div.removeClassName("timeline-unread");
+                entryActivityIds.set(i, null);
+            }
+        }
+
+        // Remove divider if all unread entries are now read
+        if (unreadEntryComponents.isEmpty() && unreadDivider != null) {
+            entriesContainer.remove(unreadDivider);
+            unreadDivider = null;
+        }
+
+        if (!readIds.isEmpty()) {
+            orderActivityService.markActivitiesAsRead(readIds);
+        }
+    }
+
+    /**
+     * Triggers a one-time visibility check by querying the scroller's current
+     * dimensions. Catches entries that are immediately visible without scrolling
+     * (e.g., short timelines where all entries fit in the viewport).
+     */
+    private void triggerVisibilityCheck() {
+        if (unreadEntryComponents.isEmpty()) {
+            return;
+        }
+        scroller.getElement().executeJs(
+                "return [this.scrollTop, this.scrollHeight, this.clientHeight]"
+        ).then((JsonNode dims) ->
+                markVisibleEntries(dims.get(0).doubleValue(), dims.get(1).doubleValue(), dims.get(2).doubleValue())
+        );
     }
 
     private void scrollToFirstUnread(List<OrderActivity> activities) {

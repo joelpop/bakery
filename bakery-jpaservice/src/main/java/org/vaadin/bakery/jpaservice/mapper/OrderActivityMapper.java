@@ -23,6 +23,7 @@ public interface OrderActivityMapper {
     @Mapping(source = "author.id", target = "authorId")
     @Mapping(source = "referencedItem.product.name", target = "referencedItemName")
     @Mapping(source = "referencedItem.id", target = "referencedItemId")
+    @Mapping(target = "read", ignore = true)
     OrderActivity toModel(OrderActivityEntity entity);
 
     /**

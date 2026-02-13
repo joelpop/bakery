@@ -32,11 +32,28 @@ public interface OrderActivityRepository extends JpaRepository<OrderActivityEnti
            "AND a.read = false")
     Set<Long> findOrderIdsWithUnreadMessages(@Param("orderIds") Collection<Long> orderIds);
 
-    /** Marks all unread staff messages for the given order as read. */
-    @Modifying
-    @Query("UPDATE OrderActivityEntity a SET a.read = true " +
-           "WHERE a.order.id = :orderId " +
+    /**
+     * Returns activity ID and order ID pairs for globally-unread staff messages
+     * not authored by the given user.
+     */
+    @Query("SELECT a.id, a.order.id FROM OrderActivityEntity a " +
+           "WHERE a.type = org.vaadin.bakery.jpamodel.code.OrderActivityTypeCode.STAFF_MESSAGE " +
+           "AND a.read = false AND a.author.id != :userId")
+    List<Object[]> findGloballyUnreadStaffMessages(@Param("userId") Long userId);
+
+    /**
+     * Returns activity ID and order ID pairs for globally-unread staff messages
+     * within the given orders, not authored by the given user.
+     */
+    @Query("SELECT a.id, a.order.id FROM OrderActivityEntity a " +
+           "WHERE a.order.id IN :orderIds " +
            "AND a.type = org.vaadin.bakery.jpamodel.code.OrderActivityTypeCode.STAFF_MESSAGE " +
-           "AND a.read = false")
-    int markAllReadByOrderId(@Param("orderId") Long orderId);
+           "AND a.read = false AND a.author.id != :userId")
+    List<Object[]> findGloballyUnreadStaffMessagesForOrders(@Param("userId") Long userId,
+                                                           @Param("orderIds") Collection<Long> orderIds);
+
+    /** Marks specific activities as globally read. */
+    @Modifying
+    @Query("UPDATE OrderActivityEntity a SET a.read = true WHERE a.id IN :ids AND a.read = false")
+    int markAsReadByIds(@Param("ids") Collection<Long> ids);
 }
