@@ -33,6 +33,7 @@ import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.shared.Registration;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 
@@ -77,6 +78,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient CustomerService customerService;
     private final transient UserTimezoneService userTimezoneService;
     private final transient UserLocationService userLocationService;
+    private final transient AuthenticationContext authenticationContext;
 
     private Tabs navigationTabs;
     private final Map<String, Tab> routeToTab = new HashMap<>();
@@ -86,7 +88,8 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
                       OrderService orderService, LocationService locationService,
                       ProductService productService, CustomerService customerService,
-                      UserTimezoneService userTimezoneService, UserLocationService userLocationService) {
+                      UserTimezoneService userTimezoneService, UserLocationService userLocationService,
+                      AuthenticationContext authenticationContext) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
         this.orderService = orderService;
@@ -95,6 +98,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         this.customerService = customerService;
         this.userTimezoneService = userTimezoneService;
         this.userLocationService = userLocationService;
+        this.authenticationContext = authenticationContext;
 
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
@@ -398,17 +402,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         }
 
         // Logout
-        var logoutIcon = new Icon(VaadinIcon.SIGN_OUT);
-        logoutIcon.addClassNames(LumoUtility.Margin.End.SMALL);
-
-        var logoutLink = new Anchor("/logout", "Log out");
-        logoutLink.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.AlignItems.CENTER
-        );
-        logoutLink.getElement().insertChild(0, logoutIcon.getElement());
-
-        subMenu.addItem(logoutLink);
+        subMenu.addItem("Log out", _ -> authenticationContext.logout());
 
         return menuBar;
     }
@@ -476,17 +470,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         }
 
         // Logout
-        var logoutIcon = new Icon(VaadinIcon.SIGN_OUT);
-        logoutIcon.addClassNames(LumoUtility.Margin.End.SMALL);
-
-        var logoutLink = new Anchor("/logout", "Log out");
-        logoutLink.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.AlignItems.CENTER
-        );
-        logoutLink.getElement().insertChild(0, logoutIcon.getElement());
-
-        subMenu.addItem(logoutLink);
+        subMenu.addItem("Log out", _ -> authenticationContext.logout());
 
         return menuBar;
     }

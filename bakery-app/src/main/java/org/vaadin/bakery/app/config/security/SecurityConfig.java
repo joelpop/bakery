@@ -33,7 +33,6 @@ public class SecurityConfig {
             configurer.loginView(LoginView.class);
         })
         .sessionManagement(session -> {
-            session.sessionFixation().migrateSession();
             session.maximumSessions(5);
         })
         .build();

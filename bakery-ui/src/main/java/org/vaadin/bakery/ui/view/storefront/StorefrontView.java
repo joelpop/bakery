@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 @RouteAlias("")
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
-@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA})
+@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER, UserRole.ROLE_BARISTA})
 public class StorefrontView extends VerticalLayout {
 
     private final OrderService orderService;

@@ -187,3 +187,12 @@ INSERT INTO order_activity (id, version, order_id, type, text, author_id, refere
 (15, 0, 11, 'SYSTEM_EVENT', 'Marked as paid', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '5' HOUR, true),
 (16, 0, 11, 'SYSTEM_EVENT', 'Status changed to In Progress', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '4' HOUR, true),
 (17, 0, 11, 'STAFF_MESSAGE', 'Using the dark ganache for this one — it is Henry''s usual.', 2, 18, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, false);
+
+-- Reset identity columns past seed data to avoid primary key conflicts
+ALTER TABLE location ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE app_user ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE product ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE customer ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE customer_order ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE order_item ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE order_activity ALTER COLUMN id RESTART WITH 100;
