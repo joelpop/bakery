@@ -1,8 +1,6 @@
 package org.vaadin.bakery.ui.view.locations;
 
 import com.vaadin.flow.component.ComponentEffect;
-import com.vaadin.flow.component.ComponentEvent;
-import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -24,12 +22,21 @@ import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.ui.component.StaleDataBanner;
 import org.vaadin.bakery.ui.component.StaleDataHelper;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
+import org.vaadin.bakery.ui.event.NonComponent;
+import org.vaadin.bakery.ui.event.NonComponentEvent;
+import org.vaadin.bakery.ui.event.NonComponentEventSupport;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
+
+import java.util.function.Consumer;
 
 /**
  * Dialog for creating and editing locations.
+ * Uses delegation rather than inheritance to avoid exposing Dialog's full API.
  */
-public class LocationDialog extends Dialog {
+public class LocationDialog implements NonComponent {
+
+    private final Dialog dialog;
+    private final NonComponentEventSupport<LocationDialog> eventSupport;
 
     private final LocationService locationService;
     private LocationSummary location;
@@ -57,6 +64,9 @@ public class LocationDialog extends Dialog {
         this.locationService = locationService;
         this.location = location;
         this.isNew = location.getId() == null;
+
+        dialog = new Dialog();
+        eventSupport = new NonComponentEventSupport<>();
 
         // Component initializations
         nameField = new TextField("Name");
@@ -155,24 +165,33 @@ public class LocationDialog extends Dialog {
 
             // Reactive effect: checks if the location was modified or deleted by another session
             // whenever the shared locationVersion signal changes
-            ComponentEffect.effect(this, () -> {
+            ComponentEffect.effect(dialog, () -> {
                 DataChangeSignals.locationVersion().value();
                 checkForExternalChanges();
             });
         }
 
         // Dialog configuration
-        setHeaderTitle(isNew ? "New Location" : "Edit Location");
-        setModal(true);
-        setCloseOnOutsideClick(false);
-        getElement().getThemeList().add("responsive-dialog");
-        setWidth("100%");
-        setMaxWidth("500px");
+        dialog.setHeaderTitle(isNew ? "New Location" : "Edit Location");
+        dialog.setCloseOnOutsideClick(false);
+        dialog.getElement().getThemeList().add("responsive-dialog");
+        dialog.setWidth("100%");
+        dialog.setMaxWidth("500px");
         if (!isNew) {
-            add(staleDataBanner);
+            dialog.add(staleDataBanner);
         }
-        add(form);
-        getFooter().add(footer);
+        dialog.add(form);
+        dialog.getFooter().add(footer);
+    }
+
+    /** Opens the dialog. */
+    public void open() {
+        dialog.open();
+    }
+
+    /** Closes the dialog. */
+    public void close() {
+        dialog.close();
     }
 
     private void save() {
@@ -197,7 +216,7 @@ public class LocationDialog extends Dialog {
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             }
 
-            fireEvent(new SaveEvent(this));
+            eventSupport.fireEvent(new SaveEvent(this));
             close();
         } catch (StaleDataException _) {
             // Fallback: optimistic lock failed during flush — show stale data banner
@@ -210,7 +229,7 @@ public class LocationDialog extends Dialog {
 
     /** Live detection: compares the DB version against the version loaded into the form. */
     private void checkForExternalChanges() {
-        if (!isOpened()) return;
+        if (!dialog.isOpened()) return;
         StaleDataHelper.checkForExternalChanges(
                 () -> locationService.getVersion(location.getId()),
                 location.getVersion(), staleDataBanner,
@@ -250,7 +269,7 @@ public class LocationDialog extends Dialog {
             locationService.delete(location.getId());
             Notification.show("Location deleted", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            fireEvent(new DeleteEvent(this));
+            eventSupport.fireEvent(new DeleteEvent(this));
             close();
         } catch (Exception e) {
             Notification.show("Cannot delete location: " + e.getMessage(), 5000, Notification.Position.BOTTOM_START)
@@ -258,29 +277,40 @@ public class LocationDialog extends Dialog {
         }
     }
 
+    // NonComponent implementation
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <E extends NonComponentEvent<?>> Registration addListener(Class<E> eventType, Consumer<E> listener) {
+        return eventSupport.addListener((Class<NonComponentEvent<LocationDialog>>) eventType,
+                (Consumer<NonComponentEvent<LocationDialog>>) listener);
+    }
+
+    /** Registers a listener for save events. */
+    public Registration addSaveListener(Consumer<SaveEvent> listener) {
+        return eventSupport.addListener(SaveEvent.class, listener);
+    }
+
+    /** Registers a listener for delete events. */
+    public Registration addDeleteListener(Consumer<DeleteEvent> listener) {
+        return eventSupport.addListener(DeleteEvent.class, listener);
+    }
+
     // Events
 
     /** Event fired when a location is successfully saved. */
-    public static class SaveEvent extends ComponentEvent<LocationDialog> {
+    public static class SaveEvent extends NonComponentEvent<LocationDialog> {
+        /** Creates a save event. */
         public SaveEvent(LocationDialog source) {
-            super(source, false);
+            super(source);
         }
     }
 
     /** Event fired when a location is successfully deleted. */
-    public static class DeleteEvent extends ComponentEvent<LocationDialog> {
+    public static class DeleteEvent extends NonComponentEvent<LocationDialog> {
+        /** Creates a delete event. */
         public DeleteEvent(LocationDialog source) {
-            super(source, false);
+            super(source);
         }
-    }
-
-    /** Registers a listener for save events. */
-    public Registration addSaveListener(ComponentEventListener<SaveEvent> listener) {
-        return addListener(SaveEvent.class, listener);
-    }
-
-    /** Registers a listener for delete events. */
-    public Registration addDeleteListener(ComponentEventListener<DeleteEvent> listener) {
-        return addListener(DeleteEvent.class, listener);
     }
 }

@@ -416,7 +416,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Columns: Avatar, Email, Name, Role
   - [x] "+ New user" button
   - [x] Row click opens edit dialog
-  - [x] @RolesAllowed("ADMIN")
+  - [x] @RolesAllowed(UserRole.ROLE_ADMIN)
 
 - [x] **UserDialog** - Create/Edit user dialog
   - [x] Photo upload
@@ -435,7 +435,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] "+ New product" button (Admin only)
   - [x] Edit/Delete actions (Admin only)
   - [x] Read-only mode for Baker role
-  - [x] @RolesAllowed({"ADMIN", "BAKER"}) with conditional editing
+  - [x] @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER}) with conditional editing
 
 - [x] **ProductDialog** - Create/Edit product dialog
   - [x] Photo upload
@@ -449,7 +449,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **LocationsView** - Location management (Admin only)
   - [x] Data grid with Name, Address, Timezone, Active, Sort Order
   - [x] "+ New location" button
-  - [x] @RolesAllowed("ADMIN")
+  - [x] @RolesAllowed(UserRole.ROLE_ADMIN)
 
 - [x] **LocationDialog** - Create/Edit location dialog
   - [x] Name, Address, Timezone fields
@@ -468,7 +468,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **StorefrontView** - Order management
   - [x] Card-based order list
   - [x] Grouped by: Today, Tomorrow, This Week, Upcoming
-  - [x] @RolesAllowed({"ADMIN", "BARISTA"})
+  - [x] @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA})
 
 - [x] **OrderCard** - Individual order display
   - [x] Status badge with color coding

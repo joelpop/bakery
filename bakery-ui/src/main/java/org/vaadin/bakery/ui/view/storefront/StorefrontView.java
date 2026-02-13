@@ -18,26 +18,30 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.shared.Registration;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.local.ValueSignal;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
-import org.vaadin.bakery.ui.MainLayout;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
+import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
+import org.vaadin.bakery.ui.MainLayout;
 import org.vaadin.bakery.ui.component.ChangeTracker;
 import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderList;
+import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -47,10 +51,11 @@ import java.util.stream.Collectors;
 @RouteAlias("")
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
-@RolesAllowed({"ADMIN", "BARISTA"})
+@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER, UserRole.ROLE_BARISTA})
 public class StorefrontView extends VerticalLayout {
 
     private final OrderService orderService;
+    private final OrderActivityService orderActivityService;
     private final ProductService productService;
     private final CustomerService customerService;
     private final LocationService locationService;
@@ -70,10 +75,12 @@ public class StorefrontView extends VerticalLayout {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d");
 
     /** Creates the storefront view with filter bar and order cards grouped by date. */
-    public StorefrontView(OrderService orderService, LocationService locationService,
+    public StorefrontView(OrderService orderService, OrderActivityService orderActivityService,
+                          LocationService locationService,
                           ProductService productService, CustomerService customerService,
                           UserLocationService userLocationService) {
         this.orderService = orderService;
+        this.orderActivityService = orderActivityService;
         this.locationService = locationService;
         this.productService = productService;
         this.customerService = customerService;
@@ -119,9 +126,10 @@ public class StorefrontView extends VerticalLayout {
         filterBar.addFilterChangedListener(_ -> triggerRefresh());
 
         // Reactive effect: re-fetches and rebuilds the orders display whenever order data changes
-        // in any session (via shared orderVersion signal) or locally (via refreshTriggerSignal)
+        // in any session (via shared orderVersion/messageVersion signals) or locally (via refreshTriggerSignal)
         ComponentEffect.effect(this, () -> {
             DataChangeSignals.orderVersion().value();
+            DataChangeSignals.messageVersion().value();
             refreshTriggerSignal.value();
             rebuildOrdersDisplay();
         });
@@ -195,6 +203,12 @@ public class StorefrontView extends VerticalLayout {
 
         var orders = orderService.listByDateRange(fromDate, toDate);
 
+        // Fetch unread message status for all orders in the list
+        var orderIds = orders.stream().map(OrderList::getId).toList();
+        var unreadOrderIds = orderIds.isEmpty()
+                ? Collections.<Long>emptySet()
+                : orderActivityService.findOrderIdsWithUnreadMessages(orderIds);
+
         // Compare current data versions against previous snapshot to identify new/changed orders
         changeTracker.detectChanges(orders);
 
@@ -246,13 +260,14 @@ public class StorefrontView extends VerticalLayout {
         }
 
         // Create sections for each date
+        var finalUnreadOrderIds = unreadOrderIds;
         ordersByDate.forEach((date, dateOrders) -> {
-            var section = createDateSection(date, dateOrders);
+            var section = createDateSection(date, dateOrders, finalUnreadOrderIds);
             ordersContainer.add(section);
         });
     }
 
-    private Div createDateSection(LocalDate date, List<OrderList> orders) {
+    private Div createDateSection(LocalDate date, List<OrderList> orders, Set<Long> unreadOrderIds) {
         var section = new Div();
         section.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -278,7 +293,7 @@ public class StorefrontView extends VerticalLayout {
                 .set("gap", "var(--lumo-space-m)");
 
         for (var order : orders) {
-            var card = new OrderCard(order);
+            var card = new OrderCard(order, unreadOrderIds.contains(order.getId()));
             // Apply CSS highlight classes to visually indicate new or modified orders (animated fade)
             if (changeTracker.isNew(order.getId())) {
                 card.addClassName("card-new");

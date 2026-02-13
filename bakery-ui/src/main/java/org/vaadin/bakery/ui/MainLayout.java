@@ -4,6 +4,7 @@ import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ComponentEvent;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -32,6 +33,7 @@ import com.vaadin.flow.server.auth.AccessAnnotationChecker;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.shared.Registration;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 
@@ -44,6 +46,7 @@ import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.service.UserTimezoneService;
+import org.vaadin.bakery.ui.event.MessageBroadcaster;
 import org.vaadin.bakery.ui.view.storefront.EditOrderDialog;
 import org.vaadin.bakery.ui.view.storefront.StorefrontView;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
@@ -75,6 +78,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient CustomerService customerService;
     private final transient UserTimezoneService userTimezoneService;
     private final transient UserLocationService userLocationService;
+    private final transient AuthenticationContext authenticationContext;
 
     private Tabs navigationTabs;
     private final Map<String, Tab> routeToTab = new HashMap<>();
@@ -84,7 +88,8 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
                       OrderService orderService, LocationService locationService,
                       ProductService productService, CustomerService customerService,
-                      UserTimezoneService userTimezoneService, UserLocationService userLocationService) {
+                      UserTimezoneService userTimezoneService, UserLocationService userLocationService,
+                      AuthenticationContext authenticationContext) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
         this.orderService = orderService;
@@ -93,6 +98,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         this.customerService = customerService;
         this.userTimezoneService = userTimezoneService;
         this.userLocationService = userLocationService;
+        this.authenticationContext = authenticationContext;
 
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
@@ -121,6 +127,21 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
         // Update location selector to show current location
         updateLocationSelectorValue();
+
+        // Register for message broadcast notifications
+        currentUserService.getCurrentUser().ifPresent(user -> {
+            var currentLocation = userLocationService.getCurrentLocation();
+            var locationId = currentLocation != null ? currentLocation.getId() : null;
+            var sessionInfo = new MessageBroadcaster.SessionInfo(
+                    user.getId(), user.getRole(), locationId);
+            MessageBroadcaster.register(attachEvent.getUI(), sessionInfo);
+        });
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        super.onDetach(detachEvent);
+        MessageBroadcaster.unregister(detachEvent.getUI());
     }
 
     private void updateLocationSelectorValue() {
@@ -283,6 +304,8 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
             ComponentValueChangeEvent<ComboBox<LocationSummary>, LocationSummary> event) {
         if (event.isFromClient() && event.getValue() != null) {
             userLocationService.setCurrentLocation(event.getValue());
+            getUI().ifPresent(ui ->
+                    MessageBroadcaster.updateLocation(ui, event.getValue().getId()));
             fireEvent(new CurrentLocationChangedEvent(this, event.getValue()));
         }
     }
@@ -379,17 +402,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         }
 
         // Logout
-        var logoutIcon = new Icon(VaadinIcon.SIGN_OUT);
-        logoutIcon.addClassNames(LumoUtility.Margin.End.SMALL);
-
-        var logoutLink = new Anchor("/logout", "Log out");
-        logoutLink.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.AlignItems.CENTER
-        );
-        logoutLink.getElement().insertChild(0, logoutIcon.getElement());
-
-        subMenu.addItem(logoutLink);
+        subMenu.addItem("Log out", _ -> authenticationContext.logout());
 
         return menuBar;
     }
@@ -457,17 +470,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         }
 
         // Logout
-        var logoutIcon = new Icon(VaadinIcon.SIGN_OUT);
-        logoutIcon.addClassNames(LumoUtility.Margin.End.SMALL);
-
-        var logoutLink = new Anchor("/logout", "Log out");
-        logoutLink.addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.AlignItems.CENTER
-        );
-        logoutLink.getElement().insertChild(0, logoutIcon.getElement());
-
-        subMenu.addItem(logoutLink);
+        subMenu.addItem("Log out", _ -> authenticationContext.logout());
 
         return menuBar;
     }

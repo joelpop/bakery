@@ -4,7 +4,7 @@ The Locations view provides administrators with the ability to manage pickup loc
 
 **Route**: `/locations`
 
-**Access**: Admin only (`@RolesAllowed("ADMIN")`)
+**Access**: Admin only (`@RolesAllowed(UserRole.ROLE_ADMIN)`)
 
 **Menu**: Under Admin section
 

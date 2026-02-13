@@ -157,3 +157,42 @@ INSERT INTO order_item (id, version, status, quantity, unit_price, line_total, o
 -- Order 12: BAKED - Iris's Quiche Lorraine ($22.00)
 INSERT INTO order_item (id, version, status, quantity, unit_price, line_total, order_id, product_id) VALUES
 (19, 0, 'BAKED', 1, 22.00, 22.00, 12, 17);
+
+-- Order Activity (system events and staff messages)
+-- Order 4: Birthday cake scenario — barista relays a customer correction to the baker
+INSERT INTO order_activity (id, version, order_id, type, text, author_id, referenced_item_id, posted_at, read) VALUES
+(1, 0, 4, 'SYSTEM_EVENT', 'Order created', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, true),
+(2, 0, 4, 'SYSTEM_EVENT', 'Status changed to In Progress', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '2' HOUR, true),
+(3, 0, 4, 'STAFF_MESSAGE', 'Customer just called — the inscription should be "Happy Birthday Sophie" not "Happy Birthday Sofia". Please double-check before decorating!', 3, 6, CURRENT_TIMESTAMP - INTERVAL '45' MINUTE, false),
+(4, 0, 4, 'STAFF_MESSAGE', 'Got it, changing now. Good catch!', 2, 6, CURRENT_TIMESTAMP - INTERVAL '40' MINUTE, false);
+
+-- Order 5: Ready for pickup, routine activity
+INSERT INTO order_activity (id, version, order_id, type, text, author_id, referenced_item_id, posted_at, read) VALUES
+(5, 0, 5, 'SYSTEM_EVENT', 'Order created', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '1' DAY, true),
+(6, 0, 5, 'SYSTEM_EVENT', 'Status changed to Verified', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '22' HOUR, true),
+(7, 0, 5, 'SYSTEM_EVENT', 'Status changed to In Progress', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '6' HOUR, true),
+(8, 0, 5, 'SYSTEM_EVENT', 'Status changed to Baked', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, true),
+(9, 0, 5, 'SYSTEM_EVENT', 'Status changed to Ready for Pick Up', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '2' HOUR, true),
+(10, 0, 5, 'STAFF_MESSAGE', 'Customer called asking if this is ready yet. Told them to come by at 11.', 3, NULL, CURRENT_TIMESTAMP - INTERVAL '1' HOUR, false);
+
+-- Order 9: New bread order with unread messages (for blue dot verification)
+INSERT INTO order_activity (id, version, order_id, type, text, author_id, referenced_item_id, posted_at, read) VALUES
+(11, 0, 9, 'SYSTEM_EVENT', 'Order created', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '30' MINUTE, true),
+(12, 0, 9, 'STAFF_MESSAGE', 'We are running low on sourdough starter. Can we substitute ciabatta for one of the loaves?', 2, 12, CURRENT_TIMESTAMP - INTERVAL '15' MINUTE, false),
+(13, 0, 9, 'STAFF_MESSAGE', 'I will check with the customer and get back to you.', 3, 12, CURRENT_TIMESTAMP - INTERVAL '10' MINUTE, false);
+
+-- Order 11: Chocolate cake with brief exchange
+INSERT INTO order_activity (id, version, order_id, type, text, author_id, referenced_item_id, posted_at, read) VALUES
+(14, 0, 11, 'SYSTEM_EVENT', 'Order created', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '5' HOUR, true),
+(15, 0, 11, 'SYSTEM_EVENT', 'Marked as paid', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '5' HOUR, true),
+(16, 0, 11, 'SYSTEM_EVENT', 'Status changed to In Progress', NULL, NULL, CURRENT_TIMESTAMP - INTERVAL '4' HOUR, true),
+(17, 0, 11, 'STAFF_MESSAGE', 'Using the dark ganache for this one — it is Henry''s usual.', 2, 18, CURRENT_TIMESTAMP - INTERVAL '3' HOUR, false);
+
+-- Reset identity columns past seed data to avoid primary key conflicts
+ALTER TABLE location ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE app_user ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE product ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE customer ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE customer_order ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE order_item ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE order_activity ALTER COLUMN id RESTART WITH 100;

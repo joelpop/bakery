@@ -395,7 +395,12 @@ Spring Security is to be configured using Vaadin 25-specific facilities and tech
 
 ### View Access Control
 
-Use standard Jakarta Security annotations for view permissions.
+Use standard Jakarta Security annotations for view permissions. Use the compile-time string constants on `UserRole` (e.g., `UserRole.ROLE_ADMIN`) rather than string literals:
+
+```java
+@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA})
+public class StorefrontView extends VerticalLayout { }
+```
 
 ## UI/UX
 

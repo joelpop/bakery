@@ -27,8 +27,9 @@ public class OrderCard extends Div {
      * Creates an order card displaying a summary of the given order.
      *
      * @param order the order to display
+     * @param hasUnreadMessage whether this order has unread staff messages
      */
-    public OrderCard(OrderList order) {
+    public OrderCard(OrderList order, boolean hasUnreadMessage) {
         this.order = order;
 
         addClassName("order-card");
@@ -53,8 +54,8 @@ public class OrderCard extends Div {
                 LumoUtility.Gap.SMALL
         );
 
-        // Header row: status badge + time
-        var header = createHeader();
+        // Header row: status badge + unread dot + time
+        var header = createHeader(hasUnreadMessage);
         add(header);
 
         // Customer name
@@ -94,7 +95,7 @@ public class OrderCard extends Div {
         addClickListener(e -> fireEvent(new OrderClickEvent(this, order)));
     }
 
-    private Div createHeader() {
+    private Div createHeader(boolean hasUnreadMessage) {
         var header = new Div();
         header.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -102,7 +103,21 @@ public class OrderCard extends Div {
                 LumoUtility.AlignItems.CENTER
         );
 
+        var leftGroup = new Div();
+        leftGroup.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.AlignItems.CENTER,
+                LumoUtility.Gap.SMALL
+        );
+
         var statusBadge = createStatusBadge(order.getStatus());
+        leftGroup.add(statusBadge);
+
+        if (hasUnreadMessage) {
+            var unreadDot = new Span();
+            unreadDot.addClassName("unread-dot");
+            leftGroup.add(unreadDot);
+        }
 
         var time = new Span(order.getDueTime() != null ?
                 TIME_FORMATTER.format(order.getDueTime()) : "");
@@ -111,7 +126,7 @@ public class OrderCard extends Div {
                 LumoUtility.TextColor.SECONDARY
         );
 
-        header.add(statusBadge, time);
+        header.add(leftGroup, time);
         return header;
     }
 

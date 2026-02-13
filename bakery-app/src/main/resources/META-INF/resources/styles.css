@@ -385,3 +385,67 @@ vaadin-grid::part(row-highlight) {
         display: none !important;
     }
 }
+
+/* =============================================================================
+   Order Card - Unread Dot
+   ============================================================================= */
+
+.unread-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--lumo-primary-color);
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Activity Timeline
+   ============================================================================= */
+
+.timeline-scroller {
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: var(--lumo-border-radius-m);
+    background: var(--lumo-contrast-5pct);
+}
+
+.timeline-system-event {
+    padding-left: var(--lumo-space-xs);
+}
+
+.timeline-staff-message {
+    border-radius: var(--lumo-border-radius-m);
+    border-left: 3px solid transparent;
+    transition: border-left-color 0.3s ease;
+}
+
+.timeline-unread {
+    border-left-color: var(--lumo-primary-color);
+}
+
+.unread-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--lumo-space-s);
+    color: var(--lumo-primary-color);
+    font-size: var(--lumo-font-size-xs);
+    font-weight: 600;
+    padding: var(--lumo-space-xs) 0;
+}
+
+.unread-divider::before,
+.unread-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: var(--lumo-primary-color);
+}
+
+.new-messages-button {
+    align-self: center;
+    margin: var(--lumo-space-xs) 0;
+}
+
+.message-input {
+    font-size: var(--lumo-font-size-s);
+}

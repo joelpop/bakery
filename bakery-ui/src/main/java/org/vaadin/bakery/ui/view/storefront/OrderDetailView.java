@@ -20,11 +20,12 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.local.ValueSignal;
+import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
+import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.StaleDataException;
@@ -33,6 +34,7 @@ import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderItemDetail;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
+import org.vaadin.bakery.uimodel.type.UserRole;
 
 import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
@@ -44,10 +46,11 @@ import java.util.Locale;
  */
 @Route("orders/:orderId")
 @PageTitle("Order Details")
-@RolesAllowed({"ADMIN", "BARISTA", "BAKER"})
+@RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA, UserRole.ROLE_BAKER})
 public class OrderDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final OrderService orderService;
+    private final OrderActivityService orderActivityService;
     private final ProductService productService;
     private final LocationService locationService;
     private final CustomerService customerService;
@@ -74,14 +77,17 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     private final Grid<OrderItemDetail> itemsGrid;
     private final HorizontalLayout actionButtons;
+    private final Div timelineContainer;
 
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
 
-    /** Creates the order detail view with order information, items grid, and action buttons. */
-    public OrderDetailView(OrderService orderService, ProductService productService,
+    /** Creates the order detail view with order information, items grid, action buttons, and activity timeline. */
+    public OrderDetailView(OrderService orderService, OrderActivityService orderActivityService,
+                           ProductService productService,
                            LocationService locationService, CustomerService customerService,
                            UserLocationService userLocationService) {
         this.orderService = orderService;
+        this.orderActivityService = orderActivityService;
         this.productService = productService;
         this.locationService = locationService;
         this.customerService = customerService;
@@ -286,11 +292,16 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         itemsSection.add(itemsHeader, itemsGrid);
         itemsSection.setFlexGrow(1, itemsGrid);
 
+        // Activity timeline — populated with order-specific content in beforeEnter()
+        timelineContainer = new Div();
+        timelineContainer.setWidth("350px");
+        timelineContainer.setMinHeight("300px");
+
         // Layout assembly
         var content = new HorizontalLayout();
         content.setSizeFull();
         content.setSpacing(true);
-        content.add(orderInfoSection, itemsSection);
+        content.add(orderInfoSection, itemsSection, timelineContainer);
 
         var contentWrapper = new Div();
         contentWrapper.addClassNames(LumoUtility.Padding.MEDIUM);
@@ -322,6 +333,12 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             currentOrderId = order.getId();
             currentOrderVersion = order.getVersion();
             orderSignal.value(order);
+
+            // Set up the activity timeline
+            timelineContainer.removeAll();
+            var timeline = new OrderActivityTimeline(orderActivityService, orderId);
+            timeline.setSizeFull();
+            timelineContainer.add(timeline);
         } catch (NumberFormatException _) {
             navigateBack();
         }

@@ -5,7 +5,6 @@ import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -19,6 +18,7 @@ import com.vaadin.flow.server.WebBrowser;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.ui.component.ViewHeader;
+import org.vaadin.bakery.uimodel.type.UserRole;
 
 /**
  * About view showing application and environment information.
@@ -26,7 +26,7 @@ import org.vaadin.bakery.ui.component.ViewHeader;
  */
 @Route("about")
 @PageTitle("About")
-@RolesAllowed("ADMIN")
+@RolesAllowed(UserRole.ROLE_ADMIN)
 public class AboutView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     /** Creates the about view with application and environment information cards. */
