@@ -39,13 +39,10 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 
-import java.time.ZoneId;
-
 import org.springframework.beans.factory.ObjectProvider;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.UserLocationService;
-import org.vaadin.bakery.service.UserTimezoneService;
 import org.vaadin.bakery.ui.event.MessageBroadcaster;
 import org.vaadin.bakery.ui.view.about.AboutView;
 import org.vaadin.bakery.ui.view.preferences.PreferencesView;
@@ -73,7 +70,6 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient CurrentUserService currentUserService;
     private final transient AccessAnnotationChecker accessChecker;
     private final transient LocationService locationService;
-    private final transient UserTimezoneService userTimezoneService;
     private final transient UserLocationService userLocationService;
     private final transient AuthenticationContext authenticationContext;
     private final transient ObjectProvider<EditOrderDialog> editOrderDialogProvider;
@@ -84,13 +80,12 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     /** Creates the main application layout with navigation, location selector, and user menu. */
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
-                      LocationService locationService, UserTimezoneService userTimezoneService,
-                      UserLocationService userLocationService, AuthenticationContext authenticationContext,
+                      LocationService locationService, UserLocationService userLocationService,
+                      AuthenticationContext authenticationContext,
                       ObjectProvider<EditOrderDialog> editOrderDialogProvider) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
         this.locationService = locationService;
-        this.userTimezoneService = userTimezoneService;
         this.userLocationService = userLocationService;
         this.authenticationContext = authenticationContext;
         this.editOrderDialogProvider = editOrderDialogProvider;
@@ -139,15 +134,6 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     @Override
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
-
-        // Retrieve browser timezone on first attach if not already set
-        if (!userTimezoneService.isBrowserTimezoneSet()) {
-            var details = attachEvent.getUI().getPage().getExtendedClientDetails();
-            var timezoneId = details.getTimeZoneId();
-            if (timezoneId != null && !timezoneId.isEmpty()) {
-                userTimezoneService.setBrowserTimezone(ZoneId.of(timezoneId));
-            }
-        }
 
         // Initialize current location from user's primary location
         if (!userLocationService.isCurrentLocationSet()) {
