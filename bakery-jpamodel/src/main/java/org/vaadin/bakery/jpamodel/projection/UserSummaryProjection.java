@@ -1,5 +1,6 @@
 package org.vaadin.bakery.jpamodel.projection;
 
+import org.jspecify.annotations.Nullable;
 import org.vaadin.bakery.jpamodel.code.UserRoleCode;
 
 /**
@@ -21,7 +22,7 @@ public interface UserSummaryProjection {
 
     String getPhotoContentType();
 
-    Long getPrimaryLocationId();
+    @Nullable Long getPrimaryLocationId();
 
     Integer getVersion();
 }

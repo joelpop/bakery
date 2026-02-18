@@ -1,5 +1,8 @@
 package org.vaadin.bakery.jpaservice;
 
+import java.util.Optional;
+
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.annotation.SessionScope;
 import org.vaadin.bakery.service.CurrentUserService;
@@ -18,7 +21,7 @@ public class SessionUserLocationService implements UserLocationService {
     private final CurrentUserService currentUserService;
     private final LocationService locationService;
 
-    private LocationSummary currentLocation;
+    private @Nullable LocationSummary currentLocation;
 
     /** Creates the session-scoped location service with injected dependencies. */
     public SessionUserLocationService(CurrentUserService currentUserService, LocationService locationService) {
@@ -32,8 +35,8 @@ public class SessionUserLocationService implements UserLocationService {
     }
 
     @Override
-    public LocationSummary getCurrentLocation() {
-        return currentLocation;
+    public Optional<LocationSummary> getCurrentLocation() {
+        return Optional.ofNullable(currentLocation);
     }
 
     @Override
@@ -50,9 +53,8 @@ public class SessionUserLocationService implements UserLocationService {
         currentUserService.getCurrentUser().ifPresent(user -> {
             var primaryLocationId = user.getPrimaryLocationId();
             if (primaryLocationId != null) {
-                locationService.get(primaryLocationId).ifPresent(location -> {
-                    this.currentLocation = location;
-                });
+                locationService.get(primaryLocationId).ifPresent(location ->
+                        this.currentLocation = location);
             }
         });
     }
