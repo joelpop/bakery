@@ -12,11 +12,13 @@ import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.menubar.MenuBarVariant;
@@ -47,14 +49,14 @@ import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.service.UserTimezoneService;
 import org.vaadin.bakery.ui.event.MessageBroadcaster;
+import org.vaadin.bakery.ui.view.about.AboutView;
+import org.vaadin.bakery.ui.view.preferences.PreferencesView;
 import org.vaadin.bakery.ui.view.storefront.EditOrderDialog;
 import org.vaadin.bakery.ui.view.storefront.StorefrontView;
 import org.vaadin.bakery.uimodel.data.LocationSummary;
-import org.vaadin.bakery.uimodel.data.UserDetail;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Main application layout with responsive navigation.
@@ -112,12 +114,11 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
         // Retrieve browser timezone on first attach if not already set
         if (!userTimezoneService.isBrowserTimezoneSet()) {
-            attachEvent.getUI().getPage().retrieveExtendedClientDetails(details -> {
-                var timezoneId = details.getTimeZoneId();
-                if (timezoneId != null && !timezoneId.isEmpty()) {
-                    userTimezoneService.setBrowserTimezone(ZoneId.of(timezoneId));
-                }
-            });
+            var details = attachEvent.getUI().getPage().getExtendedClientDetails();
+            var timezoneId = details.getTimeZoneId();
+            if (timezoneId != null && !timezoneId.isEmpty()) {
+                userTimezoneService.setBrowserTimezone(ZoneId.of(timezoneId));
+            }
         }
 
         // Initialize current location from user's primary location
@@ -131,9 +132,8 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         // Register for message broadcast notifications
         currentUserService.getCurrentUser().ifPresent(user -> {
             var currentLocation = userLocationService.getCurrentLocation();
-            var locationId = currentLocation != null ? currentLocation.getId() : null;
             var sessionInfo = new MessageBroadcaster.SessionInfo(
-                    user.getId(), user.getRole(), locationId);
+                    user.getId(), user.getRole(), currentLocation.getId());
             MessageBroadcaster.register(attachEvent.getUI(), sessionInfo);
         });
     }
@@ -147,13 +147,10 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private void updateLocationSelectorValue() {
         if (locationSelector != null) {
             var currentLocation = userLocationService.getCurrentLocation();
-            if (currentLocation != null) {
-                // Find the matching item in the combo box
-                locationSelector.getListDataView().getItems()
-                        .filter(loc -> loc.getId().equals(currentLocation.getId()))
-                        .findFirst()
-                        .ifPresent(locationSelector::setValue);
-            }
+            locationSelector.getListDataView().getItems()
+                    .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                    .findFirst()
+                    .ifPresent(locationSelector::setValue);
         }
     }
 
@@ -238,8 +235,8 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         );
         link.getStyle().set("text-decoration", "none");
 
-        // Icon (always visible)
-        var icon = new Icon(getIconForRoute(entry.path()));
+        // Icon (always visible) — sourced from the view's @Menu annotation
+        var icon = new SvgIcon(entry.icon());
         icon.addClassName("nav-icon");
         link.add(icon);
 
@@ -250,31 +247,16 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
         var tab = new Tab(link);
 
-        // Mark admin nav tabs to hide on mobile (they move to hamburger menu)
-        if (isAdminNavRoute(entry.path())) {
+        // Mark role-restricted nav tabs to hide on mobile (they move to hamburger menu)
+        if (isRoleRestrictedRoute(entry)) {
             tab.addClassName("admin-nav-tab");
         }
 
         return tab;
     }
 
-    private boolean isAdminNavRoute(String path) {
-        var normalized = normalizePathForLookup(path);
-        return normalized.equals("products") ||
-               normalized.equals("locations") ||
-               normalized.equals("users");
-    }
-
-    private VaadinIcon getIconForRoute(String path) {
-        var normalizedPath = normalizePathForLookup(path);
-        return switch (normalizedPath) {
-            case "dashboard" -> VaadinIcon.DASHBOARD;
-            case "", "orders" -> VaadinIcon.CART;
-            case "products" -> VaadinIcon.PACKAGE;
-            case "locations" -> VaadinIcon.MAP_MARKER;
-            case "users" -> VaadinIcon.USERS;
-            default -> VaadinIcon.CIRCLE;
-        };
+    private boolean isRoleRestrictedRoute(MenuEntry entry) {
+        return !entry.menuClass().isAnnotationPresent(PermitAll.class);
     }
 
     private ComboBox<LocationSummary> createLocationSelector() {
@@ -286,14 +268,12 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         comboBox.addClassName("location-selector");
         comboBox.getElement().setAttribute("theme", "small");
 
-        // Set initial value from service (may be null initially)
+        // Set initial value from service
         var currentLocation = userLocationService.getCurrentLocation();
-        if (currentLocation != null) {
-            comboBox.getListDataView().getItems()
-                    .filter(loc -> loc.getId().equals(currentLocation.getId()))
-                    .findFirst()
-                    .ifPresent(comboBox::setValue);
-        }
+        comboBox.getListDataView().getItems()
+                .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                .findFirst()
+                .ifPresent(comboBox::setValue);
 
         comboBox.addValueChangeListener(this::onLocationSelectorValueChanged);
 
@@ -354,55 +334,16 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         menuBar.addThemeVariants(MenuBarVariant.LUMO_TERTIARY_INLINE);
         menuBar.addClassName("user-menu");
 
-        Optional<UserDetail> currentUser = currentUserService.getCurrentUser();
-
         var avatar = new Avatar();
-        currentUser.ifPresent(user ->
+        currentUserService.getCurrentUser().ifPresent(user ->
             avatar.setName(user.getFirstName() + " " + user.getLastName())
         );
 
         var menuItem = menuBar.addItem(avatar);
         var subMenu = menuItem.getSubMenu();
 
-        // User info section
-        currentUser.ifPresent(user -> {
-            var userInfo = new Div();
-            userInfo.addClassNames(
-                    LumoUtility.Padding.MEDIUM,
-                    LumoUtility.Border.BOTTOM
-            );
-
-            var userName = new Div(user.getFirstName() + " " + user.getLastName());
-            userName.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
-
-            var userEmail = new Div(user.getEmail());
-            userEmail.addClassNames(
-                    LumoUtility.FontSize.SMALL,
-                    LumoUtility.TextColor.SECONDARY
-            );
-
-            var userRole = new Div(user.getRole().getDisplayName());
-            userRole.addClassNames(
-                    LumoUtility.FontSize.XSMALL,
-                    LumoUtility.TextColor.TERTIARY
-            );
-
-            userInfo.add(userName, userEmail, userRole);
-            subMenu.addItem(userInfo);
-        });
-
-        // Preferences link
-        subMenu.addItem("Preferences", _ ->
-                UI.getCurrent().navigate("preferences"));
-
-        // About link (Admin only)
-        if (currentUserService.isAdmin()) {
-            subMenu.addItem("About", _ ->
-                    UI.getCurrent().navigate("about"));
-        }
-
-        // Logout
-        subMenu.addItem("Log out", _ -> authenticationContext.logout());
+        addUserInfoToMenu(subMenu, LumoUtility.Border.BOTTOM);
+        addCommonMenuActions(subMenu);
 
         return menuBar;
     }
@@ -416,31 +357,27 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         var menuItem = menuBar.addItem(menuIcon);
         var subMenu = menuItem.getSubMenu();
 
-        // Navigation section - admin routes that are hidden in mobile nav
-        if (accessChecker.hasAccess(getViewClass("products"))) {
-            subMenu.addItem(createMenuItemContent(VaadinIcon.PACKAGE, "Products"),
-                    _ -> UI.getCurrent().navigate("products"));
-        }
+        // Navigation section - role-restricted routes that are hidden in mobile nav
+        MenuConfiguration.getMenuEntries().stream()
+                .filter(this::isAccessible)
+                .filter(this::isRoleRestrictedRoute)
+                .forEach(entry ->
+                    subMenu.addItem(createMenuItemContent(entry.icon(), entry.title()),
+                            _ -> UI.getCurrent().navigate(entry.menuClass()))
+                );
 
-        if (accessChecker.hasAccess(getViewClass("locations"))) {
-            subMenu.addItem(createMenuItemContent(VaadinIcon.MAP_MARKER, "Locations"),
-                    _ -> UI.getCurrent().navigate("locations"));
-        }
+        // User info + common actions (shared with desktop user menu)
+        addUserInfoToMenu(subMenu, LumoUtility.Border.TOP, LumoUtility.Border.BOTTOM);
+        addCommonMenuActions(subMenu);
 
-        if (accessChecker.hasAccess(getViewClass("users"))) {
-            subMenu.addItem(createMenuItemContent(VaadinIcon.USERS, "Users"),
-                    _ -> UI.getCurrent().navigate("users"));
-        }
+        return menuBar;
+    }
 
-        // User info section (same as desktop user menu)
-        Optional<UserDetail> currentUser = currentUserService.getCurrentUser();
-        currentUser.ifPresent(user -> {
+    private void addUserInfoToMenu(SubMenu subMenu, String... borderClassNames) {
+        currentUserService.getCurrentUser().ifPresent(user -> {
             var userInfo = new Div();
-            userInfo.addClassNames(
-                    LumoUtility.Padding.MEDIUM,
-                    LumoUtility.Border.TOP,
-                    LumoUtility.Border.BOTTOM
-            );
+            userInfo.addClassNames(LumoUtility.Padding.MEDIUM);
+            userInfo.addClassNames(borderClassNames);
 
             var userName = new Div(user.getFirstName() + " " + user.getLastName());
             userName.addClassNames(LumoUtility.FontWeight.SEMIBOLD);
@@ -460,32 +397,22 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
             userInfo.add(userName, userEmail, userRole);
             subMenu.addItem(userInfo);
         });
+    }
 
-        // Preferences link
-        subMenu.addItem("Preferences", _ -> UI.getCurrent().navigate("preferences"));
+    private void addCommonMenuActions(SubMenu subMenu) {
+        subMenu.addItem("Preferences", _ ->
+                UI.getCurrent().navigate(PreferencesView.class));
 
-        // About link (Admin only)
         if (currentUserService.isAdmin()) {
-            subMenu.addItem("About", _ -> UI.getCurrent().navigate("about"));
+            subMenu.addItem("About", _ ->
+                    UI.getCurrent().navigate(AboutView.class));
         }
 
-        // Logout
         subMenu.addItem("Log out", _ -> authenticationContext.logout());
-
-        return menuBar;
     }
 
-    private Class<?> getViewClass(String route) {
-        return switch (route) {
-            case "products" -> org.vaadin.bakery.ui.view.products.ProductsView.class;
-            case "locations" -> org.vaadin.bakery.ui.view.locations.LocationsView.class;
-            case "users" -> org.vaadin.bakery.ui.view.users.UsersView.class;
-            default -> null;
-        };
-    }
-
-    private Component createMenuItemContent(VaadinIcon iconType, String text) {
-        var icon = new Icon(iconType);
+    private Component createMenuItemContent(String iconUrl, String text) {
+        var icon = new SvgIcon(iconUrl);
         icon.addClassNames(LumoUtility.Margin.End.SMALL);
         var label = new Span(text);
         var container = new HorizontalLayout(icon, label);
@@ -509,12 +436,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private boolean isAccessible(MenuEntry entry) {
-        try {
-            var viewClass = Class.forName(entry.menuClass().getName());
-            return accessChecker.hasAccess(viewClass);
-        } catch (ClassNotFoundException _) {
-            return false;
-        }
+        return accessChecker.hasAccess(entry.menuClass());
     }
 
     private void openNewOrderDialog() {
@@ -536,7 +458,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         navigationTabs.setSelectedTab(routeToTab.get(path));
 
         // Toggle class for storefront-specific styling (hides duplicate new order button on desktop)
-        if (path.isEmpty() || path.equals("orders")) {
+        if (path.isEmpty() || path.equals(StorefrontView.ROUTE)) {
             addClassName("on-storefront");
         } else {
             removeClassName("on-storefront");

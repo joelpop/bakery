@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -41,7 +41,7 @@ public class OrderActivityTimeline extends VerticalLayout {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("MMM d, h:mm a");
 
-    private final OrderActivityService orderActivityService;
+    private final transient OrderActivityService orderActivityService;
     private final Long orderId;
     private final Div entriesContainer;
     private final Scroller scroller;
@@ -101,8 +101,8 @@ public class OrderActivityTimeline extends VerticalLayout {
         initialLoadDone = false;
         previousEntryCount = 0;
 
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.messageVersion().value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.messageVersion().get();
             loadActivities();
         });
 

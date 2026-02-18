@@ -22,6 +22,8 @@ public interface OrderMapper {
      */
     @Mapping(source = "customer.name", target = "customerName")
     @Mapping(source = "location.name", target = "locationName")
+    @Mapping(source = "createdBy.firstName", target = "createdByName")
+    @Mapping(source = "updatedBy.firstName", target = "updatedByName")
     OrderList toList(OrderEntity entity);
 
     /**
@@ -39,6 +41,7 @@ public interface OrderMapper {
     @Mapping(source = "location.name", target = "locationName")
     @Mapping(source = "createdBy.firstName", target = "createdByName")
     @Mapping(source = "updatedBy.firstName", target = "updatedByName")
+    @Mapping(target = "newCustomerCreated", ignore = true)
     OrderDetail toDetail(OrderEntity entity);
 
     /**

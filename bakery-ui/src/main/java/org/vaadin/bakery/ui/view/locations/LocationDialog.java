@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.locations;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -165,8 +165,8 @@ public class LocationDialog implements NonComponent {
 
             // Reactive effect: checks if the location was modified or deleted by another session
             // whenever the shared locationVersion signal changes
-            ComponentEffect.effect(dialog, () -> {
-                DataChangeSignals.locationVersion().value();
+            Effect.effect(dialog, () -> {
+                DataChangeSignals.locationVersion().get();
                 checkForExternalChanges();
             });
         }

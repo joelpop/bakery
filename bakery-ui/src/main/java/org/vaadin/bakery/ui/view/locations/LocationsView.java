@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.locations;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -24,13 +24,16 @@ import org.vaadin.lineawesome.LineAwesomeIconUrl;
  * Location management view (Admin only).
  * Displays a grid of pickup locations with CRUD operations.
  */
-@Route("locations")
+@Route(LocationsView.ROUTE)
 @PageTitle("Locations")
 @Menu(order = 3, icon = LineAwesomeIconUrl.MAP_MARKER_SOLID)
 @RolesAllowed(UserRole.ROLE_ADMIN)
 public class LocationsView extends VerticalLayout {
 
-    private final LocationService locationService;
+    /** Route path for this view. */
+    public static final String ROUTE = "locations";
+
+    private final transient LocationService locationService;
     private final Grid<LocationSummary> grid;
 
     // Signal incremented to trigger a same-session data refresh (e.g., after dialog save or delete)
@@ -88,9 +91,9 @@ public class LocationsView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the grid whenever location data changes
         // in any session (via shared locationVersion signal) or locally (via refreshTriggerSignal)
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.locationVersion().value();
-            refreshTriggerSignal.value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.locationVersion().get();
+            refreshTriggerSignal.get();
             refreshGrid();
         });
 

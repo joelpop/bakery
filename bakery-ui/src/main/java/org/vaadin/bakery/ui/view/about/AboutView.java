@@ -24,10 +24,13 @@ import org.vaadin.bakery.uimodel.type.UserRole;
  * About view showing application and environment information.
  * Accessible only to Admin users via the avatar menu.
  */
-@Route("about")
+@Route(AboutView.ROUTE)
 @PageTitle("About")
 @RolesAllowed(UserRole.ROLE_ADMIN)
 public class AboutView extends Composite<VerticalLayout> implements HasSize, HasStyle {
+
+    /** Route path for this view. */
+    public static final String ROUTE = "about";
 
     /** Creates the about view with application and environment information cards. */
     public AboutView() {

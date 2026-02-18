@@ -1,7 +1,7 @@
 package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
@@ -47,19 +47,22 @@ import java.util.stream.Collectors;
 /**
  * Storefront view showing orders as cards grouped by date.
  */
-@Route("orders")
+@Route(StorefrontView.ROUTE)
 @RouteAlias("")
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER, UserRole.ROLE_BARISTA})
 public class StorefrontView extends VerticalLayout {
 
-    private final OrderService orderService;
-    private final OrderActivityService orderActivityService;
-    private final ProductService productService;
-    private final CustomerService customerService;
-    private final LocationService locationService;
-    private final UserLocationService userLocationService;
+    /** Route path for this view. */
+    public static final String ROUTE = "orders";
+
+    private final transient OrderService orderService;
+    private final transient OrderActivityService orderActivityService;
+    private final transient ProductService productService;
+    private final transient CustomerService customerService;
+    private final transient LocationService locationService;
+    private final transient UserLocationService userLocationService;
     private final Div ordersContainer;
     private final FilterBar filterBar;
     private final TextField searchField;
@@ -127,10 +130,10 @@ public class StorefrontView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the orders display whenever order data changes
         // in any session (via shared orderVersion/messageVersion signals) or locally (via refreshTriggerSignal)
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.orderVersion().value();
-            DataChangeSignals.messageVersion().value();
-            refreshTriggerSignal.value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.orderVersion().get();
+            DataChangeSignals.messageVersion().get();
+            refreshTriggerSignal.get();
             rebuildOrdersDisplay();
         });
 

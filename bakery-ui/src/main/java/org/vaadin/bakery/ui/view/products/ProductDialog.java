@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.products;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -16,12 +16,10 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.BigDecimalField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
-import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.binder.ValidationException;
-import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.server.streams.UploadHandler;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.ProductService;
@@ -34,8 +32,6 @@ import org.vaadin.bakery.ui.event.NonComponentEvent;
 import org.vaadin.bakery.ui.event.NonComponentEventSupport;
 import org.vaadin.bakery.uimodel.data.ProductSummary;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.function.Consumer;
 
@@ -61,7 +57,6 @@ public class ProductDialog implements NonComponent {
     private final Checkbox availableCheckbox;
 
     private final Div photoContainerDiv;
-    private final MemoryBuffer photoUploadBuffer;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
@@ -109,11 +104,13 @@ public class ProductDialog implements NonComponent {
                 .set("background", "var(--lumo-contrast-10pct)")
                 .set("overflow", "hidden");
 
-        photoUploadBuffer = new MemoryBuffer();
-        var upload = new Upload(photoUploadBuffer);
+        var upload = new Upload(UploadHandler.inMemory((metadata, data) -> {
+            uploadedPhoto = data;
+            uploadedPhotoContentType = metadata.contentType();
+            updatePhotoPreview();
+        }));
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
         upload.setMaxFileSize(5 * 1024 * 1024); // 5MB
-        upload.addSucceededListener(this::onPhotoUploadSucceeded);
 
         var photoSection = new Div();
         photoSection.addClassNames(
@@ -197,8 +194,8 @@ public class ProductDialog implements NonComponent {
 
             // Reactive effect: checks if the product was modified or deleted by another session
             // whenever the shared productVersion signal changes
-            ComponentEffect.effect(dialog, () -> {
-                DataChangeSignals.productVersion().value();
+            Effect.effect(dialog, () -> {
+                DataChangeSignals.productVersion().get();
                 checkForExternalChanges();
             });
         }
@@ -231,9 +228,7 @@ public class ProductDialog implements NonComponent {
 
         byte[] photoData = uploadedPhoto != null ? uploadedPhoto : product.getPhoto();
         if (photoData != null && photoData.length > 0) {
-            var resource = new StreamResource("product-photo",
-                    () -> new ByteArrayInputStream(photoData));
-            var image = new Image(resource, "Product photo");
+            var image = new Image(photoData, "Product photo");
             image.setWidthFull();
             image.setHeightFull();
             image.getStyle().set("object-fit", "cover");
@@ -332,17 +327,6 @@ public class ProductDialog implements NonComponent {
     }
 
     // Event Handlers
-
-    private void onPhotoUploadSucceeded(SucceededEvent event) {
-        try {
-            uploadedPhoto = photoUploadBuffer.getInputStream().readAllBytes();
-            uploadedPhotoContentType = event.getMIMEType();
-            updatePhotoPreview();
-        } catch (IOException _) {
-            Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
 
     // NonComponent implementation
 

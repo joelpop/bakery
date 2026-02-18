@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.users;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -15,12 +15,10 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
-import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.binder.ValidationException;
-import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.server.streams.UploadHandler;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.LocationService;
@@ -36,8 +34,6 @@ import org.vaadin.bakery.uimodel.data.LocationSummary;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 import org.vaadin.bakery.uimodel.type.UserRole;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -67,7 +63,6 @@ public class UserDialog implements NonComponent {
     private final List<LocationSummary> locations;
 
     private final Div photoContainerDiv;
-    private final MemoryBuffer photoUploadBuffer;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
@@ -145,11 +140,13 @@ public class UserDialog implements NonComponent {
                 .set("width", "80px")
                 .set("height", "80px");
 
-        photoUploadBuffer = new MemoryBuffer();
-        var upload = new Upload(photoUploadBuffer);
+        var upload = new Upload(UploadHandler.inMemory((metadata, data) -> {
+            uploadedPhoto = data;
+            uploadedPhotoContentType = metadata.contentType();
+            updatePhotoPreview();
+        }));
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
         upload.setMaxFileSize(2 * 1024 * 1024); // 2MB
-        upload.addSucceededListener(this::onPhotoUploadSucceeded);
 
         var photoSection = new Div();
         photoSection.addClassNames(
@@ -256,8 +253,8 @@ public class UserDialog implements NonComponent {
 
             // Reactive effect: checks if the user was modified or deleted by another session
             // whenever the shared userVersion signal changes
-            ComponentEffect.effect(dialog, () -> {
-                DataChangeSignals.userVersion().value();
+            Effect.effect(dialog, () -> {
+                DataChangeSignals.userVersion().get();
                 checkForExternalChanges();
             });
         }
@@ -297,9 +294,7 @@ public class UserDialog implements NonComponent {
         avatar.setHeight("80px");
 
         if (photoData != null && photoData.length > 0) {
-            var resource = new StreamResource("user-photo",
-                    () -> new ByteArrayInputStream(photoData));
-            avatar.setImageResource(resource);
+            avatar.setImageHandler(event -> event.getOutputStream().write(photoData));
         }
 
         photoContainerDiv.add(avatar);
@@ -403,17 +398,6 @@ public class UserDialog implements NonComponent {
     }
 
     // Event Handlers
-
-    private void onPhotoUploadSucceeded(SucceededEvent event) {
-        try {
-            uploadedPhoto = photoUploadBuffer.getInputStream().readAllBytes();
-            uploadedPhotoContentType = event.getMIMEType();
-            updatePhotoPreview();
-        } catch (IOException _) {
-            Notification.show("Failed to upload image", 3000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
 
     // NonComponent implementation
 

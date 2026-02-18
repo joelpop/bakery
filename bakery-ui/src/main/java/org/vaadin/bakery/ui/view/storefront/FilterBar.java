@@ -94,7 +94,7 @@ public class FilterBar extends Composite<Div> {
         selectedLocationSignal = new ValueSignal<>(currentLocationSentinel);
 
         resolvedLocationSignal = Signal.computed(() -> {
-            var selected = selectedLocationSignal.value();
+            var selected = selectedLocationSignal.get();
             if (selected != null && CURRENT_LOCATION_ID.equals(selected.getId())) {
                 return userLocationService.getCurrentLocation();
             }
@@ -130,25 +130,25 @@ public class FilterBar extends Composite<Div> {
 
     private void onFromDatePickerValueChanged(
             ComponentValueChangeEvent<DatePicker, LocalDate> event) {
-        fromDateSignal.value(event.getValue());
+        fromDateSignal.set(event.getValue());
         fireFilterChanged();
     }
 
     private void onToDatePickerValueChanged(
             ComponentValueChangeEvent<DatePicker, LocalDate> event) {
-        toDateSignal.value(event.getValue());
+        toDateSignal.set(event.getValue());
         fireFilterChanged();
     }
 
     private void onStatusFilterComboBoxValueChanged(
             ComponentValueChangeEvent<MultiSelectComboBox<OrderStatus>, Set<OrderStatus>> event) {
-        selectedStatusesSignal.value(event.getValue());
+        selectedStatusesSignal.set(event.getValue());
         fireFilterChanged();
     }
 
     private void onLocationFilterComboBoxValueChanged(
             ComponentValueChangeEvent<ComboBox<LocationSummary>, LocationSummary> event) {
-        selectedLocationSignal.value(event.getValue());
+        selectedLocationSignal.set(event.getValue());
         fireFilterChanged();
     }
 
@@ -157,25 +157,25 @@ public class FilterBar extends Composite<Div> {
     }
 
     public LocalDate getFromDate() {
-        return fromDateSignal.value();
+        return fromDateSignal.get();
     }
 
     public void setFromDate(LocalDate date) {
-        fromDateSignal.value(date);
+        fromDateSignal.set(date);
         fromDatePicker.setValue(date);
     }
 
     public LocalDate getToDate() {
-        return toDateSignal.value();
+        return toDateSignal.get();
     }
 
     public void setToDate(LocalDate date) {
-        toDateSignal.value(date);
+        toDateSignal.set(date);
         toDatePicker.setValue(date);
     }
 
     public Set<OrderStatus> getSelectedStatuses() {
-        return selectedStatusesSignal.value();
+        return selectedStatusesSignal.get();
     }
 
     /**
@@ -183,14 +183,14 @@ public class FilterBar extends Composite<Div> {
      * returns the actual current location from UserLocationService.
      */
     public LocationSummary getSelectedLocation() {
-        return resolvedLocationSignal.value();
+        return resolvedLocationSignal.get();
     }
 
     /**
      * Checks if "Current Location" is currently selected in the filter.
      */
     public boolean isCurrentLocationSelected() {
-        var selected = selectedLocationSignal.value();
+        var selected = selectedLocationSignal.get();
         return selected != null && CURRENT_LOCATION_ID.equals(selected.getId());
     }
 

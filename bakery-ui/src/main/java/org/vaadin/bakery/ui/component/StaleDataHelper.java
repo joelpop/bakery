@@ -12,7 +12,7 @@ public final class StaleDataHelper {
 
     /**
      * Checks for external changes and shows the appropriate banner.
-     * Used by ComponentEffect for live change detection while the dialog is open.
+     * Used by Effect for live change detection while the dialog is open.
      */
     public static void checkForExternalChanges(
             Supplier<Optional<Integer>> versionSupplier,
