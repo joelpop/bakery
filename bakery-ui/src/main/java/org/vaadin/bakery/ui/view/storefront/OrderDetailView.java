@@ -23,13 +23,10 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
-import org.vaadin.bakery.service.CustomerService;
-import org.vaadin.bakery.service.LocationService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.service.OrderService;
-import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.StaleDataException;
-import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderItemDetail;
@@ -51,10 +48,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     private final transient OrderService orderService;
     private final transient OrderActivityService orderActivityService;
-    private final transient ProductService productService;
-    private final transient LocationService locationService;
-    private final transient CustomerService customerService;
-    private final transient UserLocationService userLocationService;
+    private final transient ObjectProvider<EditOrderDialog> editOrderDialogProvider;
 
     // Signal holding the currently displayed order; all display fields react to changes in this signal
     private final transient ValueSignal<OrderDetail> orderSignal;
@@ -83,15 +77,10 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     /** Creates the order detail view with order information, items grid, action buttons, and activity timeline. */
     public OrderDetailView(OrderService orderService, OrderActivityService orderActivityService,
-                           ProductService productService,
-                           LocationService locationService, CustomerService customerService,
-                           UserLocationService userLocationService) {
+                           ObjectProvider<EditOrderDialog> editOrderDialogProvider) {
         this.orderService = orderService;
         this.orderActivityService = orderActivityService;
-        this.productService = productService;
-        this.locationService = locationService;
-        this.customerService = customerService;
-        this.userLocationService = userLocationService;
+        this.editOrderDialogProvider = editOrderDialogProvider;
 
         // Component initializations
         addClassName("order-detail-view");
@@ -371,8 +360,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         var order = orderSignal.get();
         if (order == null) return;
 
-        var editDialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
-        editDialog.setAvailableProducts(productService.listAvailable());
+        var editDialog = editOrderDialogProvider.getObject();
         editDialog.editOrder(order);
         editDialog.addSaveListener(_ -> refreshOrder());
         editDialog.open();

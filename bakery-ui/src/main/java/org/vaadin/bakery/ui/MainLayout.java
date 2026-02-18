@@ -41,11 +41,9 @@ import jakarta.annotation.security.PermitAll;
 
 import java.time.ZoneId;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.vaadin.bakery.service.CurrentUserService;
-import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
-import org.vaadin.bakery.service.OrderService;
-import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.service.UserTimezoneService;
 import org.vaadin.bakery.ui.event.MessageBroadcaster;
@@ -74,13 +72,11 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     private final transient CurrentUserService currentUserService;
     private final transient AccessAnnotationChecker accessChecker;
-    private final transient OrderService orderService;
     private final transient LocationService locationService;
-    private final transient ProductService productService;
-    private final transient CustomerService customerService;
     private final transient UserTimezoneService userTimezoneService;
     private final transient UserLocationService userLocationService;
     private final transient AuthenticationContext authenticationContext;
+    private final transient ObjectProvider<EditOrderDialog> editOrderDialogProvider;
 
     private final Tabs navigationTabs;
     private final Map<String, Tab> routeToTab;
@@ -88,19 +84,16 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     /** Creates the main application layout with navigation, location selector, and user menu. */
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
-                      OrderService orderService, LocationService locationService,
-                      ProductService productService, CustomerService customerService,
-                      UserTimezoneService userTimezoneService, UserLocationService userLocationService,
-                      AuthenticationContext authenticationContext) {
+                      LocationService locationService, UserTimezoneService userTimezoneService,
+                      UserLocationService userLocationService, AuthenticationContext authenticationContext,
+                      ObjectProvider<EditOrderDialog> editOrderDialogProvider) {
         this.currentUserService = currentUserService;
         this.accessChecker = accessChecker;
-        this.orderService = orderService;
         this.locationService = locationService;
-        this.productService = productService;
-        this.customerService = customerService;
         this.userTimezoneService = userTimezoneService;
         this.userLocationService = userLocationService;
         this.authenticationContext = authenticationContext;
+        this.editOrderDialogProvider = editOrderDialogProvider;
 
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
@@ -436,8 +429,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private void openNewOrderDialog() {
-        var dialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
-        dialog.setAvailableProducts(productService.listAvailable());
+        var dialog = editOrderDialogProvider.getObject();
         dialog.addSaveListener(_ -> refreshCurrentViewIfNeeded());
         dialog.open();
     }

@@ -36,9 +36,13 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ListSignal;
 import com.vaadin.flow.signals.local.ValueSignal;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
+import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.ui.component.StaleDataBanner;
@@ -68,7 +72,10 @@ import java.util.function.Consumer;
 /**
  * Dialog for creating or editing an order.
  * Uses delegation to Dialog rather than inheritance to control the public API.
+ * Managed as a Spring prototype bean so callers obtain fresh instances via {@code ObjectProvider}.
  */
+@Component
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class EditOrderDialog implements NonComponent {
 
     private final Dialog dialog;
@@ -76,6 +83,7 @@ public class EditOrderDialog implements NonComponent {
 
     private final OrderService orderService;
     private final LocationService locationService;
+    private final ProductService productService;
     private final CustomerService customerService;
     private final UserLocationService userLocationService;
 
@@ -123,13 +131,16 @@ public class EditOrderDialog implements NonComponent {
      *
      * @param orderService        service for persisting orders
      * @param locationService     service for loading available locations
+     * @param productService      service for loading available products
      * @param customerService     service for searching and creating customers
      * @param userLocationService service for resolving the user's current location
      */
     public EditOrderDialog(OrderService orderService, LocationService locationService,
-                           CustomerService customerService, UserLocationService userLocationService) {
+                           ProductService productService, CustomerService customerService,
+                           UserLocationService userLocationService) {
         this.orderService = orderService;
         this.locationService = locationService;
+        this.productService = productService;
         this.customerService = customerService;
         this.userLocationService = userLocationService;
 
@@ -466,11 +477,6 @@ public class EditOrderDialog implements NonComponent {
         dialog.close();
     }
 
-    /** Sets the list of available products for the product combo box. */
-    public void setAvailableProducts(List<ProductSelect> products) {
-        productComboBox.setItems(products);
-    }
-
     /** Switches the dialog to edit mode and populates it with the given order. */
     public void editOrder(OrderDetail order) {
         editingOrder = order;
@@ -691,6 +697,8 @@ public class EditOrderDialog implements NonComponent {
     // ========== Data Operations ==========
 
     private void loadData() {
+        productComboBox.setItems(productService.listAvailable());
+
         var locations = locationService.listActive();
         locationComboBox.setItems(locations);
 
