@@ -82,9 +82,9 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     private final transient UserLocationService userLocationService;
     private final transient AuthenticationContext authenticationContext;
 
-    private Tabs navigationTabs;
-    private final Map<String, Tab> routeToTab = new HashMap<>();
-    private ComboBox<LocationSummary> locationSelector;
+    private final Tabs navigationTabs;
+    private final Map<String, Tab> routeToTab;
+    private final ComboBox<LocationSummary> locationSelector;
 
     /** Creates the main application layout with navigation, location selector, and user menu. */
     public MainLayout(CurrentUserService currentUserService, AccessAnnotationChecker accessChecker,
@@ -105,7 +105,42 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         addClassName("main-layout");
         setPrimarySection(Section.NAVBAR);
 
-        addNavbarContent();
+        // Build navbar content
+        var navbar = new HorizontalLayout();
+        navbar.setWidthFull();
+        navbar.setAlignItems(FlexComponent.Alignment.CENTER);
+        navbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        navbar.addClassNames(
+                LumoUtility.Padding.Horizontal.MEDIUM,
+                "main-navbar"
+        );
+
+        // App branding (hidden on mobile)
+        var branding = createAppBranding();
+
+        // Navigation group: tabs + new order button + mobile menu
+        routeToTab = new HashMap<>();
+        navigationTabs = createNavigationTabs();
+        var newOrderButton = createNewOrderButton();
+        var mobileMenu = createMobileMenu();
+
+        var navGroup = new HorizontalLayout(navigationTabs, newOrderButton, mobileMenu);
+        navGroup.setAlignItems(FlexComponent.Alignment.CENTER);
+        navGroup.addClassNames(LumoUtility.Gap.MEDIUM, "nav-group");
+        navGroup.setSpacing(false);
+
+        // Location selector + User menu (desktop/tablet)
+        locationSelector = createLocationSelector();
+        var userMenu = createUserMenu();
+
+        var rightGroup = new HorizontalLayout(locationSelector, userMenu);
+        rightGroup.setAlignItems(FlexComponent.Alignment.CENTER);
+        rightGroup.addClassNames(LumoUtility.Gap.SMALL);
+        rightGroup.setSpacing(false);
+
+        navbar.add(branding, navGroup, rightGroup);
+
+        addToNavbar(navbar);
     }
 
     @Override
@@ -150,43 +185,6 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
                 .filter(loc -> loc.getId().equals(currentLocation.getId()))
                 .findFirst()
                 .ifPresent(locationSelector::setValue);
-    }
-
-    private void addNavbarContent() {
-        var navbar = new HorizontalLayout();
-        navbar.setWidthFull();
-        navbar.setAlignItems(FlexComponent.Alignment.CENTER);
-        navbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        navbar.addClassNames(
-                LumoUtility.Padding.Horizontal.MEDIUM,
-                "main-navbar"
-        );
-
-        // App branding (hidden on mobile)
-        var branding = createAppBranding();
-
-        // Navigation group: tabs + new order button + mobile menu
-        navigationTabs = createNavigationTabs();
-        var newOrderButton = createNewOrderButton();
-        var mobileMenu = createMobileMenu();
-
-        var navGroup = new HorizontalLayout(navigationTabs, newOrderButton, mobileMenu);
-        navGroup.setAlignItems(FlexComponent.Alignment.CENTER);
-        navGroup.addClassNames(LumoUtility.Gap.MEDIUM, "nav-group");
-        navGroup.setSpacing(false);
-
-        // Location selector + User menu (desktop/tablet)
-        locationSelector = createLocationSelector();
-        var userMenu = createUserMenu();
-
-        var rightGroup = new HorizontalLayout(locationSelector, userMenu);
-        rightGroup.setAlignItems(FlexComponent.Alignment.CENTER);
-        rightGroup.addClassNames(LumoUtility.Gap.SMALL);
-        rightGroup.setSpacing(false);
-
-        navbar.add(branding, navGroup, rightGroup);
-
-        addToNavbar(navbar);
     }
 
     private Component createAppBranding() {
