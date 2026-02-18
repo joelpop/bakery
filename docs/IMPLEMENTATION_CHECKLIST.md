@@ -18,7 +18,7 @@ The following decisions were made during documentation review to resolve conflic
 | **Order Editing** | Admin can edit after production starts; Baker/Admin can add notes until picked up/cancelled |
 | **Customer Deletion** | Soft delete (mark inactive); blocked if in-progress orders; cancels pre-production orders on confirmation |
 | **Passkey Authentication** | Implement now (WebAuthn support in initial release) |
-| **Notifications** | Deferred to future enhancement |
+| **Notifications** | Superseded by order messaging system |
 | **Seed Data** | Full demo data (locations, admin, products, customers, orders) |
 | **KPI Deltas** | Show both comparisons (vs previous period AND vs same period last year) |
 | **Concurrent Sessions** | Allowed (users can be logged in on multiple devices) |
@@ -147,14 +147,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] postedAt (Instant) - UTC timestamp
   - [x] read (boolean) - Read tracking for unread indicators
 
-- [ ] **NotificationEntity** - User-to-user notifications *(Deferred)*
-  - [ ] message (String)
-  - [ ] sentAt (LocalDateTime)
-  - [ ] readAt (LocalDateTime, optional)
-  - [ ] Relationship: sender (Many-to-One → UserEntity)
-  - [ ] Relationship: recipient (Many-to-One → UserEntity)
-
-  > **Note**: Notification functionality is deferred to future enhancement
+- ~~**NotificationEntity**~~ - Superseded by OrderActivityEntity and the order messaging system
 
 ### 1.4 Interface Projections (bakery-jpamodel)
 
@@ -167,7 +160,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **OrderDashboardProjection** - Dashboard upcoming orders
 - [x] **OrderTimeProjection** - Dashboard KPI queries
 - [x] **OrderItemSummaryProjection** - Order item display
-- [ ] **NotificationSummaryProjection** - Notification panel *(Deferred)*
+- ~~**NotificationSummaryProjection**~~ - Superseded by order messaging system
 
 ---
 
@@ -223,11 +216,7 @@ The following decisions were made during documentation review to resolve conflic
 
 - [x] **OrderActivityRepository** - Order messaging and activity timeline
 
-- [ ] **NotificationRepository** *(Deferred)*
-  - [ ] findByRecipientIdAndReadAtIsNullOrderBySentAtDesc
-  - [ ] countByRecipientIdAndReadAtIsNull
-  - [ ] findTop10ByRecipientIdOrderBySentAtDesc
-  - [ ] Paginated projection queries
+- ~~**NotificationRepository**~~ - Superseded by OrderActivityRepository
 
 ---
 
@@ -252,7 +241,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **OrderItemSummary** - Order item display
 - [x] **OrderItemDetail** - Order item create/edit
 - [x] **OrderActivity** - Order activity timeline entry
-- [ ] **NotificationSummary** - Notification display *(Deferred)*
+- ~~**NotificationSummary**~~ - Superseded by OrderActivity
 
 ---
 
@@ -302,14 +291,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Record system events (status changes, edits)
   - [x] Unread message tracking per order
 
-- [ ] **NotificationService** *(Deferred)*
-  - [ ] getUnreadForUser(userId)
-  - [ ] countUnreadForUser(userId)
-  - [ ] getRecentForUser(userId, limit)
-  - [ ] send(senderId, recipientId, message)
-  - [ ] markAsRead(id) / markAllAsRead(userId)
-
-  > **Note**: Notification functionality is deferred to future enhancement
+- ~~**NotificationService**~~ - Superseded by OrderActivityService
 
 - [x] **CurrentUserService**
   - [x] getCurrentUserEmail()
@@ -355,7 +337,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **JpaLocationService**
 - [x] **JpaOrderService**
 - [x] **JpaOrderActivityService**
-- [ ] **JpaNotificationService** *(Deferred)*
+- ~~**JpaNotificationService**~~ - Superseded by JpaOrderActivityService
 - [x] **JpaDashboardService**
 - [x] **SessionUserLocationService** - @SessionScope implementation
 - [x] **SessionUserTimezoneService** - @SessionScope implementation (via VaadinSession attributes)
@@ -369,7 +351,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **OrderMapper** - OrderEntity ↔ OrderList/OrderDetail/OrderDashboard
 - [x] **OrderItemMapper** - OrderItemEntity ↔ OrderItemSummary/OrderItemDetail
 - [x] **OrderActivityMapper** - OrderActivityEntity ↔ OrderActivity
-- [ ] **NotificationMapper** - NotificationEntity ↔ NotificationSummary *(Deferred)*
+- ~~**NotificationMapper**~~ - Superseded by OrderActivityMapper
 
 ---
 
@@ -669,9 +651,9 @@ The following decisions were made during documentation review to resolve conflic
   - [x] "About" link (Admin only)
   - [x] "Log out" button
 
-### 10.3 Notifications *(Deferred)*
+### 10.3 Notifications
 
-> Notification UI is deferred to future enhancement
+> Superseded by the order messaging system (see Phase 15.2). Staff communication happens in the context of orders via the activity timeline, with unread tracking and cross-session push notifications.
 
 ### 10.4 Preferences View
 
@@ -696,9 +678,7 @@ The following decisions were made during documentation review to resolve conflic
       - [ ] Add passkey button
       - [ ] Remove passkey button
 
-  - [ ] **Notification Preferences Section** *(Deferred)*
-    - [ ] Email notifications toggle
-    - [ ] In-app notifications toggle
+  - ~~**Notification Preferences Section**~~ - Superseded by order messaging system
 
   - [ ] **Display Settings Section** *(Deferred)*
     - [ ] Theme selection (Light/Dark/System)

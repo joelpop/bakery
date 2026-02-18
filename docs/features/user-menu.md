@@ -1,6 +1,6 @@
 # User Menu
 
-The User Menu provides access to user profile, preferences, notifications, and logout functionality.
+The User Menu provides access to user profile, preferences, and logout functionality.
 
 ## Screenshots
 - Desktop: `legacy/images/user menu/Desktop, user menu, notifications.png`
@@ -12,12 +12,10 @@ The User Menu provides access to user profile, preferences, notifications, and l
 
 ### Desktop
 - User avatar displayed in top-right corner
-- Notification badge (red dot) when unread notifications exist
 - Click to open dropdown menu
 
 ### Mobile
 - Same avatar placement in header
-- Notification badge visible
 - Tap to open menu (may slide in from right or drop down)
 
 ---
@@ -37,26 +35,7 @@ The User Menu provides access to user profile, preferences, notifications, and l
 | **Preferences** | Link to user preferences/settings |
 | **Log out** | End current session and return to login |
 
-### Notifications Section
-| Element | Description |
-|---------|-------------|
-| Header | "Notifications" with "View all" link |
-| Notification List | Recent notifications |
-
----
-
-## Notifications (Deferred)
-
-> **Note**: User-to-user notifications are deferred for future implementation. The notification entity and UI are documented but will not be included in the initial release.
-
-### Planned Notification Features (Future)
-
-When implemented, notifications will include:
-- **Sender name** - Who sent the notification
-- **Timestamp** - When it was sent
-- **Message** - Notification content
-- **Unread indicator** - Visual marker for unread items
-- **Notification badge** - Red dot on avatar when unread notifications exist
+> **Note**: The originally planned user-to-user notification system has been superseded by the order messaging system. Staff communication happens in the context of orders via the activity timeline, with unread tracking and cross-session push notifications. See [Messaging](messaging.md) for details.
 
 ---
 
@@ -76,12 +55,6 @@ The Preferences link leads to a full settings page with the following sections:
 |---------|-------------|
 | Change password | Update account password with entropy-based validation |
 | Passkeys | Manage WebAuthn credentials (add/remove passkeys) |
-
-### Notification Preferences
-| Setting | Description |
-|---------|-------------|
-| Email notifications | Toggle email alerts for important events |
-| In-app notifications | Toggle in-app notification display |
 
 ### Display Settings
 | Setting | Description |
@@ -126,4 +99,4 @@ The User Menu is available to all authenticated users regardless of role. The me
 - May use full-width slide-in panel
 - Larger touch targets
 - Swipe to dismiss
-- Notifications may scroll if numerous
+- Menu items scroll if numerous

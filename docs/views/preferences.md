@@ -14,8 +14,7 @@ The preferences view is organized into sections:
 
 1. Profile Settings
 2. Security Settings
-3. Notification Preferences
-4. Display Settings
+3. Display Settings
 
 ---
 
@@ -84,16 +83,10 @@ The preferences view is organized into sections:
 
 ---
 
-## Notification Preferences
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| Email Notifications | Toggle | Off | Receive email alerts for important events |
-| In-App Notifications | Toggle | On | Show notifications in user menu |
-
-**Note**: Full notification system is deferred for future implementation. These preferences are placeholders.
-
 ---
+
+> **Note**: The originally planned notification preferences section has been removed. Staff communication is handled by the order messaging system, which uses the activity timeline on each order. See [Messaging](../features/messaging.md) for details.
+
 
 ## Display Settings
 

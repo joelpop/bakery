@@ -99,7 +99,7 @@ Access control is enforced by Spring Security via `@RolesAllowed` annotations on
 - Clicking returns to default view (Storefront)
 
 ### User Menu (Right)
-- User avatar with notification badge
+- User avatar
 - Dropdown with profile options
 - See [User Menu](user-menu.md) for details
 

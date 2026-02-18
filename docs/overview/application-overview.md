@@ -147,7 +147,7 @@ Primary functions:
 - Pickup trend charts (daily and monthly)
 - Year-over-year sales comparison
 - Product popularity breakdown
-- Alerts and notifications
+- Alerts
 
 ### User Management
 

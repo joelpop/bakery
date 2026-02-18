@@ -37,7 +37,7 @@ Service implementations follow the pattern `Jpa{ServiceName}`:
 | ProductService | JpaProductService |
 | LocationService | JpaLocationService |
 | OrderService | JpaOrderService |
-| NotificationService | JpaNotificationService |
+| OrderActivityService | JpaOrderActivityService |
 | DashboardService | JpaDashboardService |
 
 ---
@@ -56,7 +56,7 @@ Mappers convert between JPA entities/projections and UI models. They are Spring 
 | LocationMapper | LocationEntity ↔ Location, LocationSummaryProjection → Location |
 | OrderMapper | OrderEntity ↔ Order, OrderListProjection → OrderSummary (includes paid, discount) |
 | OrderItemMapper | OrderItemEntity ↔ OrderItem, OrderItemSummaryProjection → OrderItemSummary |
-| NotificationMapper | NotificationEntity → Notification |
+| OrderActivityMapper | OrderActivityEntity → OrderActivity |
 
 ### Mapping Conventions
 
@@ -258,32 +258,7 @@ Aggregates multiple repository queries:
 
 ---
 
-## JpaNotificationService
-
-### Dependencies
-- NotificationRepository
-- UserRepository
-- NotificationMapper
-- CurrentUserService
-
-### Key Behaviors
-
-**send(recipientId, message)**
-1. Creates notification entity
-2. Sets sender from current user
-3. Sets recipient from recipientId
-4. Sets sentAt to current time
-5. Saves entity
-
-**sendToRole(role, message)**
-1. Finds all users with the specified role
-2. Creates notification for each user
-3. Batch saves all notifications
-
-**markAllAsRead(userId)**
-1. Updates all unread notifications for user
-2. Sets readAt to current time
-3. Uses bulk update for efficiency
+> **Note**: The originally planned `JpaNotificationService` has been superseded by `JpaOrderActivityService`. See [Messaging](../features/messaging.md) for details.
 
 ---
 
@@ -304,7 +279,6 @@ Helper service for accessing the currently authenticated user.
 ### Usage
 Injected into service implementations for:
 - Setting audit fields (createdBy, updatedBy)
-- Determining notification sender
 - Authorization checks
 
 ---
