@@ -145,13 +145,11 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private void updateLocationSelectorValue() {
-        if (locationSelector != null) {
-            var currentLocation = userLocationService.getCurrentLocation();
-            locationSelector.getListDataView().getItems()
-                    .filter(loc -> loc.getId().equals(currentLocation.getId()))
-                    .findFirst()
-                    .ifPresent(locationSelector::setValue);
-        }
+        var currentLocation = userLocationService.getCurrentLocation();
+        locationSelector.getListDataView().getItems()
+                .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                .findFirst()
+                .ifPresent(locationSelector::setValue);
     }
 
     private void addNavbarContent() {
@@ -282,7 +280,7 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
     private void onLocationSelectorValueChanged(
             ComponentValueChangeEvent<ComboBox<LocationSummary>, LocationSummary> event) {
-        if (event.isFromClient() && event.getValue() != null) {
+        if (event.isFromClient()) {
             userLocationService.setCurrentLocation(event.getValue());
             getUI().ifPresent(ui ->
                     MessageBroadcaster.updateLocation(ui, event.getValue().getId()));

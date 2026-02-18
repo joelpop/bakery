@@ -131,11 +131,12 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
     }
 
     private String getPlatformName(WebBrowser browser) {
-        if (browser.isWindows()) return "Windows";
-        if (browser.isMacOSX()) return "macOS";
-        if (browser.isLinux()) return "Linux";
-        if (browser.isAndroid()) return "Android";
-        if (browser.isIPhone()) return "iOS";
+        var ua = browser.getUserAgent();
+        if (ua.contains("Windows")) return "Windows";
+        if (ua.contains("Mac OS X") || ua.contains("Macintosh")) return "macOS";
+        if (ua.contains("Android")) return "Android";
+        if (ua.contains("iPhone") || ua.contains("iPad")) return "iOS";
+        if (ua.contains("Linux")) return "Linux";
         return "Unknown";
     }
 
@@ -164,11 +165,13 @@ public class AboutView extends Composite<VerticalLayout> implements HasSize, Has
     }
 
     private String getBrowserName(WebBrowser browser) {
-        if (browser.isChrome()) return "Chrome";
-        if (browser.isFirefox()) return "Firefox";
-        if (browser.isSafari()) return "Safari";
-        if (browser.isEdge()) return "Edge";
-        if (browser.isOpera()) return "Opera";
+        var ua = browser.getUserAgent();
+        // Order matters: Edge UA contains "Chrome"; Chrome UA contains "Safari"
+        if (ua.contains("Edg/")) return "Edge";
+        if (ua.contains("OPR/") || ua.contains("Opera")) return "Opera";
+        if (ua.contains("Firefox/")) return "Firefox";
+        if (ua.contains("Chrome/")) return "Chrome";
+        if (ua.contains("Safari/")) return "Safari";
         return "Unknown";
     }
 
