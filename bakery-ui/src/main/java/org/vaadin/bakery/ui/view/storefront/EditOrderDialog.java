@@ -703,15 +703,16 @@ public class EditOrderDialog implements NonComponent {
         locationComboBox.setItems(locations);
 
         // Pre-select from user's current location, or first location if only one
-        var currentLocation = userLocationService.getCurrentLocation();
-        if (currentLocation != null) {
-            locations.stream()
-                    .filter(loc -> loc.getId().equals(currentLocation.getId()))
-                    .findFirst()
-                    .ifPresent(locationComboBox::setValue);
-        } else if (locations.size() == 1) {
-            locationComboBox.setValue(locations.getFirst());
-        }
+        userLocationService.getCurrentLocation().ifPresentOrElse(
+                currentLocation -> locations.stream()
+                        .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                        .findFirst()
+                        .ifPresent(locationComboBox::setValue),
+                () -> {
+                    if (locations.size() == 1) {
+                        locationComboBox.setValue(locations.getFirst());
+                    }
+                });
     }
 
     private void addOrUpdateItem() {

@@ -159,9 +159,10 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
 
         // Register for message broadcast notifications
         currentUserService.getCurrentUser().ifPresent(user -> {
-            var currentLocation = userLocationService.getCurrentLocation();
+            var locationId = userLocationService.getCurrentLocation()
+                    .map(LocationSummary::getId).orElse(null);
             var sessionInfo = new MessageBroadcaster.SessionInfo(
-                    user.getId(), user.getRole(), currentLocation.getId());
+                    user.getId(), user.getRole(), locationId);
             MessageBroadcaster.register(attachEvent.getUI(), sessionInfo);
         });
     }
@@ -173,11 +174,11 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
     }
 
     private void updateLocationSelectorValue() {
-        var currentLocation = userLocationService.getCurrentLocation();
-        locationSelector.getListDataView().getItems()
-                .filter(loc -> loc.getId().equals(currentLocation.getId()))
-                .findFirst()
-                .ifPresent(locationSelector::setValue);
+        userLocationService.getCurrentLocation().ifPresent(currentLocation ->
+                locationSelector.getListDataView().getItems()
+                        .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                        .findFirst()
+                        .ifPresent(locationSelector::setValue));
     }
 
     private Component createAppBranding() {
@@ -257,12 +258,12 @@ public class MainLayout extends AppLayout implements RouterLayout, AfterNavigati
         comboBox.addClassName("location-selector");
         comboBox.getElement().setAttribute("theme", "small");
 
-        // Set initial value from service
-        var currentLocation = userLocationService.getCurrentLocation();
-        comboBox.getListDataView().getItems()
-                .filter(loc -> loc.getId().equals(currentLocation.getId()))
-                .findFirst()
-                .ifPresent(comboBox::setValue);
+        // Set initial value from service (may be empty before onAttach initializes it)
+        userLocationService.getCurrentLocation().ifPresent(currentLocation ->
+                comboBox.getListDataView().getItems()
+                        .filter(loc -> loc.getId().equals(currentLocation.getId()))
+                        .findFirst()
+                        .ifPresent(comboBox::setValue));
 
         comboBox.addValueChangeListener(this::onLocationSelectorValueChanged);
 

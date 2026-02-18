@@ -1,5 +1,7 @@
 package org.vaadin.bakery.service;
 
+import java.util.Optional;
+
 import org.vaadin.bakery.uimodel.data.LocationSummary;
 
 /**
@@ -20,9 +22,9 @@ public interface UserLocationService {
     /**
      * Gets the current working location for the user session.
      *
-     * @return the current location, or null if not set
+     * @return the current location, or empty if not set
      */
-    LocationSummary getCurrentLocation();
+    Optional<LocationSummary> getCurrentLocation();
 
     /**
      * Checks if the current location has been set for this session.

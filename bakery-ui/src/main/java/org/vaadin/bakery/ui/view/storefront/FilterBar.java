@@ -96,7 +96,7 @@ public class FilterBar extends Composite<Div> {
         resolvedLocationSignal = Signal.computed(() -> {
             var selected = selectedLocationSignal.get();
             if (selected != null && CURRENT_LOCATION_ID.equals(selected.getId())) {
-                return userLocationService.getCurrentLocation();
+                return userLocationService.getCurrentLocation().orElse(null);
             }
             return selected;
         });

@@ -1,5 +1,6 @@
 package org.vaadin.bakery.uimodel.data;
 
+import org.jspecify.annotations.Nullable;
 import org.vaadin.bakery.uimodel.type.UserRole;
 
 /**
@@ -14,7 +15,7 @@ public class UserDetail extends AbstractModel {
     private UserRole role;
     private byte[] photo;
     private String photoContentType;
-    private Long primaryLocationId;
+    private @Nullable Long primaryLocationId;
 
     public String getEmail() {
         return email;
@@ -72,11 +73,11 @@ public class UserDetail extends AbstractModel {
         this.photoContentType = photoContentType;
     }
 
-    public Long getPrimaryLocationId() {
+    public @Nullable Long getPrimaryLocationId() {
         return primaryLocationId;
     }
 
-    public void setPrimaryLocationId(Long primaryLocationId) {
+    public void setPrimaryLocationId(@Nullable Long primaryLocationId) {
         this.primaryLocationId = primaryLocationId;
     }
 }
