@@ -13,7 +13,7 @@ ADMIN
 All roles have access to:
 - Storefront (view and create orders)
 - Dashboard (view analytics)
-- User Menu (profile, notifications, logout)
+- User Menu (profile, preferences, logout)
 
 Admin-only access:
 - Users view (manage staff)

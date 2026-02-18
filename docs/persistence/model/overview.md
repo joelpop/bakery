@@ -12,7 +12,7 @@ This document provides an overview of the JPA model for the Bakery application. 
 | LocationEntity | Pickup locations (Café, Bakery) | [location.md](entities/location.md) |
 | OrderEntity | Customer orders | [order.md](entities/order.md) |
 | OrderItemEntity | Line items within orders | [order-item.md](entities/order-item.md) |
-| NotificationEntity | User-to-user notifications | [notification.md](entities/notification.md) |
+| OrderActivityEntity | Order activity timeline entries | *(see [Messaging](../../features/messaging.md))* |
 
 ---
 
@@ -81,7 +81,7 @@ Interface projections provide optimized read-only views of entities. Each projec
 | OrderDashboardProjection | [OrderEntity](entities/order.md) | Dashboard upcoming orders |
 | OrderTimeProjection | [OrderEntity](entities/order.md) | Dashboard KPI queries |
 | OrderItemSummaryProjection | [OrderItemEntity](entities/order-item.md) | Order item display |
-| NotificationSummaryProjection | [NotificationEntity](entities/notification.md) | Notification panel |
+| ~~NotificationSummaryProjection~~ | | Superseded by order messaging |
 
 ---
 
@@ -102,4 +102,4 @@ Recommended indexes for query performance:
 | orders | (location_id) | Location order queries |
 | orders | (paid) | Payment status filtering |
 | order_items | (order_id) | Fetch items for order |
-| notifications | (recipient_id, read_at) | Unread notification queries |
+| order_activity | (order_id, posted_at) | Activity timeline queries |

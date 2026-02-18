@@ -143,26 +143,7 @@ Filter criteria for order queries:
 
 ---
 
-## NotificationService
-
-Manages user-to-user notifications.
-
-### Query Operations
-
-| Method | Parameters | Returns | Description |
-|--------|------------|---------|-------------|
-| getRecent | userId: Long, limit: int | List&lt;Notification&gt; | Get recent notifications for user |
-| getUnread | userId: Long | List&lt;Notification&gt; | Get unread notifications |
-| countUnread | userId: Long | long | Count unread notifications (for badge) |
-
-### Mutation Operations
-
-| Method | Parameters | Returns | Description |
-|--------|------------|---------|-------------|
-| send | recipientId: Long, message: String | void | Send notification to a user |
-| sendToRole | role: UserRole, message: String | void | Send notification to all users with role |
-| markAsRead | notificationId: Long | void | Mark single notification as read |
-| markAllAsRead | userId: Long | void | Mark all user's notifications as read |
+> **Note**: The originally planned `NotificationService` has been superseded by `OrderActivityService`. Staff communication happens in the context of orders via the activity timeline and `MessageBroadcaster`. See [Messaging](../features/messaging.md) for details.
 
 ---
 
@@ -286,15 +267,9 @@ Lightweight order representation for lists:
 | unitPrice | BigDecimal | Price at order time |
 | lineTotal | BigDecimal | Quantity × unit price |
 
-### Notification
+### ~~Notification~~ (Superseded)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | Long | Notification ID |
-| senderName | String | Sender's full name |
-| message | String | Message content |
-| sentAt | LocalDateTime | When sent |
-| readAt | LocalDateTime | When read (null if unread) |
+> Superseded by `OrderActivity`. See [Messaging](../features/messaging.md) for details.
 
 ---
 

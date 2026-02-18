@@ -71,7 +71,7 @@ The service layer follows a clean separation between interfaces and implementati
 | `CustomerService` | Customer management |
 | `ProductService` | Product catalog |
 | `OrderService` | Order management |
-| `NotificationService` | User notifications |
+| `OrderActivityService` | Order messaging and activity timeline |
 | `DashboardService` | Analytics and KPIs |
 
 ## Related Documentation

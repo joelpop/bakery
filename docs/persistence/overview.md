@@ -99,7 +99,7 @@ spring.jpa.open-in-view=false
     - [LocationEntity](model/entities/location.md)
     - [OrderEntity](model/entities/order.md)
     - [OrderItemEntity](model/entities/order-item.md)
-    - [NotificationEntity](model/entities/notification.md)
+    - OrderActivityEntity *(see [Messaging](../features/messaging.md))*
   - **Codes**
     - [UserRoleCode](model/codes/user-role.md)
     - [OrderStatusCode](model/codes/order-status.md)

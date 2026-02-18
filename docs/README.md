@@ -23,7 +23,7 @@ Café Sunshine is a comprehensive bakery order management system that enables ba
 
 ### Features
 - [Navigation](features/navigation.md) - Desktop and mobile navigation patterns
-- [User Menu](features/user-menu.md) - User profile, preferences, and notifications
+- [User Menu](features/user-menu.md) - User profile, preferences, and logout
 - [Orders](features/orders.md) - Order workflow, statuses, and data model
 
 ### Persistence

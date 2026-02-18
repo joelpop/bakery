@@ -163,23 +163,7 @@ Repository for managing order line items.
 
 ---
 
-## NotificationRepository
-
-Repository for managing user notifications.
-
-### Custom Query Methods
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `findByRecipientIdAndReadAtIsNullOrderBySentAtDesc(userId)` | Unread notifications | `List<NotificationEntity>` |
-| `countByRecipientIdAndReadAtIsNull(userId)` | Count unread (for badge) | `long` |
-| `findTop10ByRecipientIdOrderBySentAtDesc(userId)` | Recent notifications | `List<NotificationEntity>` |
-
-### Projection Queries
-
-| Method | Description | Returns |
-|--------|-------------|---------|
-| `findByRecipientIdOrderBySentAtDesc(userId, pageable)` | Paginated notifications | `Page<NotificationSummaryProjection>` |
+> **Note**: The originally planned `NotificationRepository` has been superseded by `OrderActivityRepository`. See [Messaging](../features/messaging.md) for details.
 
 ---
 
@@ -205,4 +189,4 @@ Interface projections are defined in `bakery-jpamodel.projection` package. Each 
 - [LocationSummaryProjection](model/entities/location.md#projections)
 - [OrderListProjection, OrderDashboardProjection, OrderTimeProjection](model/entities/order.md#projections)
 - [OrderItemSummaryProjection](model/entities/order-item.md#projections)
-- [NotificationSummaryProjection](model/entities/notification.md#projections)
+- ~~NotificationSummaryProjection~~ *(superseded by order messaging)*
