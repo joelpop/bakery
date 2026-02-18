@@ -16,8 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * Stores a {@link ConcurrentHashMap} of activity ID to order ID in the
  * {@link VaadinSession} attributes. This is accessible from both HTTP request
  * threads and Push threads (unlike Spring's {@code @SessionScope}).
- *
- * @see VaadinUserTimezoneService for the same pattern
  */
 @Service
 public class VaadinUnreadMessageTracker implements UnreadMessageTracker {

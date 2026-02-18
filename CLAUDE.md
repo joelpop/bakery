@@ -877,36 +877,20 @@ Each `LocationEntity` stores an IANA timezone ID (e.g., `"America/New_York"`) fo
 - Orders can display times in their pickup location's timezone
 - Future enhancement: Use location timezone instead of system default for display
 
-### Browser Timezone Detection
+### Browser Client Details
 
-The browser's timezone must be obtained from the client and stored in a session-scoped service:
+Browser client details (timezone, screen dimensions, etc.) are lazily detected and cached via a session-scoped service:
 
-1. **Service Interface** (`bakery-service`): `UserTimezoneService`
-   - `setBrowserTimezone(ZoneId)` - called by UI after detecting browser TZ
+1. **Service Interface** (`bakery-service`): `ClientDetailsService`
    - `getBrowserTimezone()` - returns browser TZ or system default as fallback
-   - `isBrowserTimezoneSet()` - checks if TZ has been set
+   - Single-method interface; implementation lazily fetches `ExtendedClientDetails` on first call
 
-2. **Session-Scoped Implementation** (`bakery-jpaservice`): `SessionUserTimezoneService`
-   - Uses `@SessionScope` to persist timezone for user's session
-   - Requires `spring-web` dependency for `@SessionScope`
+2. **VaadinSession-Based Implementation** (`bakery-ui`): `VaadinClientDetailsService`
+   - Lazily calls `UI.getCurrent().getPage().getExtendedClientDetails()` on first access
+   - Caches the full `ExtendedClientDetails` object in `VaadinSession` attributes (accessible from both HTTP request threads and Push threads)
+   - Prefer `VaadinSession` attributes over `@SessionScope` which is NOT Push-thread compatible
 
-3. **UI Detection** (`MainLayout.onAttach`):
-   ```java
-   @Override
-   protected void onAttach(AttachEvent attachEvent) {
-       super.onAttach(attachEvent);
-       if (!userTimezoneService.isBrowserTimezoneSet()) {
-           attachEvent.getUI().getPage().retrieveExtendedClientDetails(details -> {
-               var timezoneId = details.getTimeZoneId();
-               if (timezoneId != null && !timezoneId.isEmpty()) {
-                   userTimezoneService.setBrowserTimezone(ZoneId.of(timezoneId));
-               }
-           });
-       }
-   }
-   ```
-
-4. **InstantMapper**: Abstract class with injected `UserTimezoneService`
+3. **InstantMapper**: Abstract class with injected `ClientDetailsService`
    - `toBrowserTime(Instant)` - converts UTC to browser-local time
    - `toServerTime(LocalDateTime)` - converts browser-local to UTC
 

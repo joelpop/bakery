@@ -319,8 +319,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] isCurrentLocationSet()
   - [x] initializeFromUserPrimaryLocation()
 
-- [x] **UserTimezoneService** - Session-scoped browser timezone management
-  - [x] setBrowserTimezone(ZoneId)
+- [x] **ClientDetailsService** - Lazy browser client details with timezone accessor
   - [x] getBrowserTimezone()
   - [x] isBrowserTimezoneSet()
 
@@ -340,7 +339,7 @@ The following decisions were made during documentation review to resolve conflic
 - ~~**JpaNotificationService**~~ - Superseded by JpaOrderActivityService
 - [x] **JpaDashboardService**
 - [x] **SessionUserLocationService** - @SessionScope implementation
-- [x] **SessionUserTimezoneService** - @SessionScope implementation (via VaadinSession attributes)
+- ~~**SessionUserTimezoneService**~~ - Removed; superseded by `VaadinClientDetailsService` in bakery-ui
 
 ### 4.3 MapStruct Mappers (bakery-jpaservice)
 
@@ -878,8 +877,8 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Location selector in MainLayout navbar
   - [x] Auto-initialized from user's primary location
   - [x] Used for pre-populating new order location and "Current Location" filter
-- [x] **UserTimezoneService** - Browser timezone detected and stored per session
-  - [x] Auto-detected on MainLayout attach via ExtendedClientDetails
+- [x] **ClientDetailsService** - Browser client details lazily detected and cached per session
+  - [x] Caches full ExtendedClientDetails in VaadinSession on first access
   - [x] Used by InstantMapper for UTC→local time conversion
 
 ---

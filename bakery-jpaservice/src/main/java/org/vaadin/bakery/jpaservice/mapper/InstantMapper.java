@@ -3,23 +3,23 @@ package org.vaadin.bakery.jpaservice.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.vaadin.bakery.service.UserTimezoneService;
+import org.vaadin.bakery.service.ClientDetailsService;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
  * MapStruct mapper for converting between Instant (server/storage) and LocalDateTime (browser/display).
- * Uses the user's browser timezone from the session-scoped UserTimezoneService.
+ * Uses the user's browser timezone from the session-scoped ClientDetailsService.
  */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public abstract class InstantMapper {
 
-    private UserTimezoneService userTimezoneService;
+    private ClientDetailsService clientDetailsService;
 
     @Autowired
-    public void setUserTimezoneService(UserTimezoneService userTimezoneService) {
-        this.userTimezoneService = userTimezoneService;
+    public void setClientDetailsService(ClientDetailsService clientDetailsService) {
+        this.clientDetailsService = clientDetailsService;
     }
 
     /**
@@ -32,7 +32,7 @@ public abstract class InstantMapper {
         if (instant == null) {
             return null;
         }
-        return LocalDateTime.ofInstant(instant, userTimezoneService.getBrowserTimezone());
+        return LocalDateTime.ofInstant(instant, clientDetailsService.getBrowserTimezone());
     }
 
     /**
@@ -45,6 +45,6 @@ public abstract class InstantMapper {
         if (localDateTime == null) {
             return null;
         }
-        return localDateTime.atZone(userTimezoneService.getBrowserTimezone()).toInstant();
+        return localDateTime.atZone(clientDetailsService.getBrowserTimezone()).toInstant();
     }
 }
