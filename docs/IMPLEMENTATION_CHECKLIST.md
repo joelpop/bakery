@@ -50,6 +50,10 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **OrderItemStatusCode** - Order item lifecycle states (first 6 of order statuses)
   - [x] NEW, VERIFIED, NOT_OK, CANCELLED, IN_PROGRESS, BAKED
 
+- [x] **OrderActivityTypeCode** - Activity timeline entry types
+  - [x] SYSTEM_EVENT - Auto-generated order change records
+  - [x] STAFF_MESSAGE - Human-posted staff messages
+
 ### 1.2 Abstract Base Entities (bakery-jpamodel)
 
 - [x] **AbstractEntity** - Base class for all entities
@@ -73,6 +77,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] role (UserRoleCode)
   - [x] photo (byte[]) - Profile photo
   - [x] photoContentType (String)
+  - [x] primaryLocation (Many-to-One → LocationEntity) - User's default working location
 
 - [x] **CustomerEntity** - Customers who place orders (extends AbstractAuditableEntity)
   - [x] name (String)
@@ -94,8 +99,8 @@ The following decisions were made during documentation review to resolve conflic
   - [x] name (String, unique)
   - [x] address (String, optional)
   - [x] timezone (String) - IANA timezone ID (e.g., "America/New_York")
-  - [ ] defaultCountryCode (String) - Default country code for phone formatting (e.g., "+1")
-  - [ ] defaultAreaCode (String) - Default area code for 7-digit phone numbers (e.g., "212")
+  - [x] defaultCountryCode (String) - Default country code for phone formatting (e.g., "+1")
+  - [x] defaultAreaCode (String) - Default area code for 7-digit phone numbers (e.g., "212")
   - [x] active (boolean)
   - [x] sortOrder (Integer)
 
@@ -132,6 +137,15 @@ The following decisions were made during documentation review to resolve conflic
   - [x] status (OrderItemStatusCode)
   - [x] changedBy (Many-to-One → UserEntity)
   - [x] changedAt (Instant) - UTC timestamp
+
+- [x] **OrderActivityEntity** - Order activity timeline entries (extends AbstractEntity)
+  - [x] order (Many-to-One → OrderEntity)
+  - [x] type (OrderActivityTypeCode) - SYSTEM_EVENT or STAFF_MESSAGE
+  - [x] text (String) - Activity description or message content
+  - [x] author (Many-to-One → UserEntity, optional) - Staff member for messages
+  - [x] referencedItem (Many-to-One → OrderItemEntity, optional) - Related item
+  - [x] postedAt (Instant) - UTC timestamp
+  - [x] read (boolean) - Read tracking for unread indicators
 
 - [ ] **NotificationEntity** - User-to-user notifications *(Deferred)*
   - [ ] message (String)
@@ -207,6 +221,8 @@ The following decisions were made during documentation review to resolve conflic
   - [x] deleteByOrderId
   - [x] Projection queries for OrderItemSummaryProjection
 
+- [x] **OrderActivityRepository** - Order messaging and activity timeline
+
 - [ ] **NotificationRepository** *(Deferred)*
   - [ ] findByRecipientIdAndReadAtIsNullOrderBySentAtDesc
   - [ ] countByRecipientIdAndReadAtIsNull
@@ -235,6 +251,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **OrderDashboard** - Dashboard upcoming orders
 - [x] **OrderItemSummary** - Order item display
 - [x] **OrderItemDetail** - Order item create/edit
+- [x] **OrderActivity** - Order activity timeline entry
 - [ ] **NotificationSummary** - Notification display *(Deferred)*
 
 ---
@@ -279,6 +296,12 @@ The following decisions were made during documentation review to resolve conflic
   - [x] markAsPaid(id)
   - [x] Dashboard KPI methods
 
+- [x] **OrderActivityService** - Order messaging and activity timeline
+  - [x] List activities for an order
+  - [x] Post staff messages
+  - [x] Record system events (status changes, edits)
+  - [x] Unread message tracking per order
+
 - [ ] **NotificationService** *(Deferred)*
   - [ ] getUnreadForUser(userId)
   - [ ] countUnreadForUser(userId)
@@ -308,6 +331,22 @@ The following decisions were made during documentation review to resolve conflic
   - [x] getProductBreakdown()
   - [x] getYearOverYearSales()
 
+- [x] **UserLocationService** - Session-scoped working location management
+  - [x] setCurrentLocation(location)
+  - [x] getCurrentLocation() → Optional
+  - [x] isCurrentLocationSet()
+  - [x] initializeFromUserPrimaryLocation()
+
+- [x] **UserTimezoneService** - Session-scoped browser timezone management
+  - [x] setBrowserTimezone(ZoneId)
+  - [x] getBrowserTimezone()
+  - [x] isBrowserTimezoneSet()
+
+- [x] **DataChangeNotifier** - Bridge interface for cross-session stale data signals
+  - [x] Notifies UI layer of data changes from service layer
+
+- [x] **StaleDataException** - Optimistic locking conflict detection
+
 ### 4.2 Service Implementations (bakery-jpaservice)
 
 - [x] **JpaUserService**
@@ -315,8 +354,11 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **JpaProductService**
 - [x] **JpaLocationService**
 - [x] **JpaOrderService**
+- [x] **JpaOrderActivityService**
 - [ ] **JpaNotificationService** *(Deferred)*
 - [x] **JpaDashboardService**
+- [x] **SessionUserLocationService** - @SessionScope implementation
+- [x] **SessionUserTimezoneService** - @SessionScope implementation (via VaadinSession attributes)
 
 ### 4.3 MapStruct Mappers (bakery-jpaservice)
 
@@ -326,6 +368,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **LocationMapper** - LocationEntity ↔ LocationSummary
 - [x] **OrderMapper** - OrderEntity ↔ OrderList/OrderDetail/OrderDashboard
 - [x] **OrderItemMapper** - OrderItemEntity ↔ OrderItemSummary/OrderItemDetail
+- [x] **OrderActivityMapper** - OrderActivityEntity ↔ OrderActivity
 - [ ] **NotificationMapper** - NotificationEntity ↔ NotificationSummary *(Deferred)*
 
 ---
@@ -367,9 +410,11 @@ The following decisions were made during documentation review to resolve conflic
 
 ### 6.1 Application Shell (bakery-app)
 
-- [x] **Application.java** updates
+- [x] **Application.java** configuration
   - [x] @StyleSheet(Lumo.STYLESHEET) and @StyleSheet(Lumo.UTILITY_STYLESHEET) - Lumo theme with utility classes
-  - [x] @EnableVaadin for route scanning
+  - [x] @Push - Server push for real-time updates (stale data, messaging)
+  - [x] @PWA - Progressive web app support
+  - [x] Route scanning via root package placement (no @EnableVaadin needed)
 
 ### 6.2 Main Layout (bakery-ui)
 
@@ -377,9 +422,12 @@ The following decisions were made during documentation review to resolve conflic
   - [x] App branding (Café Sunshine logo/name)
   - [x] Desktop: Top horizontal navigation tabs
   - [x] Mobile: Bottom tab bar with overflow menu
-  - [x] User menu trigger (avatar with notification badge)
+  - [x] User menu trigger (avatar)
   - [x] Role-based navigation item visibility
   - [x] Active tab highlighting
+  - [x] Location selector ComboBox (navbar, session-scoped)
+  - [x] Browser timezone detection (onAttach)
+  - [x] Message broadcast registration/unregistration
 
 ### 6.3 Login View (bakery-ui)
 
@@ -423,9 +471,11 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Email, First name, Last name fields
   - [x] Password field with show/hide toggle
   - [x] Role dropdown (Admin, Baker, Barista)
+  - [x] Primary location dropdown
   - [x] Save, Cancel, Delete buttons
   - [x] Validation: unique email, password requirements
-  - [x] Self-edit restrictions
+  - [x] Self-edit restrictions (cannot delete own account, cannot change own role)
+  - [x] Stale data detection with banner
 
 ### 7.2 Products View (bakery-ui)
 
@@ -443,6 +493,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Available toggle
   - [x] Save, Cancel, Delete buttons
   - [x] Validation: unique name, positive price
+  - [x] Stale data detection with banner
 
 ### 7.3 Locations View (bakery-ui)
 
@@ -453,10 +504,12 @@ The following decisions were made during documentation review to resolve conflic
 
 - [x] **LocationDialog** - Create/Edit location dialog
   - [x] Name, Address, Timezone fields
+  - [x] Default country code, Default area code fields
   - [x] Active checkbox
   - [x] Sort order number field
   - [x] Save, Cancel, Delete buttons
   - [x] Validation: unique name, at least one active location
+  - [x] Stale data detection with banner
   - [ ] Deletion protection (cannot delete with orders) *(service layer handles this)*
 
 ---
@@ -468,7 +521,9 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **StorefrontView** - Order management
   - [x] Card-based order list
   - [x] Grouped by: Today, Tomorrow, This Week, Upcoming
-  - [x] @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA})
+  - [x] @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER, UserRole.ROLE_BARISTA})
+  - [x] Auto-refresh via shared signals (cross-session stale data detection)
+  - [x] Change highlighting for new/modified orders (CSS animations)
 
 - [x] **OrderCard** - Individual order display
   - [x] Status badge with color coding
@@ -476,6 +531,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Time and location
   - [x] Customer name
   - [x] Order items summary
+  - [x] Unread message indicator
   - [x] Click to open detail view
 
 ### 8.2 Order Filtering
@@ -483,7 +539,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **FilterBar** - Order filtering component
   - [x] Date range picker (from/to)
   - [x] Status filter (multi-select)
-  - [x] Location filter (dropdown)
+  - [x] Location filter (dropdown with "Current Location" option)
   - [ ] Customer filter (searchable dropdown) *(deferred)*
   - [ ] Paid/Unpaid filter *(deferred)*
   - [ ] "Show past orders" checkbox *(deferred)*
@@ -492,33 +548,33 @@ The following decisions were made during documentation review to resolve conflic
 
 ### 8.3 Edit Order Dialog
 
-- [x] **EditOrderDialog** - Single-page order creation/edit dialog
-  - [ ] Customer section (phone-first for quick lookup)
-    - [ ] Phone number field (first - triggers autofill popup)
-      - [ ] Autofill popup showing partial matches (ignoring punctuation)
-      - [ ] Popup displays phone number and customer name
-      - [ ] Selection populates both phone and name fields
-      - [ ] Phone formatting on blur (uses location's default country/area codes)
-    - [ ] Customer name field (second - conditionally editable)
-      - [ ] Read-only when existing customer selected
-      - [ ] Read-write when new phone number entered
-      - [ ] Skipped in tab order when existing customer selected
+- [x] **EditOrderDialog** - Single-page order creation/edit dialog (Spring prototype bean)
+  - [x] Customer section (phone-first for quick lookup)
+    - [x] Phone number field (first - triggers autofill popup)
+      - [x] Autofill popup showing partial matches (ignoring punctuation)
+      - [x] Popup displays phone number and customer name
+      - [x] Selection populates both phone and name fields
+      - [x] Phone formatting on blur (uses location's default country/area codes)
+    - [x] Customer name field (second - conditionally editable)
+      - [x] Read-only when existing customer selected
+      - [x] Read-write when new phone number entered
+      - [x] Skipped in tab order when existing customer selected
   - [x] Pickup section
-    - [x] Location dropdown (auto-selects if only one active)
+    - [x] Location dropdown (auto-selects from user's current location or if only one active)
     - [x] Due date picker (defaults to today, min: today)
-    - [ ] Due time picker (hourly slots: 08:00, 09:00, etc.)
+    - [x] Due time picker (time intervals)
     - [x] Additional details text area
   - [x] Order items section
     - [x] Product combo box with autocomplete
     - [x] Quantity field with stepper (min: 1)
     - [x] Item notes field
     - [x] Items grid with remove button
-  - [ ] Totals section
-    - [ ] Discount field (currency input)
+  - [x] Totals section
+    - [x] Discount type (percent or currency) with amount field
     - [x] Total calculation (items minus discount)
   - [x] Cancel and Save buttons
-  - [x] Listener pattern for dismiss events (`SaveClickEvent`, `CancelClickEvent`)
-  - [x] `SaveClickEvent` returns created order and new customer flag
+  - [x] Listener pattern for dismiss events (`SaveEvent`, `CancelEvent`)
+  - [x] `SaveEvent` returns created order and new customer flag
 
 ### 8.3.1 Global New Order Button
 
@@ -537,9 +593,14 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Status change dialog
   - [x] "Mark as Paid" button
   - [x] "Cancel Order" button (for pre-production orders)
+  - [x] "Edit Order" button (opens EditOrderDialog, disabled for terminal orders)
+  - [x] Order activity timeline (OrderActivityTimeline component)
+    - [x] System events (status changes, edits)
+    - [x] Staff messages with author and timestamp
+    - [x] Post new message input
+    - [x] Unread message tracking
+  - [x] Auto-refresh via shared signals (cross-session stale data detection)
   - [ ] "Mark as Not OK" button (with problem description) *(deferred)*
-  - [ ] Edit order details (role-based) *(deferred)*
-  - [ ] Order history/audit trail *(deferred)*
 
 ### 8.5 Direct Order Links
 
@@ -605,6 +666,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **UserMenuPopup** - Dropdown menu (MenuBar in MainLayout)
   - [x] User profile section (avatar, name, email, role)
   - [x] "Preferences" link
+  - [x] "About" link (Admin only)
   - [x] "Log out" button
 
 ### 10.3 Notifications *(Deferred)*
@@ -628,7 +690,7 @@ The following decisions were made during documentation review to resolve conflic
       - [x] Current password field
       - [x] New password with minimum length validation
       - [x] Confirm password
-      - [ ] Strength indicator *(deferred)*
+      - [ ] Strength indicator *(placeholder exists, visual feedback deferred)*
     - [ ] Passkey management *(deferred - requires WebAuthn)*
       - [ ] List of registered passkeys
       - [ ] Add passkey button
@@ -804,6 +866,44 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
+## Phase 15: Cross-Cutting Features ✅
+
+### 15.1 Stale Data Prevention
+
+- [x] **Version tracking** - AbstractModel base class with version field
+- [x] **Shared signals** - DataChangeSignals with SharedNumberSignal for cross-session notification
+  - [x] orderVersion, userVersion, productVersion, locationVersion, messageVersion signals
+- [x] **DataChangeNotifier** - Bridge interface (bakery-service) for service→UI layer communication
+- [x] **DataChangeSignalUpdater** - UI-side listener that increments shared signals on data changes
+- [x] **List view auto-refresh** - All list views (Storefront, Users, Products, Locations, Dashboard) react to signal changes
+  - [x] Change detection with highlight animations for new/modified items
+- [x] **Detail view live updates** - OrderDetailView refreshes on cross-session changes
+- [x] **Edit dialog conflict prevention** - StaleDataBanner in UserDialog, ProductDialog, LocationDialog
+  - [x] Pre-save version checks with StaleDataException
+  - [x] Visual banner warning when external changes detected
+- [x] **StaleDataHelper** - Reusable utility for stale data UI patterns
+
+### 15.2 Order Messaging
+
+- [x] **OrderActivityEntity** - Persistent storage for timeline entries
+- [x] **OrderActivityService** - Service for posting messages and recording system events
+- [x] **OrderActivityTimeline** - UI component for displaying and posting messages
+- [x] **MessageBroadcaster** - Cross-session push notification for new messages
+- [x] **VaadinUnreadMessageTracker** - Session-scoped unread message tracking
+- [x] **Unread indicators** - OrderCard shows unread badge in storefront
+
+### 15.3 Session-Scoped Services
+
+- [x] **UserLocationService** - Working location persisted per session
+  - [x] Location selector in MainLayout navbar
+  - [x] Auto-initialized from user's primary location
+  - [x] Used for pre-populating new order location and "Current Location" filter
+- [x] **UserTimezoneService** - Browser timezone detected and stored per session
+  - [x] Auto-detected on MainLayout attach via ExtendedClientDetails
+  - [x] Used by InstantMapper for UTC→local time conversion
+
+---
+
 ## Implementation Notes
 
 ### Priority Order
@@ -818,6 +918,7 @@ The following decisions were made during documentation review to resolve conflic
 8. **Error Handling** (Phase 11): Polished error experience
 9. **Responsive** (Phase 12): Mobile optimization
 10. **Data & Testing** (Phases 13-14): Seed data and quality assurance
+11. **Cross-Cutting** (Phase 15): Stale data, messaging, session services
 
 ### Dependencies
 
