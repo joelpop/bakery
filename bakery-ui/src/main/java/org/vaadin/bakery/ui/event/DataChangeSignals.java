@@ -9,7 +9,7 @@ import com.vaadin.flow.signals.shared.SharedNumberSignal;
  * <p>
  * These are static singletons so all UI sessions share the same signal instances.
  * When one session increments a counter, all sessions subscribed via
- * {@code ComponentEffect.effect()} are notified.
+ * {@code Effect.effect()} are notified.
  */
 public final class DataChangeSignals {
 

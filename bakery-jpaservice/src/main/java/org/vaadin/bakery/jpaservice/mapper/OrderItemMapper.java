@@ -53,6 +53,7 @@ public interface OrderItemMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "order", ignore = true)
     @Mapping(target = "product", ignore = true)
+    @Mapping(target = "status", ignore = true)
     OrderItemEntity toEntity(OrderItemDetail detail, @MappingTarget OrderItemEntity entity);
 
     /**
@@ -61,5 +62,6 @@ public interface OrderItemMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "order", ignore = true)
     @Mapping(target = "product", ignore = true)
+    @Mapping(target = "status", ignore = true)
     OrderItemEntity toNewEntity(OrderItemDetail detail);
 }

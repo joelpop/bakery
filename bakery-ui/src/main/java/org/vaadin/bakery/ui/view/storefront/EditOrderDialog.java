@@ -2,7 +2,7 @@ package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
 import com.vaadin.flow.component.ClickEvent;
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -36,9 +36,13 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ListSignal;
 import com.vaadin.flow.signals.local.ValueSignal;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 import org.vaadin.bakery.service.CustomerService;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderService;
+import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.ui.component.StaleDataBanner;
@@ -68,7 +72,10 @@ import java.util.function.Consumer;
 /**
  * Dialog for creating or editing an order.
  * Uses delegation to Dialog rather than inheritance to control the public API.
+ * Managed as a Spring prototype bean so callers obtain fresh instances via {@code ObjectProvider}.
  */
+@Component
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class EditOrderDialog implements NonComponent {
 
     private final Dialog dialog;
@@ -76,6 +83,7 @@ public class EditOrderDialog implements NonComponent {
 
     private final OrderService orderService;
     private final LocationService locationService;
+    private final ProductService productService;
     private final CustomerService customerService;
     private final UserLocationService userLocationService;
 
@@ -123,13 +131,16 @@ public class EditOrderDialog implements NonComponent {
      *
      * @param orderService        service for persisting orders
      * @param locationService     service for loading available locations
+     * @param productService      service for loading available products
      * @param customerService     service for searching and creating customers
      * @param userLocationService service for resolving the user's current location
      */
     public EditOrderDialog(OrderService orderService, LocationService locationService,
-                           CustomerService customerService, UserLocationService userLocationService) {
+                           ProductService productService, CustomerService customerService,
+                           UserLocationService userLocationService) {
         this.orderService = orderService;
         this.locationService = locationService;
+        this.productService = productService;
         this.customerService = customerService;
         this.userLocationService = userLocationService;
 
@@ -324,13 +335,13 @@ public class EditOrderDialog implements NonComponent {
 
         // Computed signal: calculates the discount amount based on type (percent or dollar) and subtotal
         Signal<BigDecimal> discountValueSignal = Signal.computed(() -> {
-            var sub = subtotalValueSignal.value();
-            var amount = discountAmountSignal.value();
+            var sub = subtotalValueSignal.get();
+            var amount = discountAmountSignal.get();
             if (amount <= 0) {
                 return BigDecimal.ZERO;
             }
             var value = BigDecimal.valueOf(amount);
-            var discount = DiscountType.PERCENT == discountTypeSignal.value()
+            var discount = DiscountType.PERCENT == discountTypeSignal.get()
                     ? sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
                     : value;
             return discount.compareTo(sub) > 0 ? BigDecimal.ZERO : discount;
@@ -338,8 +349,8 @@ public class EditOrderDialog implements NonComponent {
 
         // Computed signal: subtotal minus discount, floored at zero
         Signal<BigDecimal> totalValueSignal = Signal.computed(() -> {
-            var sub = subtotalValueSignal.value();
-            var disc = discountValueSignal.value();
+            var sub = subtotalValueSignal.get();
+            var disc = discountValueSignal.get();
             var result = sub.subtract(disc);
             return result.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : result;
         });
@@ -352,15 +363,15 @@ public class EditOrderDialog implements NonComponent {
 
         totalValueSpan.bindText(totalValueSignal.map(currencyFormat::format));
 
-        discountTypeGroup.addValueChangeListener(e -> discountTypeSignal.value(e.getValue()));
+        discountTypeGroup.addValueChangeListener(e -> discountTypeSignal.set(e.getValue()));
 
         discountAmountField.addValueChangeListener(this::onDiscountAmountFieldValueChanged);
 
         // Reactive effect: validates the discount amount field whenever the discount or subtotal changes,
         // showing an error if the discount is negative or exceeds the subtotal
-        ComponentEffect.effect(discountAmountField, () -> {
-            var sub = subtotalValueSignal.value();
-            var amount = discountAmountSignal.value();
+        Effect.effect(discountAmountField, () -> {
+            var sub = subtotalValueSignal.get();
+            var amount = discountAmountSignal.get();
             if (amount == 0) {
                 discountAmountField.setInvalid(false);
                 return;
@@ -371,7 +382,7 @@ public class EditOrderDialog implements NonComponent {
                 return;
             }
             var value = BigDecimal.valueOf(amount);
-            var rawDiscount = DiscountType.PERCENT == discountTypeSignal.value()
+            var rawDiscount = DiscountType.PERCENT == discountTypeSignal.get()
                     ? sub.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
                     : value;
             if (rawDiscount.compareTo(sub) > 0) {
@@ -386,8 +397,8 @@ public class EditOrderDialog implements NonComponent {
 
         // Reactive effect: switches the item entry form between "add" and "edit" mode
         // based on editingItemSignal (null = add mode, non-null = editing that item)
-        ComponentEffect.effect(addUpdateButton, () -> {
-            var editingItem = editingItemSignal.value();
+        Effect.effect(addUpdateButton, () -> {
+            var editingItem = editingItemSignal.get();
             if (editingItem != null) {
                 productComboBox.getListDataView().getItems()
                         .filter(p -> p.getId().equals(editingItem.getProductId()))
@@ -466,11 +477,6 @@ public class EditOrderDialog implements NonComponent {
         dialog.close();
     }
 
-    /** Sets the list of available products for the product combo box. */
-    public void setAvailableProducts(List<ProductSelect> products) {
-        productComboBox.setItems(products);
-    }
-
     /** Switches the dialog to edit mode and populates it with the given order. */
     public void editOrder(OrderDetail order) {
         editingOrder = order;
@@ -495,8 +501,8 @@ public class EditOrderDialog implements NonComponent {
 
         // Reactive effect: checks if the order was modified or deleted by another session
         // whenever the shared orderVersion signal changes
-        ComponentEffect.effect(dialog, () -> {
-            DataChangeSignals.orderVersion().value();
+        Effect.effect(dialog, () -> {
+            DataChangeSignals.orderVersion().get();
             checkForExternalChanges();
         });
     }
@@ -578,16 +584,16 @@ public class EditOrderDialog implements NonComponent {
     private void handleCustomerSelection(CustomerSummary customer) {
         if (customer != null) {
             // Existing customer selected
-            selectedCustomerSignal.value(customer);
-            customPhoneSignal.value(null); // Clear custom phone since we're using existing customer
+            selectedCustomerSignal.set(customer);
+            customPhoneSignal.set(null); // Clear custom phone since we're using existing customer
             customerNameField.setValue(customer.getName());
             customerNameField.setReadOnly(true);
             // Move focus to next field (due date, since location is already set)
             dueDatePicker.focus();
         } else {
             // Selection cleared - reset to allow new entry
-            selectedCustomerSignal.value(null);
-            customPhoneSignal.value(null);
+            selectedCustomerSignal.set(null);
+            customPhoneSignal.set(null);
             customerNameField.clear();
             customerNameField.setReadOnly(true); // Back to read-only until phone entered
         }
@@ -599,14 +605,14 @@ public class EditOrderDialog implements NonComponent {
         }
         // Format the phone number using location defaults
         var formattedPhone = formatPhoneNumber(phoneNumber);
-        customPhoneSignal.value(formattedPhone);
+        customPhoneSignal.set(formattedPhone);
 
         // Update the displayed value in the ComboBox input field
         customerPhoneComboBox.getElement()
                 .executeJs("this.inputElement.value = $0", formattedPhone);
 
         // New phone number entered - enable name field for entry
-        selectedCustomerSignal.value(null);
+        selectedCustomerSignal.set(null);
         customerNameField.setReadOnly(false);
         customerNameField.clear();
         customerNameField.focus();
@@ -679,7 +685,7 @@ public class EditOrderDialog implements NonComponent {
             return selected.getPhoneNumber();
         }
         // Return formatted custom phone number if available
-        var customPhone = customPhoneSignal.value();
+        var customPhone = customPhoneSignal.get();
         if (customPhone != null && !customPhone.isBlank()) {
             return customPhone;
         }
@@ -691,6 +697,8 @@ public class EditOrderDialog implements NonComponent {
     // ========== Data Operations ==========
 
     private void loadData() {
+        productComboBox.setItems(productService.listAvailable());
+
         var locations = locationService.listActive();
         locationComboBox.setItems(locations);
 
@@ -707,7 +715,7 @@ public class EditOrderDialog implements NonComponent {
     }
 
     private void addOrUpdateItem() {
-        if (editingItemSignal.value() != null) {
+        if (editingItemSignal.get() != null) {
             updateSelectedItem();
         } else {
             addNewItem();
@@ -715,7 +723,7 @@ public class EditOrderDialog implements NonComponent {
     }
 
     private void updateSelectedItem() {
-        var editingItem = editingItemSignal.value();
+        var editingItem = editingItemSignal.get();
         if (editingItem == null) {
             return; // Shouldn't happen, but guard against it
         }
@@ -731,11 +739,11 @@ public class EditOrderDialog implements NonComponent {
         var detailsNormalized = details.trim();
 
         // Check if another item has same product and notes (for combining)
-        var matchingSignal = orderItemsListSignal.value().stream()
-                .filter(s -> s.value() != editingItem) // Exclude the editing item
-                .filter(s -> s.value().getProductId().equals(editingItem.getProductId()))
+        var matchingSignal = orderItemsListSignal.get().stream()
+                .filter(s -> s.get() != editingItem) // Exclude the editing item
+                .filter(s -> s.get().getProductId().equals(editingItem.getProductId()))
                 .filter(s -> {
-                    var existingDetails = s.value().getDetails().trim();
+                    var existingDetails = s.get().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
@@ -743,7 +751,7 @@ public class EditOrderDialog implements NonComponent {
         if (matchingSignal.isPresent()) {
             // Combine: add quantity to matching item, remove editing item
             var targetSignal = matchingSignal.get();
-            var target = targetSignal.value();
+            var target = targetSignal.get();
             target.setQuantity(target.getQuantity() + quantity);
             target.calculateLineTotal();
             targetSignal.update(_ -> target); // Trigger reactivity
@@ -781,10 +789,10 @@ public class EditOrderDialog implements NonComponent {
         var detailsNormalized = details.trim();
 
         // Check for existing item with same product and notes
-        var existingSignal = orderItemsListSignal.value().stream()
-                .filter(s -> s.value().getProductId().equals(product.getId()))
+        var existingSignal = orderItemsListSignal.get().stream()
+                .filter(s -> s.get().getProductId().equals(product.getId()))
                 .filter(s -> {
-                    var existingDetails = s.value().getDetails().trim();
+                    var existingDetails = s.get().getDetails().trim();
                     return existingDetails.equals(detailsNormalized);
                 })
                 .findFirst();
@@ -792,7 +800,7 @@ public class EditOrderDialog implements NonComponent {
         if (existingSignal.isPresent()) {
             // Combine quantities
             var signal = existingSignal.get();
-            var item = signal.value();
+            var item = signal.get();
             item.setQuantity(item.getQuantity() + quantity);
             item.calculateLineTotal();
             signal.update(_ -> item); // Trigger reactivity
@@ -819,8 +827,8 @@ public class EditOrderDialog implements NonComponent {
 
     private void removeItem(OrderItemDetail item) {
         // Find the signal for this item and remove it
-        orderItemsListSignal.value().stream()
-                .filter(s -> s.value() == item)
+        orderItemsListSignal.get().stream()
+                .filter(s -> s.get() == item)
                 .findFirst()
                 .ifPresent(orderItemsListSignal::remove);
         refreshItemsGrid();
@@ -830,15 +838,15 @@ public class EditOrderDialog implements NonComponent {
      * Triggers reactivity for an item after in-place modification.
      */
     private void touchItem(OrderItemDetail item) {
-        orderItemsListSignal.value().stream()
-                .filter(s -> s.value() == item)
+        orderItemsListSignal.get().stream()
+                .filter(s -> s.get() == item)
                 .findFirst()
                 .ifPresent(s -> s.update(_ -> item));
     }
 
     private List<OrderItemDetail> getItemValues() {
-        return orderItemsListSignal.value().stream()
-                .map(ValueSignal::value)
+        return orderItemsListSignal.get().stream()
+                .map(ValueSignal::get)
                 .toList();
     }
 
@@ -911,7 +919,7 @@ public class EditOrderDialog implements NonComponent {
             dueTimePicker.setInvalid(false);
         }
 
-        if (orderItemsListSignal.value().isEmpty()) {
+        if (orderItemsListSignal.get().isEmpty()) {
             Notification.show("Add at least one item", 2000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_WARNING);
             valid = false;
@@ -973,7 +981,7 @@ public class EditOrderDialog implements NonComponent {
         order.setCustomerName(customerNameField.getValue());
         order.setCustomerPhone(getCustomerPhone());
 
-        var selectedCustomer = selectedCustomerSignal.value();
+        var selectedCustomer = selectedCustomerSignal.get();
         if (selectedCustomer != null) {
             order.setCustomerId(selectedCustomer.getId());
         } else if (editingOrder != null) {
@@ -1012,7 +1020,7 @@ public class EditOrderDialog implements NonComponent {
                             () -> {
                                 // Customer not in combo box - set as custom value
                                 if (order.getCustomerPhone() != null) {
-                                    customPhoneSignal.value(order.getCustomerPhone());
+                                    customPhoneSignal.set(order.getCustomerPhone());
                                     customerPhoneComboBox.getElement()
                                             .executeJs("this.inputElement.value = $0", order.getCustomerPhone());
                                 }
@@ -1082,20 +1090,20 @@ public class EditOrderDialog implements NonComponent {
 
     private void clearForm() {
         customerPhoneComboBox.clear();
-        selectedCustomerSignal.value(null);
-        customPhoneSignal.value(null);
+        selectedCustomerSignal.set(null);
+        customPhoneSignal.set(null);
         customerNameField.clear();
         customerNameField.setReadOnly(true);
         additionalDetailsField.clear();
 
         // Clear items
-        var itemSignals = new ArrayList<>(orderItemsListSignal.value());
+        var itemSignals = new ArrayList<>(orderItemsListSignal.get());
         itemSignals.forEach(orderItemsListSignal::remove);
         refreshItemsGrid();
 
         // Clear discount
         discountAmountField.clear();
-        discountAmountSignal.value(0.0);
+        discountAmountSignal.set(0.0);
         discountTypeGroup.setValue(DiscountType.PERCENT);
     }
 
@@ -1113,13 +1121,13 @@ public class EditOrderDialog implements NonComponent {
     private void onDiscountAmountFieldValueChanged(
             ComponentValueChangeEvent<NumberField, Double> event) {
         var val = event.getValue();
-        discountAmountSignal.value(val != null ? val : 0.0);
+        discountAmountSignal.set(val != null ? val : 0.0);
     }
 
     private void onItemsGridSelectionChanged(
             SelectionEvent<Grid<OrderItemDetail>, OrderItemDetail> event) {
         var selected = event.getFirstSelectedItem().orElse(null);
-        editingItemSignal.value(selected);
+        editingItemSignal.set(selected);
         if (selected != null) {
             quantityField.focus();
         } else {

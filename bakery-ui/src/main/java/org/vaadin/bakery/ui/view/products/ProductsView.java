@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.products;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -14,7 +14,6 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
@@ -27,7 +26,6 @@ import org.vaadin.bakery.uimodel.data.ProductSummary;
 import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
-import java.io.ByteArrayInputStream;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
@@ -37,13 +35,16 @@ import java.util.Locale;
  * Admin can create, edit, delete products.
  * Baker can view products (read-only).
  */
-@Route("products")
+@Route(ProductsView.ROUTE)
 @PageTitle("Products")
 @Menu(order = 2, icon = LineAwesomeIconUrl.BIRTHDAY_CAKE_SOLID)
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER})
 public class ProductsView extends VerticalLayout {
 
-    private final ProductService productService;
+    /** Route path for this view. */
+    public static final String ROUTE = "products";
+
+    private final transient ProductService productService;
     private final Grid<ProductSummary> grid;
     private final TextField searchField;
     private final boolean isAdmin;
@@ -125,9 +126,9 @@ public class ProductsView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the grid whenever product data changes
         // in any session (via shared productVersion signal) or locally (via refreshTriggerSignal)
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.productVersion().value();
-            refreshTriggerSignal.value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.productVersion().get();
+            refreshTriggerSignal.get();
             refreshGrid();
         });
 
@@ -139,11 +140,7 @@ public class ProductsView extends VerticalLayout {
 
     private Image createProductImage(ProductSummary product) {
         if (product.getPhoto() != null && product.getPhoto().length > 0) {
-            var resource = new StreamResource(
-                    "product-" + product.getId(),
-                    () -> new ByteArrayInputStream(product.getPhoto())
-            );
-            var image = new Image(resource, product.getName());
+            var image = new Image(product.getPhoto(), product.getName());
             image.setWidth("40px");
             image.setHeight("40px");
             image.addClassNames(LumoUtility.BorderRadius.SMALL);

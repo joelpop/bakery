@@ -13,12 +13,10 @@ import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
-import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
+import com.vaadin.flow.server.streams.UploadHandler;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.vaadin.bakery.service.CurrentUserService;
@@ -26,23 +24,23 @@ import org.vaadin.bakery.service.UserService;
 import org.vaadin.bakery.ui.component.ViewHeader;
 import org.vaadin.bakery.uimodel.data.UserDetail;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 
 /**
  * User preferences view for profile and security settings.
  */
-@Route("preferences")
+@Route(PreferencesView.ROUTE)
 @PageTitle("Preferences")
 @PermitAll
 public class PreferencesView extends VerticalLayout {
 
-    private final CurrentUserService currentUserService;
-    private final UserService userService;
+    /** Route path for this view. */
+    public static final String ROUTE = "preferences";
+
+    private final transient CurrentUserService currentUserService;
+    private final transient UserService userService;
 
     private UserDetail currentUser;
     private final Avatar profileAvatar;
-    private final MemoryBuffer photoUploadBuffer;
     private byte[] uploadedPhoto;
     private String uploadedPhotoContentType;
 
@@ -85,12 +83,15 @@ public class PreferencesView extends VerticalLayout {
         // Profile section
         var profileSection = createSection("Profile");
 
-        photoUploadBuffer = new MemoryBuffer();
-        var upload = new Upload(photoUploadBuffer);
+        var upload = new Upload(UploadHandler.inMemory((metadata, data) -> {
+            uploadedPhoto = data;
+            uploadedPhotoContentType = metadata.contentType();
+            updateAvatarPreview();
+            savePhoto();
+        }));
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/gif");
         upload.setMaxFileSize(2 * 1024 * 1024); // 2MB
         upload.setUploadButton(new Button("Change Photo"));
-        upload.addSucceededListener(this::onPhotoUploadSucceeded);
 
         var avatarSection = new VerticalLayout();
         avatarSection.setPadding(false);
@@ -191,36 +192,21 @@ public class PreferencesView extends VerticalLayout {
         return section;
     }
 
-    private void onPhotoUploadSucceeded(SucceededEvent event) {
-        try {
-            uploadedPhoto = photoUploadBuffer.getInputStream().readAllBytes();
-            uploadedPhotoContentType = event.getMIMEType();
-            updateAvatarPreview();
-            savePhoto();
-        } catch (IOException _) {
-            Notification.show("Failed to upload photo", 3000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
-
     private void loadCurrentUser() {
         currentUserService.getCurrentUser().ifPresent(user -> {
             this.currentUser = user;
             profileAvatar.setName(user.getFirstName() + " " + user.getLastName());
 
             if (user.getPhoto() != null && user.getPhoto().length > 0) {
-                var resource = new StreamResource("user-photo",
-                        () -> new ByteArrayInputStream(user.getPhoto()));
-                profileAvatar.setImageResource(resource);
+                var photo = user.getPhoto();
+                profileAvatar.setImageHandler(event -> event.getOutputStream().write(photo));
             }
         });
     }
 
     private void updateAvatarPreview() {
         if (uploadedPhoto != null && uploadedPhoto.length > 0) {
-            var resource = new StreamResource("user-photo",
-                    () -> new ByteArrayInputStream(uploadedPhoto));
-            profileAvatar.setImageResource(resource);
+            profileAvatar.setImageHandler(event -> event.getOutputStream().write(uploadedPhoto));
         }
     }
 

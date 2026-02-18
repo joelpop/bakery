@@ -47,6 +47,10 @@ public abstract class UserMapper {
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "primaryLocation", source = "primaryLocationId", qualifiedByName = "locationIdToEntity")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     public abstract UserEntity toEntity(UserDetail detail, @MappingTarget UserEntity entity);
 
     /**
@@ -55,6 +59,10 @@ public abstract class UserMapper {
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "primaryLocation", source = "primaryLocationId", qualifiedByName = "locationIdToEntity")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     public abstract UserEntity toNewEntity(UserDetail detail);
 
     /**

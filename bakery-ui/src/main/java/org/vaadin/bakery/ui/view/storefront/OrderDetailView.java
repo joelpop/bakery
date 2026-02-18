@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -23,13 +23,10 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
-import org.vaadin.bakery.service.CustomerService;
-import org.vaadin.bakery.service.LocationService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.service.OrderService;
-import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.StaleDataException;
-import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderItemDetail;
@@ -44,17 +41,14 @@ import java.util.Locale;
 /**
  * View for displaying and managing a single order.
  */
-@Route("orders/:orderId")
+@Route(StorefrontView.ROUTE + "/:orderId")
 @PageTitle("Order Details")
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA, UserRole.ROLE_BAKER})
 public class OrderDetailView extends VerticalLayout implements BeforeEnterObserver {
 
-    private final OrderService orderService;
-    private final OrderActivityService orderActivityService;
-    private final ProductService productService;
-    private final LocationService locationService;
-    private final CustomerService customerService;
-    private final UserLocationService userLocationService;
+    private final transient OrderService orderService;
+    private final transient OrderActivityService orderActivityService;
+    private final transient ObjectProvider<EditOrderDialog> editOrderDialogProvider;
 
     // Signal holding the currently displayed order; all display fields react to changes in this signal
     private final transient ValueSignal<OrderDetail> orderSignal;
@@ -83,15 +77,10 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     /** Creates the order detail view with order information, items grid, action buttons, and activity timeline. */
     public OrderDetailView(OrderService orderService, OrderActivityService orderActivityService,
-                           ProductService productService,
-                           LocationService locationService, CustomerService customerService,
-                           UserLocationService userLocationService) {
+                           ObjectProvider<EditOrderDialog> editOrderDialogProvider) {
         this.orderService = orderService;
         this.orderActivityService = orderActivityService;
-        this.productService = productService;
-        this.locationService = locationService;
-        this.customerService = customerService;
-        this.userLocationService = userLocationService;
+        this.editOrderDialogProvider = editOrderDialogProvider;
 
         // Component initializations
         addClassName("order-detail-view");
@@ -153,8 +142,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         // Reactive effect: updates all display fields (status, customer, location, items, payment, history)
         // whenever the orderSignal value changes
-        ComponentEffect.effect(this, () -> {
-            var order = orderSignal.value();
+        Effect.effect(this, () -> {
+            var order = orderSignal.get();
             if (order == null) return;
 
             orderIdLabel.setText("#" + order.getId());
@@ -205,8 +194,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         // Reactive effect: rebuilds the action buttons (edit, change status, mark paid, cancel)
         // based on the current order status and payment state
-        ComponentEffect.effect(this, () -> {
-            var order = orderSignal.value();
+        Effect.effect(this, () -> {
+            var order = orderSignal.get();
             actionButtons.removeAll();
             if (order == null) return;
 
@@ -243,8 +232,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         // Reactive effect: re-fetches the order from the database whenever any session modifies
         // order data (via shared orderVersion signal), keeping this view in sync across sessions
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.orderVersion().value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.orderVersion().get();
             refreshOrder();
         });
 
@@ -332,7 +321,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
             var order = optOrder.get();
             currentOrderId = order.getId();
             currentOrderVersion = order.getVersion();
-            orderSignal.value(order);
+            orderSignal.set(order);
 
             // Set up the activity timeline
             timelineContainer.removeAll();
@@ -368,18 +357,17 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void openEditDialog() {
-        var order = orderSignal.value();
+        var order = orderSignal.get();
         if (order == null) return;
 
-        var editDialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
-        editDialog.setAvailableProducts(productService.listAvailable());
+        var editDialog = editOrderDialogProvider.getObject();
         editDialog.editOrder(order);
         editDialog.addSaveListener(_ -> refreshOrder());
         editDialog.open();
     }
 
     private void openStatusChangeDialog() {
-        var order = orderSignal.value();
+        var order = orderSignal.get();
         if (order == null) return;
 
         var dialog = new Dialog();
@@ -419,7 +407,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
                 order -> {
                     if (!order.getVersion().equals(currentOrderVersion)) {
                         currentOrderVersion = order.getVersion();
-                        orderSignal.value(order);
+                        orderSignal.set(order);
                     }
                 },
                 () -> {
@@ -431,7 +419,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void updateStatus(OrderStatus newStatus) {
-        var order = orderSignal.value();
+        var order = orderSignal.get();
         if (order == null) return;
 
         try {
@@ -452,7 +440,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void markAsPaid() {
-        var order = orderSignal.value();
+        var order = orderSignal.get();
         if (order == null) return;
 
         try {
@@ -473,7 +461,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void confirmCancel() {
-        var order = orderSignal.value();
+        var order = orderSignal.get();
         if (order == null) return;
 
         var dialog = new Dialog();
@@ -492,7 +480,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
     }
 
     private void cancelOrder() {
-        var order = orderSignal.value();
+        var order = orderSignal.get();
         if (order == null) return;
 
         try {

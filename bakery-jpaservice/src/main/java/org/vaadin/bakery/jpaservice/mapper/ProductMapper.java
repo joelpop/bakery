@@ -21,6 +21,7 @@ public interface ProductMapper {
     /**
      * Converts a {@link ProductSummaryProjection} to a {@link ProductSummary} UI model.
      */
+    @Mapping(target = "version", ignore = true)
     ProductSummary toSummary(ProductSummaryProjection projection);
 
     /**
@@ -47,11 +48,19 @@ public interface ProductMapper {
      * Updates an existing {@link ProductEntity} from a {@link ProductSummary} UI model.
      */
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     ProductEntity toEntity(ProductSummary summary, @MappingTarget ProductEntity entity);
 
     /**
      * Creates a new {@link ProductEntity} from a {@link ProductSummary} UI model.
      */
     @Mapping(target = "version", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     ProductEntity toNewEntity(ProductSummary summary);
 }

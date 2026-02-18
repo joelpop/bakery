@@ -1,9 +1,11 @@
 package org.vaadin.bakery.uimodel.data;
 
+import java.io.Serializable;
+
 /**
  * Base class for UI models that need identity and version tracking.
  */
-public abstract class AbstractModel {
+public abstract class AbstractModel implements Serializable {
 
     private Long id;
     private Integer version;

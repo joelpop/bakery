@@ -1,7 +1,7 @@
 package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
@@ -21,11 +21,10 @@ import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
-import org.vaadin.bakery.service.CustomerService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.vaadin.bakery.service.LocationService;
 import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.service.OrderService;
-import org.vaadin.bakery.service.ProductService;
 import org.vaadin.bakery.service.UserLocationService;
 import org.vaadin.bakery.ui.MainLayout;
 import org.vaadin.bakery.ui.component.ChangeTracker;
@@ -47,19 +46,21 @@ import java.util.stream.Collectors;
 /**
  * Storefront view showing orders as cards grouped by date.
  */
-@Route("orders")
+@Route(StorefrontView.ROUTE)
 @RouteAlias("")
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER, UserRole.ROLE_BARISTA})
 public class StorefrontView extends VerticalLayout {
 
-    private final OrderService orderService;
-    private final OrderActivityService orderActivityService;
-    private final ProductService productService;
-    private final CustomerService customerService;
-    private final LocationService locationService;
-    private final UserLocationService userLocationService;
+    /** Route path for this view. */
+    public static final String ROUTE = "orders";
+
+    private final transient OrderService orderService;
+    private final transient OrderActivityService orderActivityService;
+    private final transient LocationService locationService;
+    private final transient UserLocationService userLocationService;
+    private final transient ObjectProvider<EditOrderDialog> editOrderDialogProvider;
     private final Div ordersContainer;
     private final FilterBar filterBar;
     private final TextField searchField;
@@ -76,15 +77,13 @@ public class StorefrontView extends VerticalLayout {
 
     /** Creates the storefront view with filter bar and order cards grouped by date. */
     public StorefrontView(OrderService orderService, OrderActivityService orderActivityService,
-                          LocationService locationService,
-                          ProductService productService, CustomerService customerService,
-                          UserLocationService userLocationService) {
+                          LocationService locationService, UserLocationService userLocationService,
+                          ObjectProvider<EditOrderDialog> editOrderDialogProvider) {
         this.orderService = orderService;
         this.orderActivityService = orderActivityService;
         this.locationService = locationService;
-        this.productService = productService;
-        this.customerService = customerService;
         this.userLocationService = userLocationService;
+        this.editOrderDialogProvider = editOrderDialogProvider;
 
         // Component initializations
         addClassName("storefront-view");
@@ -127,10 +126,10 @@ public class StorefrontView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the orders display whenever order data changes
         // in any session (via shared orderVersion/messageVersion signals) or locally (via refreshTriggerSignal)
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.orderVersion().value();
-            DataChangeSignals.messageVersion().value();
-            refreshTriggerSignal.value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.orderVersion().get();
+            DataChangeSignals.messageVersion().get();
+            refreshTriggerSignal.get();
             rebuildOrdersDisplay();
         });
 
@@ -171,8 +170,7 @@ public class StorefrontView extends VerticalLayout {
     }
 
     private void openNewOrderDialog() {
-        var dialog = new EditOrderDialog(orderService, locationService, customerService, userLocationService);
-        dialog.setAvailableProducts(productService.listAvailable());
+        var dialog = editOrderDialogProvider.getObject();
         dialog.addSaveListener(_ -> triggerRefresh());
         dialog.open();
     }

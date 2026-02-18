@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.dashboard;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
@@ -25,13 +25,16 @@ import java.time.format.DateTimeFormatter;
 /**
  * Dashboard view showing business analytics and KPIs.
  */
-@Route("dashboard")
+@Route(DashboardView.ROUTE)
 @PageTitle("Dashboard")
 @Menu(order = 0, icon = LineAwesomeIconUrl.CHART_AREA_SOLID)
 @PermitAll
 public class DashboardView extends VerticalLayout {
 
-    private final DashboardService dashboardService;
+    /** Route path for this view. */
+    public static final String ROUTE = "dashboard";
+
+    private final transient DashboardService dashboardService;
 
     // KPI Cards
     private final KpiCard remainingTodayCard;
@@ -116,10 +119,10 @@ public class DashboardView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the dashboard KPIs and upcoming orders
         // whenever order or product data changes in any session, or when triggered locally
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.orderVersion().value();
-            DataChangeSignals.productVersion().value();
-            refreshTriggerSignal.value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.orderVersion().get();
+            DataChangeSignals.productVersion().get();
+            refreshTriggerSignal.get();
             refreshData();
         });
 

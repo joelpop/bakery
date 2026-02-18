@@ -19,6 +19,7 @@ public interface LocationMapper {
     /**
      * Converts a {@link LocationSummaryProjection} to a {@link LocationSummary} UI model.
      */
+    @Mapping(target = "version", ignore = true)
     LocationSummary toSummary(LocationSummaryProjection projection);
 
     /**
@@ -40,11 +41,19 @@ public interface LocationMapper {
      * Updates an existing {@link LocationEntity} from a {@link LocationSummary} UI model.
      */
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     LocationEntity toEntity(LocationSummary summary, @MappingTarget LocationEntity entity);
 
     /**
      * Creates a new {@link LocationEntity} from a {@link LocationSummary} UI model.
      */
     @Mapping(target = "version", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     LocationEntity toNewEntity(LocationSummary summary);
 }

@@ -38,6 +38,10 @@ public interface CustomerMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "active", ignore = true)
     @Mapping(target = "orders", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     CustomerEntity toEntity(CustomerSummary summary, @MappingTarget CustomerEntity entity);
 
     /**
@@ -46,5 +50,9 @@ public interface CustomerMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "active", constant = "true")
     @Mapping(target = "orders", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
     CustomerEntity toNewEntity(CustomerSummary summary);
 }

@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.users;
 
-import com.vaadin.flow.component.ComponentEffect;
+import com.vaadin.flow.signals.impl.Effect;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -14,7 +14,6 @@ import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
@@ -29,22 +28,24 @@ import org.vaadin.bakery.uimodel.data.UserSummary;
 import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
-import java.io.ByteArrayInputStream;
 import java.util.List;
 
 /**
  * User management view (Admin only).
  * Displays a grid of users with CRUD operations.
  */
-@Route("users")
+@Route(UsersView.ROUTE)
 @PageTitle("Users")
 @Menu(order = 4, icon = LineAwesomeIconUrl.USERS_SOLID)
 @RolesAllowed(UserRole.ROLE_ADMIN)
 public class UsersView extends VerticalLayout {
 
-    private final UserService userService;
-    private final CurrentUserService currentUserService;
-    private final LocationService locationService;
+    /** Route path for this view. */
+    public static final String ROUTE = "users";
+
+    private final transient UserService userService;
+    private final transient CurrentUserService currentUserService;
+    private final transient LocationService locationService;
     private final Grid<UserSummary> grid;
     private final TextField searchField;
 
@@ -119,9 +120,9 @@ public class UsersView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the grid whenever user data changes
         // in any session (via shared userVersion signal) or locally (via refreshTriggerSignal)
-        ComponentEffect.effect(this, () -> {
-            DataChangeSignals.userVersion().value();
-            refreshTriggerSignal.value();
+        Effect.effect(this, () -> {
+            DataChangeSignals.userVersion().get();
+            refreshTriggerSignal.get();
             refreshGrid();
         });
 
@@ -134,11 +135,8 @@ public class UsersView extends VerticalLayout {
     private Avatar createUserAvatar(UserSummary user) {
         var avatar = new Avatar(user.getFullName());
         if (user.getPhoto() != null && user.getPhoto().length > 0) {
-            var resource = new StreamResource(
-                    "user-" + user.getId(),
-                    () -> new ByteArrayInputStream(user.getPhoto())
-            );
-            avatar.setImageResource(resource);
+            var photo = user.getPhoto();
+            avatar.setImageHandler(event -> event.getOutputStream().write(photo));
         }
         return avatar;
     }
