@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.users;
 
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -120,7 +120,7 @@ public class UsersView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the grid whenever user data changes
         // in any session (via shared userVersion signal) or locally (via refreshTriggerSignal)
-        Effect.effect(this, () -> {
+        ElementEffect.effect(this.getElement(), () -> {
             DataChangeSignals.userVersion().get();
             refreshTriggerSignal.get();
             refreshGrid();

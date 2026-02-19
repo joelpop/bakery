@@ -138,14 +138,13 @@ public class OrderCard extends Div {
 
     private String mapStatusToTheme(OrderStatus status) {
         return switch (status) {
-            case NEW -> "primary";
+            case IN_REVIEW -> "primary";
             case VERIFIED -> "success";
-            case NOT_OK -> "error";
-            case CANCELLED -> "contrast";
             case IN_PROGRESS -> "warning";
-            case BAKED, PACKAGED -> "";
+            case PRODUCED, PACKAGED, IN_TRANSIT -> "";
             case READY_FOR_PICK_UP -> "success";
             case PICKED_UP -> "contrast";
+            case CANCELED -> "error";
         };
     }
 

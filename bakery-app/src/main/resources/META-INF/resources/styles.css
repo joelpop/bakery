@@ -449,3 +449,80 @@ vaadin-grid::part(row-highlight) {
 .message-input {
     font-size: var(--lumo-font-size-s);
 }
+
+/* =============================================================================
+   Bakery Board
+   ============================================================================= */
+
+.bakery-view {
+    background: var(--lumo-contrast-5pct);
+}
+
+/* Swimlane columns - equal width, full height */
+.bakery-swimlanes {
+    gap: 1px;
+    background: var(--lumo-contrast-10pct);
+}
+
+.bakery-swimlane {
+    background: var(--lumo-contrast-5pct);
+    min-width: 0;
+}
+
+.swimlane-header {
+    background: var(--lumo-base-color);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+    flex-shrink: 0;
+}
+
+/* Bakery tile cards */
+.bakery-tile {
+    background: var(--lumo-base-color);
+    border-radius: var(--lumo-border-radius-m);
+    box-shadow: var(--lumo-box-shadow-xs);
+    padding: var(--lumo-space-s) var(--lumo-space-m);
+    cursor: grab;
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.bakery-tile:hover {
+    box-shadow: var(--lumo-box-shadow-s);
+    transform: translateY(-1px);
+}
+
+/* Dragged tile ghost */
+.bakery-tile.v-dragged {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+/* Drop target highlight */
+.v-drag-over-target {
+    outline: 2px dashed var(--lumo-primary-color);
+    outline-offset: -2px;
+    background: var(--lumo-primary-color-10pct);
+}
+
+/* Responsive: tablet - compressed columns */
+@media (max-width: 1024px) {
+    .bakery-swimlanes {
+        overflow-x: auto;
+    }
+
+    .bakery-swimlane {
+        min-width: 220px;
+    }
+}
+
+/* Responsive: phone - horizontal scroll */
+@media (max-width: 480px) and (pointer: coarse) {
+    .bakery-swimlanes {
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+    }
+
+    .bakery-swimlane {
+        min-width: 85vw;
+        scroll-snap-align: start;
+    }
+}

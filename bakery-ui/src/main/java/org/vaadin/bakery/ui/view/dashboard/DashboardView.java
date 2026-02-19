@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.dashboard;
 
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
@@ -119,7 +119,7 @@ public class DashboardView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the dashboard KPIs and upcoming orders
         // whenever order or product data changes in any session, or when triggered locally
-        Effect.effect(this, () -> {
+        ElementEffect.effect(this.getElement(), () -> {
             DataChangeSignals.orderVersion().get();
             DataChangeSignals.productVersion().get();
             refreshTriggerSignal.get();

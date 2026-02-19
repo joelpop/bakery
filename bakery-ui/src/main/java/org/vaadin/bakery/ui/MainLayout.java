@@ -32,6 +32,7 @@ import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.router.RouterLayout;
 import com.vaadin.flow.server.auth.AccessAnnotationChecker;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.shared.Registration;
@@ -64,8 +65,8 @@ import java.util.Map;
  * - Role-based navigation item visibility
  */
 @Layout
-@PermitAll
-public class MainLayout extends AppLayout implements RouterLayout, AfterNavigationObserver {
+@AnonymousAllowed
+public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     private final transient CurrentUserService currentUserService;
     private final transient AccessAnnotationChecker accessChecker;

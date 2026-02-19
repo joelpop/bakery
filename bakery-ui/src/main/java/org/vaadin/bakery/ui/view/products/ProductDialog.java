@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.products;
 
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -55,6 +55,7 @@ public class ProductDialog implements NonComponent {
     private final TextField sizeField;
     private final BigDecimalField priceField;
     private final Checkbox availableCheckbox;
+    private final Checkbox batchableCheckbox;
 
     private final Div photoContainerDiv;
     private byte[] uploadedPhoto;
@@ -95,6 +96,9 @@ public class ProductDialog implements NonComponent {
         priceField.setPrefixComponent(new Span("$"));
 
         availableCheckbox = new Checkbox("Available");
+
+        batchableCheckbox = new Checkbox("Batchable");
+        batchableCheckbox.setTooltipText("When enabled, items of this product across orders are grouped into a single tile on the bakery board");
 
         photoContainerDiv = new Div();
         photoContainerDiv.getStyle()
@@ -152,9 +156,13 @@ public class ProductDialog implements NonComponent {
         binder.forField(availableCheckbox)
                 .bind(ProductSummary::isAvailable, ProductSummary::setAvailable);
 
+        binder.forField(batchableCheckbox)
+                .bind(ProductSummary::isBatchable, ProductSummary::setBatchable);
+
         // Value settings
         if (isNew) {
             availableCheckbox.setValue(true);
+            batchableCheckbox.setValue(true);
         }
 
         binder.readBean(product);
@@ -171,7 +179,8 @@ public class ProductDialog implements NonComponent {
         form.add(descriptionField, 2);
         form.add(sizeField, 1);
         form.add(priceField, 1);
-        form.add(availableCheckbox, 2);
+        form.add(availableCheckbox, 1);
+        form.add(batchableCheckbox, 1);
 
         var footer = new HorizontalLayout();
         footer.setWidthFull();
@@ -194,7 +203,7 @@ public class ProductDialog implements NonComponent {
 
             // Reactive effect: checks if the product was modified or deleted by another session
             // whenever the shared productVersion signal changes
-            Effect.effect(dialog, () -> {
+            ElementEffect.effect(dialog.getElement(), () -> {
                 DataChangeSignals.productVersion().get();
                 checkForExternalChanges();
             });

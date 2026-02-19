@@ -28,7 +28,7 @@ public class JpaDashboardService implements DashboardService {
 
     private static final List<OrderStatusCode> TERMINAL_STATUSES = List.of(
             OrderStatusCode.PICKED_UP,
-            OrderStatusCode.CANCELLED
+            OrderStatusCode.CANCELED
     );
 
     private final OrderRepository orderRepository;
@@ -59,12 +59,12 @@ public class JpaDashboardService implements DashboardService {
 
     @Override
     public long getNewOrdersCount() {
-        return orderRepository.countByStatus(OrderStatusCode.NEW);
+        return orderRepository.countByStatus(OrderStatusCode.IN_REVIEW);
     }
 
     @Override
     public Optional<LocalDateTime> getLastNewOrderTime() {
-        var newOrders = orderRepository.findByStatus(OrderStatusCode.NEW);
+        var newOrders = orderRepository.findByStatus(OrderStatusCode.IN_REVIEW);
         return newOrders.stream()
                 .map(o -> o.getCreatedAt())
                 .max(Instant::compareTo)

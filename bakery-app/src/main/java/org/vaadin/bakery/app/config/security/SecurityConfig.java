@@ -28,14 +28,11 @@ public class SecurityConfig {
 
     /** Configures the security filter chain with Vaadin integration, login view, and session management. */
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
-            configurer.loginView(LoginView.class);
-        })
-        .sessionManagement(session -> {
-            session.maximumSessions(5);
-        })
-        .build();
+    SecurityFilterChain securityFilterChain(HttpSecurity http) {
+        return http.with(VaadinSecurityConfigurer.vaadin(),
+                        configurer -> configurer.loginView(LoginView.class))
+                .sessionManagement(session -> session.maximumSessions(5))
+                .build();
     }
 
     /** Provides a BCrypt password encoder for hashing user passwords. */

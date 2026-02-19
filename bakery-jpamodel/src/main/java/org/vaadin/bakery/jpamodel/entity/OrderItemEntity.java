@@ -25,7 +25,7 @@ public class OrderItemEntity extends AbstractEntity {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private OrderItemStatusCode status = OrderItemStatusCode.NEW;
+    private OrderItemStatusCode status = OrderItemStatusCode.PENDING_REVIEW;
 
     @NotNull
     @Positive

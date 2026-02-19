@@ -2,7 +2,7 @@ package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
 import com.vaadin.flow.component.ClickEvent;
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -369,7 +369,7 @@ public class EditOrderDialog implements NonComponent {
 
         // Reactive effect: validates the discount amount field whenever the discount or subtotal changes,
         // showing an error if the discount is negative or exceeds the subtotal
-        Effect.effect(discountAmountField, () -> {
+        ElementEffect.effect(discountAmountField.getElement(), () -> {
             var sub = subtotalValueSignal.get();
             var amount = discountAmountSignal.get();
             if (amount == 0) {
@@ -397,7 +397,7 @@ public class EditOrderDialog implements NonComponent {
 
         // Reactive effect: switches the item entry form between "add" and "edit" mode
         // based on editingItemSignal (null = add mode, non-null = editing that item)
-        Effect.effect(addUpdateButton, () -> {
+        ElementEffect.effect(addUpdateButton.getElement(), () -> {
             var editingItem = editingItemSignal.get();
             if (editingItem != null) {
                 productComboBox.getListDataView().getItems()
@@ -501,7 +501,7 @@ public class EditOrderDialog implements NonComponent {
 
         // Reactive effect: checks if the order was modified or deleted by another session
         // whenever the shared orderVersion signal changes
-        Effect.effect(dialog, () -> {
+        ElementEffect.effect(dialog.getElement(), () -> {
             DataChangeSignals.orderVersion().get();
             checkForExternalChanges();
         });
@@ -959,7 +959,7 @@ public class EditOrderDialog implements NonComponent {
                 close();
             } else {
                 // Create mode
-                order.setStatus(OrderStatus.NEW);
+                order.setStatus(OrderStatus.IN_REVIEW);
                 order.setPaid(false);
 
                 var savedOrder = orderService.create(order);

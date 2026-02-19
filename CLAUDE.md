@@ -402,6 +402,26 @@ Use standard Jakarta Security annotations for view permissions. Use the compile-
 public class StorefrontView extends VerticalLayout { }
 ```
 
+### Layout Security Annotation
+
+MainLayout uses `@AnonymousAllowed` (Vaadin's `com.vaadin.flow.server.auth.AnonymousAllowed`) instead of `@PermitAll`. In Vaadin 25, `AnnotatedViewAccessChecker` does not reliably find `@PermitAll` on `@Layout` classes, producing:
+
+```
+Denied access to view '...' due to layout 'MainLayout' access rules.
+```
+
+Using `@AnonymousAllowed` on the layout bypasses the broken check. Each view's own `@RolesAllowed`/`@PermitAll` annotation still controls access — the layout annotation only determines whether the layout itself blocks navigation.
+
+```java
+@Layout
+@AnonymousAllowed  // DO NOT use @PermitAll — AnnotatedViewAccessChecker won't find it
+public class MainLayout extends AppLayout implements AfterNavigationObserver {
+    // DO NOT add "implements RouterLayout" — already inherited from AppLayout
+}
+```
+
+**DO NOT change this** — it is the only combination that works with the Vaadin 25.1-SNAPSHOT.
+
 ## UI/UX
 
 ### Views

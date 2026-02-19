@@ -11,6 +11,7 @@ public class ProductSelect {
     private String name;
     private String size;
     private BigDecimal price;
+    private boolean batchable;
 
     public Long getId() {
         return id;
@@ -42,6 +43,14 @@ public class ProductSelect {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public boolean isBatchable() {
+        return batchable;
+    }
+
+    public void setBatchable(boolean batchable) {
+        this.batchable = batchable;
     }
 
     public String getDisplayName() {

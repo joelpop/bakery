@@ -21,6 +21,7 @@ public class OrderList extends AbstractAuditableModel {
     private boolean paid;
     private String customerName;
     private String locationName;
+    private boolean hasRejectedItems;
     private List<OrderItemSummary> items = new ArrayList<>();
 
     public Long getId() {
@@ -85,6 +86,14 @@ public class OrderList extends AbstractAuditableModel {
 
     public void setLocationName(String locationName) {
         this.locationName = locationName;
+    }
+
+    public boolean isHasRejectedItems() {
+        return hasRejectedItems;
+    }
+
+    public void setHasRejectedItems(boolean hasRejectedItems) {
+        this.hasRejectedItems = hasRejectedItems;
     }
 
     public List<OrderItemSummary> getItems() {

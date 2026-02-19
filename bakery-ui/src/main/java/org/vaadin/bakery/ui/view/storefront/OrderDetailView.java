@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -16,6 +16,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
@@ -30,6 +31,7 @@ import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
 import org.vaadin.bakery.uimodel.data.OrderItemDetail;
+import org.vaadin.bakery.uimodel.type.OrderItemStatus;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
 import org.vaadin.bakery.uimodel.type.UserRole;
 
@@ -133,6 +135,27 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         itemsGrid.addColumn(OrderItemDetail::getDetails)
                 .setHeader("Notes")
                 .setFlexGrow(1);
+        itemsGrid.addComponentColumn(item -> {
+            var badge = new Span(item.getStatus().getDisplayName());
+            badge.getElement().getThemeList().add("badge small " + item.getStatus().getBadgeTheme());
+            return badge;
+        }).setHeader("Status").setFlexGrow(0).setWidth("130px");
+        itemsGrid.addComponentColumn(item -> {
+            if (item.getStatus() != OrderItemStatus.REJECTED) {
+                return new Span();
+            }
+            var resolveButton = new Button("Resolve");
+            resolveButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
+            resolveButton.addClickListener(_ -> openResolveDialog(item));
+            var cancelItemButton = new Button("Cancel");
+            cancelItemButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR,
+                    ButtonVariant.LUMO_TERTIARY);
+            cancelItemButton.addClickListener(_ -> openCancelItemDialog(item));
+            var layout = new HorizontalLayout(resolveButton, cancelItemButton);
+            layout.setSpacing(true);
+            layout.setPadding(false);
+            return layout;
+        }).setHeader("Actions").setFlexGrow(0).setWidth("180px");
 
         actionButtons = new HorizontalLayout();
         actionButtons.setWidthFull();
@@ -142,7 +165,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         // Reactive effect: updates all display fields (status, customer, location, items, payment, history)
         // whenever the orderSignal value changes
-        Effect.effect(this, () -> {
+        ElementEffect.effect(this.getElement(), () -> {
             var order = orderSignal.get();
             if (order == null) return;
 
@@ -194,7 +217,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         // Reactive effect: rebuilds the action buttons (edit, change status, mark paid, cancel)
         // based on the current order status and payment state
-        Effect.effect(this, () -> {
+        ElementEffect.effect(this.getElement(), () -> {
             var order = orderSignal.get();
             actionButtons.removeAll();
             if (order == null) return;
@@ -213,12 +236,29 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
                 actionButtons.add(changeStatusButton);
             }
 
-            // Mark as paid button
-            if (!order.isPaid() && !order.getStatus().isTerminal()) {
-                var markPaidButton = createActionButton("Mark as Paid", VaadinIcon.MONEY);
-                markPaidButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-                markPaidButton.addClickListener(_ -> markAsPaid());
-                actionButtons.add(markPaidButton);
+            // Toggle paid button
+            if (!order.getStatus().isTerminal() || order.isPaid()) {
+                var togglePaidButton = createActionButton(
+                        order.isPaid() ? "Mark as Unpaid" : "Mark as Paid", VaadinIcon.MONEY);
+                if (order.isPaid()) {
+                    togglePaidButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                } else {
+                    togglePaidButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+                }
+                togglePaidButton.addClickListener(_ -> togglePaid());
+                actionButtons.add(togglePaidButton);
+            }
+
+            // Toggle picked up button (READY_FOR_PICK_UP ↔ PICKED_UP)
+            if (order.getStatus() == OrderStatus.READY_FOR_PICK_UP
+                    || order.getStatus() == OrderStatus.PICKED_UP) {
+                var togglePickupButton = createActionButton(
+                        order.getStatus() == OrderStatus.PICKED_UP
+                                ? "Mark Not Picked Up" : "Mark Picked Up",
+                        VaadinIcon.CHECK);
+                togglePickupButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+                togglePickupButton.addClickListener(_ -> togglePickedUp());
+                actionButtons.add(togglePickupButton);
             }
 
             // Cancel button (only for pre-production orders)
@@ -232,7 +272,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         // Reactive effect: re-fetches the order from the database whenever any session modifies
         // order data (via shared orderVersion signal), keeping this view in sync across sessions
-        Effect.effect(this, () -> {
+        ElementEffect.effect(this.getElement(), () -> {
             DataChangeSignals.orderVersion().get();
             refreshOrder();
         });
@@ -379,7 +419,7 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
         // Filter available statuses: current + non-terminal + cancelled
         var availableStatuses = Arrays.stream(OrderStatus.values())
-                .filter(s -> s == order.getStatus() || !s.isTerminal() || s == OrderStatus.CANCELLED)
+                .filter(s -> s == order.getStatus() || !s.isTerminal() || s == OrderStatus.CANCELED)
                 .toList();
         statusCombo.setItems(availableStatuses);
         statusCombo.setItemLabelGenerator(OrderStatus::getDisplayName);
@@ -439,21 +479,135 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         refreshOrder();
     }
 
-    private void markAsPaid() {
+    private void togglePaid() {
         var order = orderSignal.get();
         if (order == null) return;
 
         try {
-            orderService.markAsPaid(order.getId(), order.getVersion());
-            Notification.show("Order marked as paid", 3000, Notification.Position.BOTTOM_START)
+            orderService.togglePaid(order.getId(), order.getVersion());
+            Notification.show(order.isPaid() ? "Marked as unpaid" : "Marked as paid",
+                    3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (StaleDataException _) {
-            // Optimistic lock failed: the order was modified by another session since this view loaded
             Notification.show("Order was modified by another user. View refreshed.",
                     5000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_WARNING);
         } catch (Exception e) {
-            Notification.show("Failed to mark as paid: " + e.getMessage(),
+            Notification.show("Failed to toggle paid status: " + e.getMessage(),
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+        refreshOrder();
+    }
+
+    private void togglePickedUp() {
+        var order = orderSignal.get();
+        if (order == null) return;
+
+        try {
+            orderService.togglePickedUp(order.getId(), order.getVersion());
+            Notification.show("Pickup status updated", 3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (StaleDataException _) {
+            Notification.show("Order was modified by another user. View refreshed.",
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+        } catch (Exception e) {
+            Notification.show("Failed to toggle pickup status: " + e.getMessage(),
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+        refreshOrder();
+    }
+
+    private void openResolveDialog(OrderItemDetail item) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Resolve Item: " + item.getProductName());
+        dialog.setWidth("400px");
+
+        var messageField = new TextArea("Resolution Message");
+        messageField.setWidthFull();
+        messageField.setRequired(true);
+        messageField.setPlaceholder("Explain how this issue was resolved...");
+        dialog.add(messageField);
+
+        var cancelButton = new Button("Cancel", _ -> dialog.close());
+        var confirmButton = new Button("Resolve", _ -> {
+            if (messageField.getValue().isBlank()) {
+                messageField.setInvalid(true);
+                messageField.setErrorMessage("Message is required");
+                return;
+            }
+            resolveItem(item, messageField.getValue());
+            dialog.close();
+        });
+        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SUCCESS);
+
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void openCancelItemDialog(OrderItemDetail item) {
+        var dialog = new Dialog();
+        dialog.setHeaderTitle("Cancel Item: " + item.getProductName());
+        dialog.setWidth("400px");
+
+        var messageField = new TextArea("Cancellation Reason");
+        messageField.setWidthFull();
+        messageField.setRequired(true);
+        messageField.setPlaceholder("Explain why this item is being canceled...");
+        dialog.add(messageField);
+
+        var cancelButton = new Button("Back", _ -> dialog.close());
+        var confirmButton = new Button("Cancel Item", _ -> {
+            if (messageField.getValue().isBlank()) {
+                messageField.setInvalid(true);
+                messageField.setErrorMessage("Reason is required");
+                return;
+            }
+            cancelItem(item, messageField.getValue());
+            dialog.close();
+        });
+        confirmButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+
+        dialog.getFooter().add(cancelButton, confirmButton);
+        dialog.open();
+    }
+
+    private void resolveItem(OrderItemDetail item, String message) {
+        var order = orderSignal.get();
+        if (order == null) return;
+
+        try {
+            orderService.resolveItem(order.getId(), item.getId(), message, item.getVersion());
+            Notification.show("Item resolved", 3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (StaleDataException _) {
+            Notification.show("Item was modified by another user. View refreshed.",
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+        } catch (Exception e) {
+            Notification.show("Failed to resolve item: " + e.getMessage(),
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+        refreshOrder();
+    }
+
+    private void cancelItem(OrderItemDetail item, String message) {
+        var order = orderSignal.get();
+        if (order == null) return;
+
+        try {
+            orderService.cancelItem(order.getId(), item.getId(), message, item.getVersion());
+            Notification.show("Item canceled", 3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (StaleDataException _) {
+            Notification.show("Item was modified by another user. View refreshed.",
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+        } catch (Exception e) {
+            Notification.show("Failed to cancel item: " + e.getMessage(),
                     5000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
@@ -484,8 +638,8 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         if (order == null) return;
 
         try {
-            orderService.updateStatus(order.getId(), OrderStatus.CANCELLED, order.getVersion());
-            Notification.show("Order cancelled", 3000, Notification.Position.BOTTOM_START)
+            orderService.updateStatus(order.getId(), OrderStatus.CANCELED, order.getVersion());
+            Notification.show("Order canceled", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (StaleDataException _) {
             // Optimistic lock failed: the order was modified by another session since this view loaded
@@ -511,14 +665,13 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
 
     private String mapStatusToTheme(OrderStatus status) {
         return switch (status) {
-            case NEW -> "primary";
+            case IN_REVIEW -> "primary";
             case VERIFIED -> "success";
-            case NOT_OK -> "error";
-            case CANCELLED -> "contrast";
             case IN_PROGRESS -> "warning";
-            case BAKED, PACKAGED -> "";
+            case PRODUCED, PACKAGED, IN_TRANSIT -> "";
             case READY_FOR_PICK_UP -> "success";
             case PICKED_UP -> "contrast";
+            case CANCELED -> "error";
         };
     }
 

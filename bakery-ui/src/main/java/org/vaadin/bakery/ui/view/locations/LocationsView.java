@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.locations;
 
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -91,7 +91,7 @@ public class LocationsView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the grid whenever location data changes
         // in any session (via shared locationVersion signal) or locally (via refreshTriggerSignal)
-        Effect.effect(this, () -> {
+        ElementEffect.effect(this.getElement(), () -> {
             DataChangeSignals.locationVersion().get();
             refreshTriggerSignal.get();
             refreshGrid();
