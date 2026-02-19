@@ -16,7 +16,7 @@ Each order has a single, chronological activity timeline that interleaves two ty
 
 Automatically generated when the order changes:
 
-- Status changes (e.g., New → Verified, In Progress → Baked)
+- Status changes — order-level (e.g., In Review → Verified, Produced → Packaged) and item-level (e.g., Pending Review → Accepted, In Progress → Produced)
 - Field edits (e.g., due date changed, additional details updated)
 - Item changes (e.g., item added, quantity changed, item removed)
 - Payment changes (e.g., marked as paid)
@@ -32,8 +32,8 @@ Manually posted by staff, optionally referencing a specific order item:
 ### Example Timeline
 
 > **10:02 AM — System**: Order created by Barista Ana
-> **10:02 AM — System**: Status changed to New
-> **10:15 AM — System**: Status changed to Verified by Admin Joel
+> **10:02 AM — System**: Order status: In Review
+> **10:15 AM — System**: All items accepted — order status: Verified (by Admin Joel)
 > **10:30 AM — Barista Ana**: "Customer called back—name on Birthday Cake should be 'Lily', not 'Lilly'. Already corrected the item details."
 > **10:30 AM — System**: Item "Birthday Cake" details changed: "Happy 5th Brithday Lilly" → "Happy 5th Birthday Lily"
 > **10:45 AM — Baker Tom**: "Got it, haven't started icing yet."

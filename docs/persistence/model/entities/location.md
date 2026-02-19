@@ -17,6 +17,9 @@ Represents a pickup location where customers can collect orders.
 | name | String(100) | No | Yes | Display name for the location |
 | code | String(20) | No | Yes | Short code for the location (e.g., "STORE", "BAKERY") |
 | address | String(500) | Yes | No | Physical address of the location |
+| timezone | String | Yes | No | IANA timezone ID (e.g., "America/New_York") |
+| defaultCountryCode | String | Yes | No | Default country code for phone formatting (e.g., "+1") |
+| defaultAreaCode | String | Yes | No | Default area code for 7-digit phone numbers (e.g., "212") |
 | active | boolean | No | No | Whether the location is available for new orders |
 | sortOrder | Integer | No | No | Display order in dropdowns and lists |
 

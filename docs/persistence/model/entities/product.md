@@ -19,6 +19,7 @@ Represents bakery products available for order.
 | size | String | No | No | Serving size indicator (e.g., "12 ppl", "individual") |
 | price | BigDecimal(10,2) | No | No | Unit price |
 | available | boolean | No | No | Whether product can be ordered (default: true) |
+| batchable | boolean | No | No | Whether items can be grouped in the Bakery view (default: true) |
 | photo | byte[] | Yes | No | Product image binary data |
 | photoContentType | String | Yes | No | MIME type of photo |
 

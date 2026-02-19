@@ -44,6 +44,9 @@ A dialog for creating and editing locations.
 | Name | Text | Yes | Display name (e.g., "Downtown Store") |
 | Code | Text | Yes | Short unique code (e.g., "DOWNTOWN") |
 | Address | Text Area | No | Physical address |
+| Timezone | Text | Yes | IANA timezone ID for the location (e.g., "America/New_York") |
+| Default Country Code | Text | Yes | Country code for phone formatting at this location (e.g., "+1") |
+| Default Area Code | Text | Yes | Area code for 7-digit phone numbers (e.g., "212") |
 | Active | Checkbox | Yes | Whether location is available |
 | Sort Order | Number | Yes | Display order in lists |
 

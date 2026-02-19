@@ -14,7 +14,7 @@ Represents a customer order.
 |-------|------|----------|--------|-------------|
 | id | Long | No | Yes | Primary key (inherited from AbstractEntity) |
 | version | Integer | No | No | Optimistic locking version (inherited) |
-| status | OrderStatusCode | No | No | Current order status (default: NEW) |
+| status | OrderStatusCode | No | No | Current order status (default: IN_REVIEW) |
 | dueDate | LocalDate | No | No | Scheduled pickup date |
 | dueTime | LocalTime | No | No | Scheduled pickup time |
 | additionalDetails | String | Yes | No | Special instructions from customer |
@@ -58,7 +58,7 @@ The `paid` field is deliberately separate from `status` because:
 
 | Code | Description |
 |------|-------------|
-| [OrderStatusCode](../codes/order-status.md) | Order lifecycle states (NEW, VERIFIED, NOT_OK, CANCELLED, IN_PROGRESS, BAKED, PACKAGED, READY_FOR_PICK_UP, PICKED_UP) |
+| [OrderStatusCode](../codes/order-status.md) | Order lifecycle states (IN_REVIEW, VERIFIED, IN_PROGRESS, PRODUCED, PACKAGED, IN_TRANSIT, READY_FOR_PICK_UP, PICKED_UP, CANCELED) |
 
 ---
 

@@ -83,10 +83,10 @@ Heidi receives orders mainly from Baristas but also directly from customers. Ord
 - Rules are "obvious" to bakery staff but hard to document for baristas
 
 **Primary Tasks**:
-- Review and verify incoming orders
-- View today's and tomorrow's orders
-- Mark orders as In Progress → Baked → Packaged
-- Flag problems that require customer contact
+- Review and accept incoming order items on the Bakery production board
+- View today's and tomorrow's items across status swimlanes
+- Progress items through production: In Progress → Produced
+- Flag problems (reject items) that require storefront attention
 
 ---
 
@@ -95,7 +95,7 @@ Heidi receives orders mainly from Baristas but also directly from customers. Ord
 | Role | Description | System Access |
 |------|-------------|---------------|
 | **Admin** | Store managers and administrators | Full access including Users, Products, and Locations management |
-| **Baker** | Kitchen staff responsible for preparing orders | Storefront and Dashboard |
+| **Baker** | Kitchen staff responsible for preparing orders | Bakery, Storefront, and Dashboard |
 | **Barista** | Front-of-house staff handling customer interactions | Storefront and Dashboard |
 
 **Note**: Customers (like Peter) do not have system access. They interact via phone or in person with staff.
@@ -115,11 +115,11 @@ Primary functions:
 ### Bakery
 
 Primary functions:
-- Review and verify incoming orders for following days
-- View today's and tomorrow's orders
-- Progress orders through manufacturing: In Progress → Baked → Packaged
-- Flag problems requiring customer contact
-- Secondary: accept orders directly
+- Review and accept incoming order items on the production board
+- View today's and tomorrow's items across status swimlanes
+- Progress items through manufacturing: In Progress → Produced
+- Flag problems (reject items) requiring storefront attention
+- Secondary: accept orders directly via Storefront
 
 ### Back-Office
 

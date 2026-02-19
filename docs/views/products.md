@@ -68,6 +68,7 @@ Expected side panel dialog with:
 | Size | Text Input | Yes | Serving size indicator |
 | Price | Currency Input | Yes | Unit price |
 | Available | Toggle/Checkbox | Yes | Whether product can be ordered |
+| Batchable | Toggle/Checkbox | Yes | Whether items can be grouped in the Bakery view (default: true) |
 
 ### Actions
 - **Save** - Save product and close

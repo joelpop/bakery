@@ -14,6 +14,7 @@ Represents a line item within an order.
 |-------|------|----------|--------|-------------|
 | id | Long | No | Yes | Primary key (inherited from AbstractEntity) |
 | version | Integer | No | No | Optimistic locking version (inherited) |
+| status | OrderItemStatusCode | No | No | Item lifecycle status (PENDING_REVIEW, ACCEPTED, IN_PROGRESS, PRODUCED, REJECTED, CANCELED) |
 | quantity | Integer | No | No | Number of items ordered |
 | details | String | Yes | No | Per-item customization notes |
 | unitPrice | BigDecimal(10,2) | No | No | Price snapshot at order time |

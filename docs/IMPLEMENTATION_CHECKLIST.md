@@ -13,7 +13,7 @@ The following decisions were made during documentation review to resolve conflic
 | **Application Name** | Café Sunshine |
 | **Baker Role** | Read-only access to Products view (can view but not edit) |
 | **Role Hierarchy** | No hierarchy - flat roles with explicit permissions |
-| **Default Landing Page** | Admin → Dashboard; Baker/Barista → Storefront |
+| **Default Landing Page** | Admin → Dashboard; Baker → Bakery; Barista → Storefront |
 | **Order Direct Links** | `/storefront/{orderId}` (opens storefront with order selected) |
 | **Order Editing** | Admin can edit after production starts; Baker/Admin can add notes until picked up/cancelled |
 | **Customer Deletion** | Soft delete (mark inactive); blocked if in-progress orders; cancels pre-production orders on confirmation |
@@ -37,18 +37,18 @@ The following decisions were made during documentation review to resolve conflic
   - [x] BARISTA - Front-of-house access
 
 - [x] **OrderStatusCode** - Order lifecycle states
-  - [x] NEW - Order just received
+  - [x] IN_REVIEW - Order needs review (was NEW; also absorbs NOT_OK)
   - [x] VERIFIED - Order reviewed and accepted
-  - [x] NOT_OK - Problem requiring attention
-  - [x] CANCELLED - Order cancelled
   - [x] IN_PROGRESS - Being manufactured
-  - [x] BAKED - Baking completed
+  - [x] PRODUCED - Production completed (was BAKED)
   - [x] PACKAGED - Packaged for transport
+  - [x] IN_TRANSIT - Being transported to pickup location (new)
   - [x] READY_FOR_PICK_UP - Available for pickup
   - [x] PICKED_UP - Order complete
+  - [x] CANCELED - Order will not be fulfilled (was CANCELLED; NOT_OK removed)
 
-- [x] **OrderItemStatusCode** - Order item lifecycle states (first 6 of order statuses)
-  - [x] NEW, VERIFIED, NOT_OK, CANCELLED, IN_PROGRESS, BAKED
+- [x] **OrderItemStatusCode** - Order item lifecycle states
+  - [x] PENDING_REVIEW, ACCEPTED, REJECTED, CANCELED, IN_PROGRESS, PRODUCED
 
 - [x] **OrderActivityTypeCode** - Activity timeline entry types
   - [x] SYSTEM_EVENT - Auto-generated order change records
@@ -418,9 +418,10 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Login button
   - [x] Passkey login button (placeholder - Coming Soon)
   - [x] Error display for invalid credentials
-  - [ ] Redirect based on role: *(deferred until Dashboard/Storefront views exist)*
+  - [ ] Redirect based on role: *(deferred until Dashboard/Storefront/Bakery views exist)*
     - [ ] Admin → Dashboard
-    - [ ] Baker/Barista → Storefront
+    - [ ] Baker → Bakery
+    - [ ] Barista → Storefront
   - [x] @AnonymousAllowed, autoLayout=false
 
 ### 6.4 Passkey Authentication (WebAuthn) *(Deferred)*
@@ -581,7 +582,7 @@ The following decisions were made during documentation review to resolve conflic
     - [x] Post new message input
     - [x] Unread message tracking
   - [x] Auto-refresh via shared signals (cross-session stale data detection)
-  - [ ] "Mark as Not OK" button (with problem description) *(deferred)*
+  - ~~"Mark as Not OK" button~~ *(removed — problems handled at item level via Bakery board REJECTED status)*
 
 ### 8.5 Direct Order Links
 
@@ -609,7 +610,7 @@ The following decisions were made during documentation review to resolve conflic
 
 - [ ] **AlertsPanel** - Bulletin board *(deferred to future enhancement)*
   - [ ] Ingredient alerts
-  - [ ] Problem orders (NOT_OK status)
+  - [ ] Problem orders (IN_REVIEW status with rejected items)
   - [ ] Staff messages
 
 ### 9.3 Charts
@@ -802,7 +803,7 @@ The following decisions were made during documentation review to resolve conflic
 
 ### 13.5 Demo Orders (12 orders)
 
-- [x] Orders across all statuses: NEW, VERIFIED, IN_PROGRESS, BAKED, READY_FOR_PICK_UP, PICKED_UP, CANCELLED
+- [x] Orders across all statuses: IN_REVIEW, VERIFIED, IN_PROGRESS, PRODUCED, READY_FOR_PICK_UP, PICKED_UP, CANCELED
 - [x] Orders due today, tomorrow, and in the past
 - [x] Mix of paid and unpaid orders
 - [x] Orders with single and multiple items
@@ -880,6 +881,29 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **ClientDetailsService** - Browser client details lazily detected and cached per session
   - [x] Caches full ExtendedClientDetails in VaadinSession on first access
   - [x] Used by InstantMapper for UTC→local time conversion
+
+---
+
+## Documentation Gaps (Bakery Workflow)
+
+The following documentation issues were identified during a completeness review of the Bakery Workflow feature. Each must be resolved before implementation begins.
+
+### Critical
+
+- [x] **Order-level ↔ item-level status bridge** — Roll-up rules defined: item statuses drive pre-production order statuses via priority cascade. Hold behavior prevents indeterminate states. Order status renames: NEW→IN_REVIEW, BAKED→PRODUCED, CANCELLED→CANCELED, NOT_OK removed. New: IN_TRANSIT. Documented in bakery-workflow.md, order-status.md, orders.md.
+- [x] **orders.md missing item status field** — Order Item data model updated with `status` field. Status progression rewritten to show derived pre-production and manual post-production. Cross-references to bakery-workflow.md added throughout.
+
+### Important
+
+- [x] **Storefront UI for rejected items** — Documented: rejection requires baker message; "Needs Attention" group with pink background at top of storefront; item statuses shown in order detail; Resolve and Cancel Item buttons with required messages. Updated bakery-workflow.md, storefront.md, orders.md, bakery.md, order-item-status.md.
+- [x] **Posting messages from bakery detail overlay** — Yes, the overlay includes a message input for posting replies directly. Same behavior as Order Detail timeline. Updated bakery-workflow.md and bakery.md.
+- [x] **Storefront toggleable Picked Up / Paid buttons** — Updated in storefront.md and orders.md to document toggleable behavior.
+- [x] **Undo stack invalidation** — Undo entries invalidated when item status changes from outside the bakery board (storefront resolve/cancel). Order data edits do not affect undo stack. Updated bakery-workflow.md.
+
+### Minor
+
+- [x] **ProductSelectProjection missing `batchable`** — ProductSelectProjection is for order form only and does not need `batchable`. The bakery board will use its own item-level queries that join product data including the `batchable` flag. Implementation detail, not a feature design gap.
+- [x] **Order status spelling inconsistency** — Resolved. Both levels now use US English: CANCELED (single L). NOT_OK removed from order level; REJECTED is item-level only.
 
 ---
 
