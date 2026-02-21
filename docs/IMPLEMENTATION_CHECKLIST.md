@@ -92,6 +92,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] size (String) - e.g., "12 ppl", "individual"
   - [x] price (BigDecimal)
   - [x] available (boolean)
+  - [x] batchable (boolean) - Whether items can be grouped on bakery board
   - [x] photo (byte[])
   - [x] photoContentType (String)
 
@@ -125,6 +126,19 @@ The following decisions were made during documentation review to resolve conflic
   - [x] lineTotal (BigDecimal) - Calculated
   - [x] Relationship: order (Many-to-One → OrderEntity)
   - [x] Relationship: product (Many-to-One → ProductEntity)
+
+- [x] **TilePositionEntity** - Persisted bakery board tile ordering within swimlanes
+  - [x] swimlane (OrderItemStatusCode)
+  - [x] dueDate (LocalDate)
+  - [x] groupingKey (String)
+  - [x] position (Integer)
+  - [x] Unique constraint on (swimlane, dueDate, groupingKey)
+
+- [x] **TileUndoEntryEntity** - Undo stack for bakery board tile transitions
+  - [x] groupingKey (String)
+  - [x] previousStatus (OrderItemStatusCode)
+  - [x] sequenceNumber (Integer)
+  - [x] activityIds (String) - Comma-separated activity IDs
 
 - [x] **OrderStatusHistoryEntity** - Audit trail for order status changes
   - [x] order (Many-to-One → OrderEntity)
@@ -216,6 +230,9 @@ The following decisions were made during documentation review to resolve conflic
 
 - [x] **OrderActivityRepository** - Order messaging and activity timeline
 
+- [x] **TilePositionRepository** - Bakery board tile position persistence
+- [x] **TileUndoEntryRepository** - Bakery board undo stack management
+
 - ~~**NotificationRepository**~~ - Superseded by OrderActivityRepository
 
 ---
@@ -226,6 +243,7 @@ The following decisions were made during documentation review to resolve conflic
 
 - [x] **UserRole** - UI representation of user roles
 - [x] **OrderStatus** - UI representation of order statuses
+- [x] **OrderItemStatus** - UI representation of order item statuses (PENDING_REVIEW, ACCEPTED, IN_PROGRESS, PRODUCED, REJECTED, CANCELED)
 
 ### 3.2 UI Model POJOs (bakery-uimodel)
 
@@ -241,6 +259,8 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **OrderItemSummary** - Order item display
 - [x] **OrderItemDetail** - Order item create/edit
 - [x] **OrderActivity** - Order activity timeline entry
+- [x] **BakeryTile** - Bakery board tile (grouped order items by product/status)
+- [x] **BakeryTileDetail** - Individual order item within a bakery tile
 - ~~**NotificationSummary**~~ - Superseded by OrderActivity
 
 ---
@@ -284,6 +304,21 @@ The following decisions were made during documentation review to resolve conflic
   - [x] updateStatus(id, status)
   - [x] markAsPaid(id)
   - [x] Dashboard KPI methods
+
+- [x] **OrderService** (additions for bakery workflow)
+  - [x] updateItemStatus(orderId, itemId, newStatus, expectedItemVersion)
+  - [x] updateGroupItemStatuses(productId, dueDate, currentStatus, newStatus)
+  - [x] resolveItem(orderId, itemId, message, expectedItemVersion) - REJECTED → PENDING_REVIEW
+  - [x] cancelItem(orderId, itemId, message, expectedItemVersion) - REJECTED → CANCELED
+  - [x] togglePaid(id, expectedVersion) - Flip paid boolean
+  - [x] togglePickedUp(id, expectedVersion) - READY_FOR_PICK_UP ↔ PICKED_UP
+
+- [x] **BakeryService** - Bakery board data service
+  - [x] listTiles(startDate, endDate) - Grouped order items as board tiles
+  - [x] getTileDetails(groupingKey) - Contributing items for a tile
+  - [x] saveTilePosition(groupingKey, swimlane, dueDate, position)
+  - [x] getUndoStack(groupingKey)
+  - [x] undoTileTransition(groupingKey)
 
 - [x] **OrderActivityService** - Order messaging and activity timeline
   - [x] List activities for an order
@@ -337,6 +372,8 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **JpaOrderService**
 - [x] **JpaOrderActivityService**
 - ~~**JpaNotificationService**~~ - Superseded by JpaOrderActivityService
+- [x] **JpaBakeryService** - Bakery board tile listing, grouping, undo stack
+- [x] **OrderStatusRollUpHelper** - Derives order status from item statuses (package-private utility)
 - [x] **JpaDashboardService**
 - [x] **SessionUserLocationService** - @SessionScope implementation
 - ~~**SessionUserTimezoneService**~~ - Removed; superseded by `VaadinClientDetailsService` in bakery-ui
@@ -418,7 +455,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Login button
   - [x] Passkey login button (placeholder - Coming Soon)
   - [x] Error display for invalid credentials
-  - [ ] Redirect based on role: *(deferred until Dashboard/Storefront/Bakery views exist)*
+  - [ ] Redirect based on role:
     - [ ] Admin → Dashboard
     - [ ] Baker → Bakery
     - [ ] Barista → Storefront
@@ -653,7 +690,7 @@ The following decisions were made during documentation review to resolve conflic
 
 ### 10.3 Notifications
 
-> Superseded by the order messaging system (see Phase 15.2). Staff communication happens in the context of orders via the activity timeline, with unread tracking and cross-session push notifications.
+> Superseded by the order messaging system (see Phase 16.2). Staff communication happens in the context of orders via the activity timeline, with unread tracking and cross-session push notifications.
 
 ### 10.4 Preferences View
 
@@ -801,7 +838,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] Emma Davis, Frank Miller, Grace Lee, Henry Wilson, Iris Martinez
 - [x] Each with phone number and email
 
-### 13.5 Demo Orders (12 orders)
+### 13.5 Demo Orders (15 orders)
 
 - [x] Orders across all statuses: IN_REVIEW, VERIFIED, IN_PROGRESS, PRODUCED, READY_FOR_PICK_UP, PICKED_UP, CANCELED
 - [x] Orders due today, tomorrow, and in the past
@@ -846,9 +883,73 @@ The following decisions were made during documentation review to resolve conflic
 
 ---
 
-## Phase 15: Cross-Cutting Features ✅
+## Phase 15: Bakery Workflow ✅
 
-### 15.1 Stale Data Prevention
+### 15.1 Enum Renames (Foundation)
+
+- [x] **OrderStatusCode** renames: NEW→IN_REVIEW, BAKED→PRODUCED, CANCELLED→CANCELED, NOT_OK removed, IN_TRANSIT added
+- [x] **OrderItemStatusCode** renames: NEW→PENDING_REVIEW, VERIFIED→ACCEPTED, NOT_OK→REJECTED, BAKED→PRODUCED, CANCELLED→CANCELED
+- [x] **OrderStatus** (UI) renames + helpers: isTerminal(), isPreProduction(), isInProduction(), isDerived(), isManual()
+- [x] **EnumMapper** updated with OrderItemStatus ↔ OrderItemStatusCode mappings
+- [x] Entity defaults updated (IN_REVIEW, PENDING_REVIEW)
+- [x] All cascade fixes across all modules
+
+### 15.2 Product Batchable Field
+
+- [x] `batchable` field on ProductEntity, ProductSummaryProjection, ProductSelectProjection
+- [x] UI models: ProductSummary, ProductSelect
+- [x] ProductDialog: batchable checkbox
+- [x] Seed data: cakes/tarts non-batchable, everything else batchable
+
+### 15.3 Item Status + Roll-Up Logic
+
+- [x] **OrderItemStatus** UI enum with display names, descriptions, badge themes
+- [x] Status field on OrderItemDetail, OrderItemSummary, OrderItemSummaryProjection
+- [x] **OrderStatusRollUpHelper** — derives order status from item statuses (priority cascade)
+- [x] Hold detection: ACCEPTED items on hold when siblings are PENDING_REVIEW or REJECTED
+- [x] Today-only rule: cannot start production for future-dated items
+- [x] Item-level service methods: updateItemStatus, updateGroupItemStatuses, resolveItem, cancelItem
+- [x] Toggle methods: togglePaid, togglePickedUp
+
+### 15.4 Bakery Board Data Service
+
+- [x] **BakeryService** interface with tile listing, details, positioning, undo
+- [x] **JpaBakeryService** implementation with batchable/non-batchable grouping
+- [x] **TilePositionEntity** for persisted tile ordering
+- [x] **TileUndoEntryEntity** for undo stack
+- [x] Undo stack invalidation on storefront resolve/cancel/order cancel
+
+### 15.5 Storefront Updates
+
+- [x] Item status badges in OrderDetailView
+- [x] Resolve and Cancel Item buttons for REJECTED items (with required message)
+- [x] "Needs Attention" group for orders with rejected items (pink background)
+- [x] Toggleable Paid and Picked Up buttons in OrderDetailView
+
+### 15.6 Bakery Board View
+
+- [x] **BakeryView** — Kanban board with toolbar and 4 swimlane columns
+  - [x] @Route("bakery"), @RolesAllowed({ROLE_ADMIN, ROLE_BAKER})
+  - [x] Date range preset buttons (Today, Today+Tomorrow, This Week, Custom)
+  - [x] Auto-refresh via DataChangeSignals.orderVersion()
+  - [x] Change detection with highlight animations
+- [x] **BakerySwimlane** — Status column with date-grouped tiles and drop targets
+  - [x] Review (PENDING_REVIEW), Accepted/Rejected, In Progress, Completed (PRODUCED/CANCELED)
+- [x] **BakeryTileComponent** — Draggable tile card with product info and indicators
+  - [x] DragSource for drag-and-drop transitions
+  - [x] Hold indicator (lock icon) when on hold
+  - [x] Action buttons on hover/tap
+- [x] **TileDetailOverlay** — Dialog showing contributing order items (delegation pattern)
+  - [x] Undo button when available
+  - [x] Links to OrderDetailView
+- [x] **RejectMessageDialog** — Required reason dialog for rejections (delegation pattern)
+- [x] CSS: swimlane layout, tile styling, drop targets, responsive, highlight animations
+
+---
+
+## Phase 16: Cross-Cutting Features ✅
+
+### 16.1 Stale Data Prevention
 
 - [x] **Version tracking** - AbstractModel base class with version field
 - [x] **Shared signals** - DataChangeSignals with SharedNumberSignal for cross-session notification
@@ -863,7 +964,7 @@ The following decisions were made during documentation review to resolve conflic
   - [x] Visual banner warning when external changes detected
 - [x] **StaleDataHelper** - Reusable utility for stale data UI patterns
 
-### 15.2 Order Messaging
+### 16.2 Order Messaging
 
 - [x] **OrderActivityEntity** - Persistent storage for timeline entries
 - [x] **OrderActivityService** - Service for posting messages and recording system events
@@ -872,7 +973,7 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **VaadinUnreadMessageTracker** - Session-scoped unread message tracking
 - [x] **Unread indicators** - OrderCard shows unread badge in storefront
 
-### 15.3 Session-Scoped Services
+### 16.3 Session-Scoped Services
 
 - [x] **UserLocationService** - Working location persisted per session
   - [x] Location selector in MainLayout navbar
@@ -886,7 +987,7 @@ The following decisions were made during documentation review to resolve conflic
 
 ## Documentation Gaps (Bakery Workflow)
 
-The following documentation issues were identified during a completeness review of the Bakery Workflow feature. Each must be resolved before implementation begins.
+The following documentation issues were identified during a completeness review of the Bakery Workflow feature. All resolved.
 
 ### Critical
 
@@ -902,7 +1003,7 @@ The following documentation issues were identified during a completeness review 
 
 ### Minor
 
-- [x] **ProductSelectProjection missing `batchable`** — ProductSelectProjection is for order form only and does not need `batchable`. The bakery board will use its own item-level queries that join product data including the `batchable` flag. Implementation detail, not a feature design gap.
+- [x] **ProductSelectProjection missing `batchable`** — Resolved: `batchable` added to ProductSelectProjection, ProductSummaryProjection, and corresponding UI models.
 - [x] **Order status spelling inconsistency** — Resolved. Both levels now use US English: CANCELED (single L). NOT_OK removed from order level; REJECTED is item-level only.
 
 ---
@@ -921,7 +1022,8 @@ The following documentation issues were identified during a completeness review 
 8. **Error Handling** (Phase 11): Polished error experience
 9. **Responsive** (Phase 12): Mobile optimization
 10. **Data & Testing** (Phases 13-14): Seed data and quality assurance
-11. **Cross-Cutting** (Phase 15): Stale data, messaging, session services
+11. **Bakery Workflow** (Phase 15): Kanban board, item statuses, drag-and-drop
+12. **Cross-Cutting** (Phase 16): Stale data, messaging, session services
 
 ### Dependencies
 
