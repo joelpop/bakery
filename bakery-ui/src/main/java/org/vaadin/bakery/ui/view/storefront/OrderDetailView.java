@@ -1,7 +1,10 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -46,14 +49,14 @@ import java.util.Locale;
 @Route(StorefrontView.ROUTE + "/:orderId")
 @PageTitle("Order Details")
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BARISTA, UserRole.ROLE_BAKER})
-public class OrderDetailView extends VerticalLayout implements BeforeEnterObserver {
+public class OrderDetailView extends Composite<VerticalLayout> implements HasSize, HasStyle, BeforeEnterObserver {
 
     private final transient OrderService orderService;
     private final transient OrderActivityService orderActivityService;
     private final transient ObjectProvider<EditOrderDialog> editOrderDialogProvider;
 
     // Signal holding the currently displayed order; all display fields react to changes in this signal
-    private final transient ValueSignal<OrderDetail> orderSignal;
+    private final ValueSignal<OrderDetail> orderSignal;
 
     // Cross-session refresh state: used to avoid redundant UI updates when the version hasn't changed
     private Long currentOrderId;
@@ -85,11 +88,6 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         this.editOrderDialogProvider = editOrderDialogProvider;
 
         // Component initializations
-        addClassName("order-detail-view");
-        setSizeFull();
-        setPadding(false);
-        setSpacing(false);
-
         orderIdLabel = new Span();
         orderIdLabel.addClassNames(LumoUtility.TextColor.SECONDARY);
 
@@ -337,8 +335,14 @@ public class OrderDetailView extends VerticalLayout implements BeforeEnterObserv
         contentWrapper.setSizeFull();
         contentWrapper.add(content);
 
-        add(header, contentWrapper, actionButtons);
-        setFlexGrow(1, contentWrapper);
+        // Content layout
+        var outerContent = getContent();
+        outerContent.addClassName("order-detail-view");
+        outerContent.setSizeFull();
+        outerContent.setPadding(false);
+        outerContent.setSpacing(false);
+        outerContent.add(header, contentWrapper, actionButtons);
+        outerContent.setFlexGrow(1, contentWrapper);
     }
 
     @Override

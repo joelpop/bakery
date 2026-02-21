@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.view.dashboard;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -9,7 +12,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 /**
  * KPI card component for the dashboard.
  */
-public class KpiCard extends Div {
+public class KpiCard extends Composite<Div> implements HasSize, HasStyle {
 
     private final Span valueSpan;
     private final Span subtitleSpan;
@@ -22,20 +25,7 @@ public class KpiCard extends Div {
      * @param icon  the icon displayed next to the title
      */
     public KpiCard(String title, VaadinIcon icon) {
-        addClassName("kpi-card");
-        getStyle()
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-s)")
-                .set("padding", "var(--lumo-space-m)");
-
-        addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Gap.SMALL
-        );
-
-        // Header with icon and title
+        // Component initializations
         var header = new Div();
         header.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -55,25 +45,19 @@ public class KpiCard extends Div {
         );
 
         header.add(iconComponent, titleSpan);
-        add(header);
 
-        // Value
         valueSpan = new Span("0");
         valueSpan.addClassNames(
                 LumoUtility.FontSize.XXLARGE,
                 LumoUtility.FontWeight.BOLD
         );
-        add(valueSpan);
 
-        // Subtitle
         subtitleSpan = new Span();
         subtitleSpan.addClassNames(
                 LumoUtility.FontSize.SMALL,
                 LumoUtility.TextColor.SECONDARY
         );
-        add(subtitleSpan);
 
-        // Delta container (for comparison metrics)
         deltaContainer = new Div();
         deltaContainer.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -81,21 +65,39 @@ public class KpiCard extends Div {
                 LumoUtility.Gap.XSMALL,
                 LumoUtility.FontSize.XSMALL
         );
-        add(deltaContainer);
+
+        // Content layout
+        var content = getContent();
+        content.addClassName("kpi-card");
+        content.getStyle()
+                .set("background", "var(--lumo-base-color)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
+                .set("box-shadow", "var(--lumo-box-shadow-s)")
+                .set("padding", "var(--lumo-space-m)");
+        content.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.SMALL
+        );
+        content.add(header, valueSpan, subtitleSpan, deltaContainer);
     }
 
+    /** Sets the KPI value as a number. */
     public void setValue(long value) {
         valueSpan.setText(String.valueOf(value));
     }
 
+    /** Sets the KPI value as a formatted string. */
     public void setValue(String value) {
         valueSpan.setText(value);
     }
 
+    /** Sets the subtitle text below the value. */
     public void setSubtitle(String text) {
         subtitleSpan.setText(text);
     }
 
+    /** Adds a delta comparison line (e.g., "+5.2% vs prev month"). */
     public void addDelta(String label, double percentChange) {
         var deltaLine = new Span();
         deltaLine.addClassNames(LumoUtility.Display.FLEX, LumoUtility.Gap.XSMALL, LumoUtility.AlignItems.CENTER);
@@ -119,6 +121,7 @@ public class KpiCard extends Div {
         deltaContainer.add(deltaLine);
     }
 
+    /** Clears all delta comparison lines. */
     public void clearDeltas() {
         deltaContainer.removeAll();
     }

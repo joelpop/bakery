@@ -4,6 +4,8 @@ import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -25,7 +27,7 @@ import java.util.Set;
  * Filter bar for the storefront view.
  * Uses Vaadin Signals for reactive filter state management.
  */
-public class FilterBar extends Composite<Div> {
+public class FilterBar extends Composite<Div> implements HasSize, HasStyle {
 
     /**
      * Sentinel ID for the "Current Location" option.
@@ -39,13 +41,13 @@ public class FilterBar extends Composite<Div> {
     private final ComboBox<LocationSummary> locationFilterComboBox;
 
    // Signals - primary state
-    private final transient ValueSignal<LocalDate> fromDateSignal;
-    private final transient ValueSignal<LocalDate> toDateSignal;
-    private final transient ValueSignal<Set<OrderStatus>> selectedStatusesSignal;
-    private final transient ValueSignal<LocationSummary> selectedLocationSignal;
+    private final ValueSignal<LocalDate> fromDateSignal;
+    private final ValueSignal<LocalDate> toDateSignal;
+    private final ValueSignal<Set<OrderStatus>> selectedStatusesSignal;
+    private final ValueSignal<LocationSummary> selectedLocationSignal;
 
     // Signals - computed/derived
-    private final transient Signal<LocationSummary> resolvedLocationSignal;
+    private final Signal<LocationSummary> resolvedLocationSignal;
 
     /**
      * Creates the storefront filter bar with date, status, and location filters.

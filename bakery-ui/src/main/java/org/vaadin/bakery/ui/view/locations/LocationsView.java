@@ -1,7 +1,10 @@
 package org.vaadin.bakery.ui.view.locations;
 
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
@@ -28,7 +31,7 @@ import org.vaadin.lineawesome.LineAwesomeIconUrl;
 @PageTitle("Locations")
 @Menu(order = 3, icon = LineAwesomeIconUrl.MAP_MARKER_SOLID)
 @RolesAllowed(UserRole.ROLE_ADMIN)
-public class LocationsView extends VerticalLayout {
+public class LocationsView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     /** Route path for this view. */
     public static final String ROUTE = "locations";
@@ -37,21 +40,16 @@ public class LocationsView extends VerticalLayout {
     private final Grid<LocationSummary> grid;
 
     // Signal incremented to trigger a same-session data refresh (e.g., after dialog save or delete)
-    private final transient ValueSignal<Integer> refreshTriggerSignal;
+    private final ValueSignal<Integer> refreshTriggerSignal;
 
     // Tracks version changes between refreshes to identify new and modified locations for row highlight
-    private final transient ChangeTracker<LocationSummary> changeTracker;
+    private final ChangeTracker<LocationSummary> changeTracker;
 
     /** Creates the locations management view with a grid of pickup locations. */
     public LocationsView(LocationService locationService) {
         this.locationService = locationService;
 
         // Component initializations
-        addClassName("locations-view");
-        setSizeFull();
-        setPadding(false);
-        setSpacing(false);
-
         var header = new ViewHeader("Locations")
                 .withAction("New location", () -> openDialog(new LocationSummary()));
 
@@ -97,10 +95,15 @@ public class LocationsView extends VerticalLayout {
             refreshGrid();
         });
 
-        // Layout assembly
+        // Content layout
         gridContainer.add(grid);
-        add(header, gridContainer);
-        setFlexGrow(1, gridContainer);
+        var content = getContent();
+        content.addClassName("locations-view");
+        content.setSizeFull();
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.add(header, gridContainer);
+        content.setFlexGrow(1, gridContainer);
     }
 
     private void openDialog(LocationSummary location) {

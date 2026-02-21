@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.view.error;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
@@ -20,15 +23,11 @@ import jakarta.servlet.http.HttpServletResponse;
  * Error view for 403 Access Denied errors.
  * Note: For security, this displays as a 404 to avoid information disclosure.
  */
-@PageTitle("Page Not Found")
-public class AccessDeniedView extends VerticalLayout implements HasErrorParameter<AccessDeniedException> {
+@PageTitle("Page not Found")
+public class AccessDeniedView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<AccessDeniedException> {
 
     public AccessDeniedView() {
-        addClassName("error-view");
-        setSizeFull();
-        setAlignItems(FlexComponent.Alignment.CENTER);
-        setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-
+        // Component initializations
         var container = new Div();
         container.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -44,7 +43,7 @@ public class AccessDeniedView extends VerticalLayout implements HasErrorParamete
         icon.setSize("64px");
         icon.addClassNames(LumoUtility.TextColor.SECONDARY);
 
-        var heading = new H1("Page Not Found");
+        var heading = new H1("Page not Found");
         heading.addClassNames(LumoUtility.Margin.NONE);
 
         var message = new Paragraph(
@@ -59,7 +58,14 @@ public class AccessDeniedView extends VerticalLayout implements HasErrorParamete
         );
 
         container.add(icon, heading, message, homeLink);
-        add(container);
+
+        // Content layout
+        var content = getContent();
+        content.addClassName("error-view");
+        content.setSizeFull();
+        content.setAlignItems(FlexComponent.Alignment.CENTER);
+        content.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
+        content.add(container);
     }
 
     @Override

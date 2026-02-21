@@ -3,6 +3,8 @@ package org.vaadin.bakery.ui.view.bakery;
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.dnd.DragSource;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
@@ -16,7 +18,7 @@ import org.vaadin.bakery.uimodel.data.BakeryTile;
  * Card component representing a single bakery board tile.
  * Supports drag-and-drop for status transitions.
  */
-public class BakeryTileComponent extends Composite<Div> {
+public class BakeryTileComponent extends Composite<Div> implements HasSize, HasStyle {
 
     private final BakeryTile tile;
 

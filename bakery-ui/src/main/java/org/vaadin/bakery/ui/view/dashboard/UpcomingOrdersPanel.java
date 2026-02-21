@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.view.dashboard;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
@@ -14,7 +17,7 @@ import java.util.List;
 /**
  * Panel showing upcoming orders for the dashboard.
  */
-public class UpcomingOrdersPanel extends Div {
+public class UpcomingOrdersPanel extends Composite<Div> implements HasSize, HasStyle {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, MMM d");
@@ -23,37 +26,37 @@ public class UpcomingOrdersPanel extends Div {
 
     /** Creates the upcoming orders panel with an empty orders container. */
     public UpcomingOrdersPanel() {
-        addClassName("upcoming-orders-panel");
-        getStyle()
-                .set("background", "var(--lumo-base-color)")
-                .set("border-radius", "var(--lumo-border-radius-l)")
-                .set("box-shadow", "var(--lumo-box-shadow-s)")
-                .set("padding", "var(--lumo-space-m)");
-
-        addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN
-        );
-
-        // Header
+        // Component initializations
         var header = new H3("Upcoming Orders");
         header.addClassNames(
                 LumoUtility.Margin.NONE,
                 LumoUtility.Margin.Bottom.MEDIUM,
                 LumoUtility.FontSize.MEDIUM
         );
-        add(header);
 
-        // Orders container
         ordersContainer = new Div();
         ordersContainer.addClassNames(
                 LumoUtility.Display.FLEX,
                 LumoUtility.FlexDirection.COLUMN,
                 LumoUtility.Gap.SMALL
         );
-        add(ordersContainer);
+
+        // Content layout
+        var content = getContent();
+        content.addClassName("upcoming-orders-panel");
+        content.getStyle()
+                .set("background", "var(--lumo-base-color)")
+                .set("border-radius", "var(--lumo-border-radius-l)")
+                .set("box-shadow", "var(--lumo-box-shadow-s)")
+                .set("padding", "var(--lumo-space-m)");
+        content.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN
+        );
+        content.add(header, ordersContainer);
     }
 
+    /** Sets the list of upcoming orders to display. */
     public void setOrders(List<OrderDashboard> orders) {
         ordersContainer.removeAll();
 

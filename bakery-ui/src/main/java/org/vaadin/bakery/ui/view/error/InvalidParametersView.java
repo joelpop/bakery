@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.view.error;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
@@ -19,16 +22,12 @@ import jakarta.servlet.http.HttpServletResponse;
  * Error view for 400 Bad Request / Invalid Parameters errors.
  */
 @PageTitle("Invalid Request")
-public class InvalidParametersView extends VerticalLayout implements HasErrorParameter<IllegalArgumentException> {
+public class InvalidParametersView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<IllegalArgumentException> {
 
     private final Paragraph detailsMessage;
 
     public InvalidParametersView() {
-        addClassName("error-view");
-        setSizeFull();
-        setAlignItems(FlexComponent.Alignment.CENTER);
-        setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-
+        // Component initializations
         var container = new Div();
         container.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -69,7 +68,14 @@ public class InvalidParametersView extends VerticalLayout implements HasErrorPar
         );
 
         container.add(icon, heading, message, detailsMessage, homeLink);
-        add(container);
+
+        // Content layout
+        var content = getContent();
+        content.addClassName("error-view");
+        content.setSizeFull();
+        content.setAlignItems(FlexComponent.Alignment.CENTER);
+        content.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
+        content.add(container);
     }
 
     @Override

@@ -7,6 +7,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.RouteParameters;
 import com.vaadin.flow.shared.Registration;
@@ -135,7 +136,7 @@ public class TileDetailOverlay implements NonComponent {
         // Customer and quantity
         var topRow = new HorizontalLayout();
         topRow.setWidthFull();
-        topRow.setJustifyContentMode(com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode.BETWEEN);
+        topRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
         var customerSpan = new Span(detail.getCustomerName());
         customerSpan.addClassNames(LumoUtility.FontWeight.SEMIBOLD);

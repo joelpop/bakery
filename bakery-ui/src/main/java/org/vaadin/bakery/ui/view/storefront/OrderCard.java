@@ -2,6 +2,9 @@ package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.ComponentEventListener;
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.shared.Registration;
@@ -16,7 +19,7 @@ import java.util.Locale;
 /**
  * Card component for displaying an order in the storefront view.
  */
-public class OrderCard extends Div {
+public class OrderCard extends Composite<Div> implements HasSize, HasStyle {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
@@ -32,31 +35,10 @@ public class OrderCard extends Div {
     public OrderCard(OrderList order, boolean hasUnreadMessage) {
         this.order = order;
 
-        addClassName("order-card");
-        addClassName("card");
-        getStyle()
-                .set("cursor", "pointer")
-                .set("transition", "box-shadow 0.2s, transform 0.2s");
-
-        // Add hover effect
-        getElement().addEventListener("mouseenter", e ->
-                getStyle()
-                        .set("box-shadow", "0 4px 12px rgba(0,0,0,0.15)")
-                        .set("transform", "translateY(-2px)"));
-        getElement().addEventListener("mouseleave", e ->
-                getStyle()
-                        .set("box-shadow", "")
-                        .set("transform", ""));
-
-        addClassNames(
-                LumoUtility.Display.FLEX,
-                LumoUtility.FlexDirection.COLUMN,
-                LumoUtility.Gap.SMALL
-        );
+        // Component initializations
 
         // Header row: status badge + unread dot + time
         var header = createHeader(hasUnreadMessage);
-        add(header);
 
         // Customer name
         var customerName = new Span(order.getCustomerName());
@@ -64,16 +46,15 @@ public class OrderCard extends Div {
                 LumoUtility.FontSize.LARGE,
                 LumoUtility.FontWeight.SEMIBOLD
         );
-        add(customerName);
 
         // Location
+        Span location = null;
         if (order.getLocationName() != null) {
-            var location = new Span(order.getLocationName());
+            location = new Span(order.getLocationName());
             location.addClassNames(
                     LumoUtility.FontSize.SMALL,
                     LumoUtility.TextColor.SECONDARY
             );
-            add(location);
         }
 
         // Items summary
@@ -85,14 +66,41 @@ public class OrderCard extends Div {
                 LumoUtility.Overflow.HIDDEN
         );
         items.getStyle().set("text-overflow", "ellipsis");
-        add(items);
 
         // Footer: total + paid indicator
         var footer = createFooter();
-        add(footer);
+
+        // Content layout
+        var content = getContent();
+        content.addClassName("order-card");
+        content.addClassName("card");
+        content.getStyle()
+                .set("cursor", "pointer")
+                .set("transition", "box-shadow 0.2s, transform 0.2s");
+
+        // Add hover effect
+        content.getElement().addEventListener("mouseenter", e ->
+                content.getStyle()
+                        .set("box-shadow", "0 4px 12px rgba(0,0,0,0.15)")
+                        .set("transform", "translateY(-2px)"));
+        content.getElement().addEventListener("mouseleave", e ->
+                content.getStyle()
+                        .set("box-shadow", "")
+                        .set("transform", ""));
+
+        content.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.SMALL
+        );
+        content.add(header, customerName);
+        if (location != null) {
+            content.add(location);
+        }
+        content.add(items, footer);
 
         // Click handler
-        addClickListener(e -> fireEvent(new OrderClickEvent(this, order)));
+        content.addClickListener(_ -> fireEvent(new OrderClickEvent(this, order)));
     }
 
     private Div createHeader(boolean hasUnreadMessage) {
@@ -173,6 +181,7 @@ public class OrderCard extends Div {
         return footer;
     }
 
+    /** Returns the order displayed by this card. */
     public OrderList getOrder() {
         return order;
     }

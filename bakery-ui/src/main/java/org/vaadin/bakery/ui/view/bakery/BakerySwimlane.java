@@ -1,6 +1,8 @@
 package org.vaadin.bakery.ui.view.bakery;
 
 import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.dnd.DropEvent;
 import com.vaadin.flow.component.dnd.DropTarget;
 import com.vaadin.flow.component.html.Div;
@@ -13,7 +15,6 @@ import org.vaadin.bakery.uimodel.type.OrderItemStatus;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
  * A single swimlane column in the bakery board.
  * Displays tiles filtered by one or more item statuses, grouped by date.
  */
-public class BakerySwimlane extends Composite<Div> {
+public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEE, MMM d");
 

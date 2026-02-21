@@ -1,8 +1,10 @@
 package org.vaadin.bakery.ui.view.bakery;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -33,11 +35,11 @@ import java.util.List;
 @PageTitle("Bakery Board")
 @Menu(order = 1.5, icon = LineAwesomeIconUrl.BREAD_SLICE_SOLID)
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER})
-public class BakeryView extends VerticalLayout {
+public class BakeryView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     private final transient BakeryService bakeryService;
     private final transient OrderService orderService;
-    private final transient ValueSignal<Integer> refreshTriggerSignal;
+    private final ValueSignal<Integer> refreshTriggerSignal;
 
     private final BakerySwimlane reviewSwimlane;
     private final BakerySwimlane acceptedSwimlane;
@@ -52,29 +54,13 @@ public class BakeryView extends VerticalLayout {
         this.bakeryService = bakeryService;
         this.orderService = orderService;
 
-        addClassName("bakery-view");
-        setSizeFull();
-        setPadding(false);
-        setSpacing(false);
-
         startDate = LocalDate.now();
         endDate = LocalDate.now();
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
 
-        // Toolbar with date range presets
-        var toolbar = new HorizontalLayout();
-        toolbar.setWidthFull();
-        toolbar.addClassNames(
-                LumoUtility.Padding.Horizontal.MEDIUM,
-                LumoUtility.Padding.Vertical.SMALL,
-                LumoUtility.Gap.SMALL
-        );
-        toolbar.getStyle().set("background", "var(--lumo-base-color)")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
-                .set("flex-shrink", "0");
-
+        // Component initializations
         var todayButton = new Button("Today", _ -> setDateRange(LocalDate.now(), LocalDate.now()));
         todayButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
 
@@ -86,9 +72,17 @@ public class BakeryView extends VerticalLayout {
                 setDateRange(LocalDate.now(), LocalDate.now().plusDays(6)));
         weekButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
 
-        toolbar.add(todayButton, tomorrowButton, weekButton);
+        var toolbar = new HorizontalLayout(todayButton, tomorrowButton, weekButton);
+        toolbar.setWidthFull();
+        toolbar.addClassNames(
+                LumoUtility.Padding.Horizontal.MEDIUM,
+                LumoUtility.Padding.Vertical.SMALL,
+                LumoUtility.Gap.SMALL
+        );
+        toolbar.getStyle().set("background", "var(--lumo-base-color)")
+                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
+                .set("flex-shrink", "0");
 
-        // Swimlanes
         reviewSwimlane = new BakerySwimlane("To Review",
                 List.of(OrderItemStatus.PENDING_REVIEW));
         acceptedSwimlane = new BakerySwimlane("Accepted",
@@ -98,13 +92,20 @@ public class BakeryView extends VerticalLayout {
         completedSwimlane = new BakerySwimlane("Done",
                 List.of(OrderItemStatus.PRODUCED, OrderItemStatus.CANCELED));
 
-        // Wire up tile click handlers
+        var swimlanesLayout = new HorizontalLayout(
+                reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
+        swimlanesLayout.setSizeFull();
+        swimlanesLayout.setSpacing(false);
+        swimlanesLayout.addClassName("bakery-swimlanes");
+        swimlanesLayout.setFlexGrow(1,
+                reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
+
+        // Event handlers
         reviewSwimlane.setTileClickHandler(this::onTileClick);
         acceptedSwimlane.setTileClickHandler(this::onTileClick);
         inProgressSwimlane.setTileClickHandler(this::onTileClick);
         completedSwimlane.setTileClickHandler(this::onTileClick);
 
-        // Wire up drop handlers
         reviewSwimlane.setDropHandler((tile, _) ->
                 transitionTile(tile, OrderItemStatus.PENDING_REVIEW));
         acceptedSwimlane.setDropHandler(this::onAcceptedDrop);
@@ -113,25 +114,21 @@ public class BakeryView extends VerticalLayout {
         completedSwimlane.setDropHandler((tile, _) ->
                 transitionTile(tile, OrderItemStatus.PRODUCED));
 
-        var swimlanesLayout = new HorizontalLayout();
-        swimlanesLayout.setSizeFull();
-        swimlanesLayout.setSpacing(false);
-        swimlanesLayout.addClassName("bakery-swimlanes");
-        swimlanesLayout.add(reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
-
-        // Equal width swimlanes
-        swimlanesLayout.setFlexGrow(1, reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
-
-        // Reactive effect: refreshes the board when data changes
+        // Signal bindings
         ElementEffect.effect(this.getElement(), () -> {
             DataChangeSignals.orderVersion().get();
             refreshTriggerSignal.get();
             refreshBoard();
         });
 
-        // Layout assembly
-        add(toolbar, swimlanesLayout);
-        setFlexGrow(1, swimlanesLayout);
+        // Content layout
+        var content = getContent();
+        content.addClassName("bakery-view");
+        content.setSizeFull();
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.add(toolbar, swimlanesLayout);
+        content.setFlexGrow(1, swimlanesLayout);
     }
 
     private void setDateRange(LocalDate start, LocalDate end) {
@@ -154,21 +151,12 @@ public class BakeryView extends VerticalLayout {
 
     private void onTileClick(BakeryTile tile) {
         var overlay = new TileDetailOverlay(tile, bakeryService);
-        overlay.addUndoListener(e -> {
-            undoTransition(e.getTile());
-        });
+        overlay.addUndoListener(e -> undoTransition(e.getTile()));
         overlay.open();
     }
 
     private void onAcceptedDrop(BakeryTile tile, OrderItemStatus targetStatus) {
-        // Dropping onto the Accepted swimlane: determine if it should be ACCEPTED or REJECTED
-        if (tile.getStatus() == OrderItemStatus.PENDING_REVIEW) {
-            // From review → accept
-            transitionTile(tile, OrderItemStatus.ACCEPTED);
-        } else {
-            // Other drops onto accepted lane default to ACCEPTED
-            transitionTile(tile, OrderItemStatus.ACCEPTED);
-        }
+        transitionTile(tile, OrderItemStatus.ACCEPTED);
     }
 
     private void transitionTile(BakeryTile tile, OrderItemStatus newStatus) {
@@ -180,11 +168,7 @@ public class BakeryView extends VerticalLayout {
         // Rejection requires a message dialog
         if (newStatus == OrderItemStatus.REJECTED) {
             var rejectDialog = new RejectMessageDialog();
-            rejectDialog.addConfirmListener(e -> {
-                // For rejected transitions, we'd need a reject method on the service
-                // For now, just transition the status
-                performTransition(tile, newStatus);
-            });
+            rejectDialog.addConfirmListener(_ -> performTransition(tile, newStatus));
             rejectDialog.open();
             return;
         }
@@ -199,7 +183,6 @@ public class BakeryView extends VerticalLayout {
 
         // Today-only rule for IN_PROGRESS
         if (newStatus == OrderItemStatus.IN_PROGRESS
-                && tile.getDueDate() != null
                 && tile.getDueDate().isAfter(LocalDate.now())) {
             Notification.show("Can only start production for today's items",
                     5000, Notification.Position.BOTTOM_START)

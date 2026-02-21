@@ -1,6 +1,9 @@
 package org.vaadin.bakery.ui.component;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H2;
@@ -15,7 +18,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
  * Reusable view header component providing consistent styling across views.
  * Layout: [Title] [Filter components...] [Action button]
  */
-public class ViewHeader extends HorizontalLayout {
+public class ViewHeader extends Composite<HorizontalLayout> implements HasSize, HasStyle {
 
     private final H2 title;
     private final HorizontalLayout filterArea;
@@ -27,16 +30,7 @@ public class ViewHeader extends HorizontalLayout {
      * @param titleText the view title
      */
     public ViewHeader(String titleText) {
-        addClassName("view-header");
-        addClassName("title-only"); // Will be removed when filters/actions added
-        setWidthFull();
-        setAlignItems(FlexComponent.Alignment.CENTER);
-        setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
-        addClassNames(
-                LumoUtility.Padding.Horizontal.MEDIUM,
-                LumoUtility.Padding.Vertical.SMALL
-        );
-
+        // Component initializations
         title = new H2(titleText);
         title.addClassNames(
                 LumoUtility.FontSize.LARGE,
@@ -49,7 +43,18 @@ public class ViewHeader extends HorizontalLayout {
         filterArea.addClassNames(LumoUtility.Gap.MEDIUM);
         filterArea.setSpacing(false);
 
-        add(title, filterArea);
+        // Content layout
+        var content = getContent();
+        content.addClassName("view-header");
+        content.addClassName("title-only"); // Will be removed when filters/actions added
+        content.setWidthFull();
+        content.setAlignItems(FlexComponent.Alignment.CENTER);
+        content.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        content.addClassNames(
+                LumoUtility.Padding.Horizontal.MEDIUM,
+                LumoUtility.Padding.Vertical.SMALL
+        );
+        content.add(title, filterArea);
     }
 
     /**
@@ -59,7 +64,7 @@ public class ViewHeader extends HorizontalLayout {
      * @return this header for method chaining
      */
     public ViewHeader withFilters(Component... components) {
-        removeClassName("title-only");
+        getContent().removeClassName("title-only");
         filterArea.add(components);
         return this;
     }
@@ -73,7 +78,7 @@ public class ViewHeader extends HorizontalLayout {
      * @return this header for method chaining
      */
     public ViewHeader withAction(String buttonText, Runnable clickHandler) {
-        removeClassName("title-only");
+        getContent().removeClassName("title-only");
 
         var icon = new Icon(VaadinIcon.PLUS);
         var text = new Span(buttonText);
@@ -84,7 +89,7 @@ public class ViewHeader extends HorizontalLayout {
         actionButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         actionButton.addClassName("view-action-button");
         actionButton.addClickListener(e -> clickHandler.run());
-        add(actionButton);
+        getContent().add(actionButton);
         return this;
     }
 
@@ -95,29 +100,23 @@ public class ViewHeader extends HorizontalLayout {
      * @return this header for method chaining
      */
     public ViewHeader withAction(Button button) {
-        removeClassName("title-only");
+        getContent().removeClassName("title-only");
         this.actionButton = button;
-        add(button);
+        getContent().add(button);
         return this;
     }
 
-    /**
-     * Gets the title component for customization.
-     */
+    /** Gets the title component for customization. */
     public H2 getTitle() {
         return title;
     }
 
-    /**
-     * Gets the filter area for direct manipulation.
-     */
+    /** Gets the filter area for direct manipulation. */
     public HorizontalLayout getFilterArea() {
         return filterArea;
     }
 
-    /**
-     * Gets the action button if one was added.
-     */
+    /** Gets the action button if one was added. */
     public Button getActionButton() {
         return actionButton;
     }

@@ -1,7 +1,10 @@
 package org.vaadin.bakery.ui.view.dashboard;
 
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -29,7 +32,7 @@ import java.time.format.DateTimeFormatter;
 @PageTitle("Dashboard")
 @Menu(order = 0, icon = LineAwesomeIconUrl.CHART_AREA_SOLID)
 @PermitAll
-public class DashboardView extends VerticalLayout {
+public class DashboardView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     /** Route path for this view. */
     public static final String ROUTE = "dashboard";
@@ -48,7 +51,7 @@ public class DashboardView extends VerticalLayout {
     private final UpcomingOrdersPanel upcomingOrdersPanel;
 
     // Signal incremented to trigger a same-session data refresh
-    private final transient ValueSignal<Integer> refreshTriggerSignal;
+    private final ValueSignal<Integer> refreshTriggerSignal;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a");
 
@@ -57,11 +60,6 @@ public class DashboardView extends VerticalLayout {
         this.dashboardService = dashboardService;
 
         // Component initializations
-        addClassName("dashboard-view");
-        setSizeFull();
-        setPadding(false);
-        setSpacing(false);
-
         var header = new ViewHeader("Dashboard");
 
         remainingTodayCard = new KpiCard("Remaining Today", VaadinIcon.CLOCK);
@@ -126,9 +124,14 @@ public class DashboardView extends VerticalLayout {
             refreshData();
         });
 
-        // Layout assembly
-        add(header, scroller);
-        setFlexGrow(1, scroller);
+        // Content layout
+        var outerContent = getContent();
+        outerContent.addClassName("dashboard-view");
+        outerContent.setSizeFull();
+        outerContent.setPadding(false);
+        outerContent.setSpacing(false);
+        outerContent.add(header, scroller);
+        outerContent.setFlexGrow(1, scroller);
     }
 
     /**

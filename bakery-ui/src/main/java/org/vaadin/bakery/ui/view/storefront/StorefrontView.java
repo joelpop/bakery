@@ -1,9 +1,12 @@
 package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.dom.ElementEffect;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -51,7 +54,7 @@ import java.util.stream.Collectors;
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER, UserRole.ROLE_BARISTA})
-public class StorefrontView extends VerticalLayout {
+public class StorefrontView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     /** Route path for this view. */
     public static final String ROUTE = "orders";
@@ -66,10 +69,10 @@ public class StorefrontView extends VerticalLayout {
     private final TextField searchField;
 
     // Signal incremented to trigger a same-session data refresh (e.g., after local filter change or save)
-    private final transient ValueSignal<Integer> refreshTriggerSignal;
+    private final ValueSignal<Integer> refreshTriggerSignal;
 
     // Tracks version changes between refreshes to identify new and modified orders for highlight animation
-    private final transient ChangeTracker<OrderList> changeTracker;
+    private final ChangeTracker<OrderList> changeTracker;
 
     private Registration locationChangeRegistration;
 
@@ -86,11 +89,6 @@ public class StorefrontView extends VerticalLayout {
         this.editOrderDialogProvider = editOrderDialogProvider;
 
         // Component initializations
-        addClassName("storefront-view");
-        setSizeFull();
-        setPadding(false);
-        setSpacing(false);
-
         searchField = new TextField();
         searchField.setPlaceholder("Filter orders");
         searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
@@ -133,11 +131,14 @@ public class StorefrontView extends VerticalLayout {
             rebuildOrdersDisplay();
         });
 
-        // Layout assembly
-        add(header);
-        add(filterBar);
-        add(scroller);
-        setFlexGrow(1, scroller);
+        // Content layout
+        var content = getContent();
+        content.addClassName("storefront-view");
+        content.setSizeFull();
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.add(header, filterBar, scroller);
+        content.setFlexGrow(1, scroller);
     }
 
     @Override

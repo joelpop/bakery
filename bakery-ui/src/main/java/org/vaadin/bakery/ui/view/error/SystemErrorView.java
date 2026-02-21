@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.view.error;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -28,18 +31,14 @@ import java.util.UUID;
  * Error view for 500 Internal Server errors.
  */
 @PageTitle("System Error")
-public class SystemErrorView extends VerticalLayout implements HasErrorParameter<Exception> {
+public class SystemErrorView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<Exception> {
 
     private static final Logger logger = LoggerFactory.getLogger(SystemErrorView.class);
 
     private final Span errorIdSpan;
 
     public SystemErrorView() {
-        addClassName("error-view");
-        setSizeFull();
-        setAlignItems(FlexComponent.Alignment.CENTER);
-        setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-
+        // Component initializations
         var container = new Div();
         container.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -93,7 +92,14 @@ public class SystemErrorView extends VerticalLayout implements HasErrorParameter
         actions.setAlignItems(FlexComponent.Alignment.CENTER);
 
         container.add(icon, heading, message, errorIdContainer, actions);
-        add(container);
+
+        // Content layout
+        var content = getContent();
+        content.addClassName("error-view");
+        content.setSizeFull();
+        content.setAlignItems(FlexComponent.Alignment.CENTER);
+        content.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
+        content.add(container);
     }
 
     @Override
