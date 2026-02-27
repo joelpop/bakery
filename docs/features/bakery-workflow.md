@@ -327,28 +327,39 @@ Bakers can reorder tiles **within** a swimlane using drag or the **Top / Up / Do
 
 ### Interaction
 
-Bakers drag tiles from one swimlane to another to transition item status. When a grouped tile is dragged, **all items in the group** are updated at once.
+Bakers drag tiles from one swimlane to another to transition item status. When a grouped tile is dragged, **all items in the group** are updated at once. All status transitions and reordering are performed exclusively via drag-and-drop — there are no inline action buttons on tiles.
 
-### Drop Targets
+### Overlay Panel + Reorder Lines
 
-When a tile is picked up for dragging:
+When a tile is picked up, **all swimlanes** simultaneously enter drag mode, displaying two complementary drop mechanisms:
 
-- **Valid swimlanes** display a drop target overlay covering the lane, providing a clear visual indicator of where the tile can be dropped
-- **Invalid swimlanes** do not show a drop target (no visual affordance)
-- **Reviewed swimlane**: Two stacked drop targets appear — **Rejected** (top) and **Accepted** (bottom) — so the baker can choose the specific status
-- **In Progress swimlane**: The drop target only appears for tiles due **today** — future-dated tiles cannot enter production
-- **Completed swimlane**: Two stacked drop targets appear — **Produced** (twice the height of the other) and **Canceled**
-- **Undo target**: If the tile has an undo available, its previous swimlane (or section) displays a drop target. Dropping the tile there performs an undo rather than a new transition (see [Undo](#undo))
+1. **Overlay panel** (left ~30% of each swimlane): Translucent status drop zones for quick First/Last positioning. Each status in the swimlane gets a proportionally-sized zone with a top sub-zone (⇈, inserts at first position) and a bottom sub-zone (⇊, inserts at last position). A vertical status label runs between the icons.
+
+2. **Reorder insertion lines** (between tiles on the right ~70%): Thin horizontal lines appearing between tiles of active statuses, enabling precise position targeting.
+
+Tiles remain in the DOM throughout the drag (never removed), preventing layout shift and drag cancellation.
+
+**Active zones** — valid transition targets plus the source status (for reorder) — display a tinted background in the status color with colored icons and label. On hover/drag-over, the background intensifies and icons/label turn white.
+
+**Disabled zones** — invalid targets — display a grey wash with desaturated icons and no interactivity.
+
+**Constraints applied at drag start:**
+- `IN_PROGRESS` target removed if tile's due date is after today (today-only rule)
+- `IN_PROGRESS` target removed if tile is on hold (hold constraint)
+- Source status always active (for reorder within same swimlane)
 
 ### Status Update
 
-On drop:
+On drop to a different status:
 1. All order items represented by the tile are updated to the new status
 2. Each item update uses optimistic locking (version check) to prevent conflicts
 3. If any item fails the version check, the operation is rolled back and the user is notified
-4. A system event is recorded in each affected order's activity timeline
-5. Cross-session updates are pushed via shared signals so other users see the change in real time
-6. The dropped tile appears at the bottom of the target date group (or target section); the swimlane auto-scrolls to reveal it
+4. Cross-session updates are pushed via shared signals so other users see the change in real time
+5. The tile's position in the target swimlane is persisted
+
+On drop to the same status (reorder):
+1. The full ordered list of tiles for that status + due date is recomputed with the tile at its new position
+2. All positions are persisted atomically via `saveTileOrder()`
 
 ### Undo
 
@@ -357,7 +368,8 @@ Each tile maintains an **undo stack** of its previous statuses, allowing mistake
 **Triggering undo:**
 - **Drag-to-undo**: Drag the tile to the swimlane (or section) it came from. The previous location displays a drop target when an undo is available.
 - **Tile button**: The tile's hover/tap button overlay includes an undo button when available.
-- **Detail overlay**: The detail overlay also includes an undo button when available.
+
+**Current implementation**: Drag-to-undo and tile buttons are not yet implemented. Undo is currently triggered from the detail overlay (temporary location until tile buttons are added).
 
 **What undo does:**
 1. Reverts all affected items to their previous status

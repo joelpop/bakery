@@ -37,6 +37,8 @@ The view is organized as four equal-width vertical swimlanes spanning the full v
 
 A toolbar above the swimlanes contains the date range filter for scoping which items are visible. See [Date Scope](../features/bakery-workflow.md#date-scope) for filter options.
 
+**Current implementation**: Three preset buttons (Today, Today+Tomorrow, This Week) with Today as the default. Custom date range picker not yet implemented.
+
 ### Pending Review Swimlane (1)
 
 Items awaiting review — both newly received orders and items re-entered after a rejection was corrected.
@@ -121,6 +123,8 @@ Buttons include:
 | Top / Up / Down / Bottom | Reorder arrows for changing tile priority within the swimlane |
 | Details | Mobile/touch only — opens the detail overlay |
 
+**Current implementation**: Tile buttons are not yet implemented. Status transitions are performed exclusively via drag-and-drop. Undo is currently accessible only through the detail overlay. Click opens the detail overlay directly on both desktop and mobile.
+
 ### Detail Overlay
 
 Because tiles combine items across multiple orders, it is not practical to display all additional details, notes, and messages directly on the tile. The tile shows summary information and indicators; the detail overlay provides the full picture.
@@ -137,6 +141,8 @@ Items in the overlay are **selectable** — selecting specific items filters the
 
 Opening the overlay marks unread messages as read, consistent with the [Messaging](../features/messaging.md#unread-tracking) feature's read model.
 
+**Current implementation**: The overlay shows contributing order cards with customer name, quantity, item details, additional details, unread indicator, and "View Order" link. Not yet implemented: inline activity timeline / message posting, selectable item filtering, unread read-marking on open.
+
 ### Date Group Headers
 
 Within each swimlane, tiles are organized under date group headers (e.g., "Today — Tue, Jun 6"). Today's items appear first, then tomorrow, then subsequent dates.
@@ -145,9 +151,13 @@ Within each swimlane, tiles are organized under date group headers (e.g., "Today
 
 Within a date group, tiles are ordered by their persisted position. Bakers can reorder tiles within a swimlane using drag or the **Top / Up / Down / Bottom** arrow buttons (both today's and future-dated tiles), setting production priority. Tile reordering is not undoable. See [Persistence](../features/bakery-workflow.md#persistence).
 
+**Current implementation**: Reorder via drag only (arrow buttons not yet implemented). The full reordered list is persisted atomically via `saveTileOrder()`.
+
 ### Change Highlighting
 
 When a tile's status, position, or contributing order/item data changes (from any source), all users see a **temporary highlight** on the affected tile, following the same highlight pattern used in the Storefront and other list views.
+
+**Current implementation**: Signal-based auto-refresh is working (board refreshes on data changes), but per-tile change highlighting animations are not yet implemented.
 
 ---
 
@@ -159,28 +169,118 @@ Bakers drag a tile from one swimlane to another to transition all items represen
 
 ### Drop Target Overlays
 
-When a tile is picked up:
+When a tile is picked up, **all swimlanes** simultaneously enter drag mode, displaying two complementary drop mechanisms:
 
-- **Valid target swimlanes** display a translucent overlay covering the lane
-- **Invalid swimlanes** show no overlay (no visual affordance)
-- **Reviewed swimlane**: Two stacked drop targets appear — **Rejected** (top) and **Accepted** (bottom)
-- **In Progress swimlane**: The drop target only appears for tiles due **today** — future-dated tiles cannot enter production
-- **Completed swimlane**: Two stacked drop targets appear — **Produced** (twice the height) and **Canceled**
-- **Undo target**: If the tile has an undo available, its previous swimlane (or section) displays a drop target; dropping the tile there performs an undo
+1. **Overlay panel** (left ~30% of each swimlane): Translucent status drop zones for quick First/Last positioning
+2. **Reorder insertion lines** (between tiles on the right ~70%): Precise position targeting
+
+Tiles remain in the DOM throughout the drag (never removed), preventing layout shift and drag cancellation.
+
+#### Overlay Panel
+
+Each swimlane displays a translucent overlay panel on its left ~30%, absolutely positioned over the tile content. The panel contains one zone per status in that swimlane, sized proportionally by flex weight.
+
+```
+┌───────────────────────────────────────┐
+│ To Review  2  │ Reviewed  5  │ ...    │
+├───┬───────────┼───┬──────────┤        │
+│   │           │   │          │        │
+│ ⇈ │ tile      │ ⇈ │ tile     │        │
+│   │           │   │          │        │
+│ P │ tile      │ R │ tile     │        │
+│ E │           │ E │          │        │
+│ N │           │ J │          │        │
+│ D │           │ E │          │        │
+│ I │           │ C │          │        │
+│ N │           │ T │          │        │
+│ G │           │ E │          │        │
+│   │           │ D │          │        │
+│ R │           │   │          │        │
+│ E │           │   │          │        │
+│ V │           ├───┤          │        │
+│ I │           │ ⇈ │          │        │
+│ E │           │   │          │        │
+│ W │           │ A │          │        │
+│   │           │ C │          │        │
+│ ⇊ │           │ C │          │        │
+│   │           │ E │          │        │
+│   │           │ P │          │        │
+│   │           │ T │          │        │
+│   │           │ E │          │        │
+│   │           │ D │          │        │
+│   │           │   │          │        │
+│   │           │ ⇊ │          │        │
+└───┴───────────┴───┴──────────┘        │
+ Panel (~30%)    Panel (~30%)           │
+```
+
+Each status zone contains:
+- **Top sub-zone** (⇈ icon): Drop here inserts at position 0 (first)
+- **Vertical status label**: Big uppercase text in status color, centered between icons
+- **Bottom sub-zone** (⇊ icon): Drop here inserts at last position
+
+**Active zones** (valid transition targets + source status for reorder): Tinted with the status color (10% wash), 80% opacity icons and 50% opacity label. On hover/drag-over: 30% color fill background, icons and label turn white.
+
+**Disabled zones** (invalid targets): Grey wash (5%), desaturated icons and label, no interactivity.
+
+**Per-status color theming** via CSS custom property `--_panel-zone-color`:
+
+| Status | Color |
+|--------|-------|
+| PENDING_REVIEW | Primary (blue) |
+| REJECTED | Error (red) |
+| ACCEPTED | Success (green) |
+| IN_PROGRESS | Yellow |
+| PRODUCED | Orange |
+| CANCELED | Contrast (grey) |
+
+#### Reorder Insertion Lines
+
+Between tiles of active statuses (valid targets + source status), thin reorder drop zones appear as horizontal blue lines (3px). These use negative margins to overlay the gap between tiles without shifting layout. Dropping on a line inserts the tile at that specific position.
+
+For the source status, no-op positions (adjacent to the dragged tile) are skipped. For target statuses, all positions are available since the tile is new to that group.
+
+#### Drop Actions
+
+| Drop Location | Action |
+|--------------|--------|
+| Panel zone top (⇈) — same status | Reorder to first position |
+| Panel zone bottom (⇊) — same status | Reorder to last position |
+| Panel zone top (⇈) — different status | Transition + insert at position 0 |
+| Panel zone bottom (⇊) — different status | Transition + insert at last position |
+| Reorder line — same status | Reorder to that position |
+| Reorder line — different status | Transition + insert at that position |
+
+#### Active Target Computation
+
+When a tile is picked up, valid drop targets are computed:
+
+1. Start with static rules from `OrderItemStatus.getValidBakeryTargets()`
+2. Remove `IN_PROGRESS` if tile's due date is after today (today-only rule)
+3. Remove `IN_PROGRESS` if tile is on hold (hold constraint)
+4. Source status is always active (for reorder within same swimlane)
+
+#### Auto-Scroll
+
+During drag, all swimlanes enable auto-scroll via client-side JavaScript. When the cursor is within 50px of the top or bottom edge of a swimlane's scroller, it scrolls incrementally at 6px per `requestAnimationFrame`. Scrolling stops when the edge is reached or the cursor moves away.
 
 ### Reordering
 
 Tiles can be dragged within the same swimlane to change their priority order. This applies to both today's and future-dated tiles. The new position is persisted immediately. Reordering is not undoable.
 
+**Current implementation**: The full reordered list is persisted atomically via `saveTileOrder()` (not single-tile `saveTilePosition()`).
+
 ### Undo
 
-Dragging a tile to the swimlane it came from performs an undo. The tile's button overlay also includes an undo button. Undo:
+Dragging a tile to the swimlane it came from performs an **undo** rather than a new forward transition. The tile's button overlay also includes an undo button. Undo:
 
 1. Reverts all affected items to their previous status
 2. Removes the activity timeline entries created by the undone transition
 3. Places the tile at the **end of its date group** in the target swimlane (not the original position, since other tiles may have shifted)
 
 After undoing, the tile's previous undo becomes available (multi-level undo stack). For example, a tile transitioned Pending Review → Accepted → In Progress can undo back to Accepted, then undo again back to Pending Review.
+
+**Current implementation**: Drag-to-undo is not yet implemented. Undo is currently triggered only from the detail overlay (which temporarily has the undo button until tile buttons are implemented).
 
 ### Concurrent Operations
 
@@ -196,13 +296,13 @@ When two users drag tiles simultaneously, the system handles conflicts via optim
 - Click on tiles opens detail overlay
 - Drag and drop for status transitions and reordering
 
-### Tablet
-- Four swimlanes may compress slightly; tiles stack naturally
+### Tablet (≤ 1024px)
+- Swimlanes get `overflow-x: auto` with `min-width: 220px`
 - Tap on tiles reveals button overlay (with Details button)
 - Touch drag for tile transitions
 
-### Phone
-- Swimlanes may require horizontal scrolling or a tab-based switcher to view one lane at a time
+### Phone (≤ 480px, coarse pointer)
+- Horizontal scroll-snap: one swimlane visible at a time (`min-width: 85vw`, `scroll-snap-type: x mandatory`)
 - Tap on tiles reveals button overlay (with Details button)
 - Touch drag for tile transitions
 

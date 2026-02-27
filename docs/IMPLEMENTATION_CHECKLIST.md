@@ -930,20 +930,47 @@ The following decisions were made during documentation review to resolve conflic
 
 - [x] **BakeryView** — Kanban board with toolbar and 4 swimlane columns
   - [x] @Route("bakery"), @RolesAllowed({ROLE_ADMIN, ROLE_BAKER})
-  - [x] Date range preset buttons (Today, Today+Tomorrow, This Week, Custom)
-  - [x] Auto-refresh via DataChangeSignals.orderVersion()
-  - [x] Change detection with highlight animations
-- [x] **BakerySwimlane** — Status column with date-grouped tiles and drop targets
-  - [x] Review (PENDING_REVIEW), Accepted/Rejected, In Progress, Completed (PRODUCED/CANCELED)
+  - [x] Date range preset buttons (Today, Today+Tomorrow, This Week)
+  - [x] Default date range: Today (spec says Today+Tomorrow — see gaps)
+  - [x] Auto-refresh via DataChangeSignals.orderVersion() + local ValueSignal trigger
+  - [x] Unified drop handler dispatching reorder vs transition based on same/different status
+  - [x] Active target computation with today-only rule and hold constraint
+  - [x] Batch transition for batchable tiles (all items updated individually with version check)
+  - [x] Reorder persistence via saveTileOrder() (full ordered list, not single position)
+  - [x] Position save after transition via saveTilePosition() (non-critical)
+  - [x] Undo via TileDetailOverlay UndoEvent → bakeryService.undoTileTransition()
+  - [x] StaleDataException handling with warning notification
+- [x] **BakerySwimlane** — Status column with date-grouped tiles and overlay panel drag system
+  - [x] Four swimlanes: To Review, Reviewed (Rejected+Accepted), In Progress, Done (Produced+Canceled)
+  - [x] Overlay panel (left ~30%): Absolutely positioned status drop zones with First/Last sub-zones
+  - [x] Per-status color theming via CSS custom property (--_panel-zone-color)
+  - [x] Active zones: Tinted background, large chevron icons (ANGLE_DOUBLE_UP/DOWN), vertical status label
+  - [x] Disabled zones: Grey wash, desaturated, no interactivity
+  - [x] Hover/drag-over: Colored background fill, white icons and label
+  - [x] Reorder insertion lines (3px blue) between tiles of active statuses
+  - [x] No-op zone skipping for source status (adjacent to dragged tile)
+  - [x] Auto-scroll on drag: Client-side JS, 50px edge detection, 6px/frame via requestAnimationFrame
+  - [x] Tiles remain in DOM during drag (no layout shift)
+  - [x] Clean drag mode exit: Remove panel, remove reorder zones, remove CSS classes
 - [x] **BakeryTileComponent** — Draggable tile card with product info and indicators
   - [x] DragSource for drag-and-drop transitions
-  - [x] Hold indicator (lock icon) when on hold
-  - [x] Action buttons on hover/tap
+  - [x] Hold indicator (lock icon with tooltip) when on hold
+  - [x] Unread message indicator (blue dot)
+  - [x] Notes indicator (comment icon)
+  - [x] Hover elevation (shadow increase, translateY -1px)
+  - [x] Dragged state: 50% opacity, grabbing cursor
 - [x] **TileDetailOverlay** — Dialog showing contributing order items (delegation pattern)
-  - [x] Undo button when available
-  - [x] Links to OrderDetailView
+  - [x] Tile summary badges (quantity, size, order count)
+  - [x] Contributing order cards with customer name, details, unread indicator
+  - [x] "View Order" navigation links to OrderDetailView
+  - [x] Undo button (temporary location until tile hover buttons are implemented)
 - [x] **RejectMessageDialog** — Required reason dialog for rejections (delegation pattern)
-- [x] CSS: swimlane layout, tile styling, drop targets, responsive, highlight animations
+  - [x] TextArea with "Rejection Reason" label, required validation
+  - [x] Reject button (primary + error), Cancel button
+  - [x] ConfirmEvent carries message text, CancelEvent
+- [x] CSS: swimlane layout, tile styling, overlay panels, reorder zones, responsive breakpoints
+  - [x] Tablet (≤1024px): overflow-x auto, min-width 220px per swimlane
+  - [x] Phone (≤480px): scroll-snap one swimlane at a time (85vw)
 
 ---
 
@@ -982,6 +1009,25 @@ The following decisions were made during documentation review to resolve conflic
 - [x] **ClientDetailsService** - Browser client details lazily detected and cached per session
   - [x] Caches full ExtendedClientDetails in VaadinSession on first access
   - [x] Used by InstantMapper for UTC→local time conversion
+
+---
+
+## Implementation Gaps (Bakery Board)
+
+The following features are documented in the spec but not yet implemented, or differ from the spec.
+
+### Not Yet Implemented
+
+- [ ] **Tile hover/tap action buttons** — Spec calls for status transition buttons, undo button, and reorder arrows (Top/Up/Down/Bottom) appearing on hover (desktop) or tap (mobile). Not implemented; status transitions are performed exclusively via drag-and-drop. Click currently opens the detail overlay directly.
+- [ ] **Drag-to-undo** — Spec says dragging a tile to the swimlane it came from performs an undo. Not implemented; undo is temporarily accessible from the detail overlay until tile buttons are added.
+- [ ] **Rejection message persistence** — RejectMessageDialog captures the message, but it is not persisted to the order activity timeline. The `performTransition()` method does not call `OrderActivityService` to record the rejection reason.
+- [ ] **Message viewing/posting in detail overlay** — TileDetailOverlay shows an "unread messages" indicator and "View Order" links, but does not embed the activity timeline or a message input. Spec calls for inline message posting from the overlay.
+- [ ] **Selectable items in detail overlay** — Spec says items should be selectable to filter the detail display. Not implemented; all items always shown.
+- [ ] **Unread message read-marking** — Opening the detail overlay should mark unread messages as read. Not implemented.
+- [ ] **Change highlighting on tiles** — Spec calls for temporary highlight animations on changed tiles (like Storefront rows). Signal-based refresh exists but no highlight animation on individual tiles.
+- [ ] **Custom date range picker** — Only preset buttons implemented; no custom start/end date selector.
+- [ ] **Default date range** — Spec says Today+Tomorrow; implementation defaults to Today.
+- [ ] **Incomplete past orders** — Past-due items not in terminal status should always appear regardless of date range. Currently filtered by selected date range.
 
 ---
 
