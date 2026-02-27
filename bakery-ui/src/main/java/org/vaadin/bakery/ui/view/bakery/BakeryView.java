@@ -9,7 +9,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -26,7 +26,11 @@ import org.vaadin.bakery.uimodel.type.UserRole;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Kanban-style bakery production board showing order items as tiles in status swimlanes.
@@ -48,6 +52,7 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
 
     private LocalDate startDate;
     private LocalDate endDate;
+    private List<BakeryTile> cachedTiles;
 
     /** Creates the bakery board view with toolbar and four swimlane columns. */
     public BakeryView(BakeryService bakeryService, OrderService orderService) {
@@ -56,6 +61,7 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
 
         startDate = LocalDate.now();
         endDate = LocalDate.now();
+        cachedTiles = List.of();
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
@@ -85,37 +91,34 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
 
         reviewSwimlane = new BakerySwimlane("To Review",
                 List.of(OrderItemStatus.PENDING_REVIEW));
-        acceptedSwimlane = new BakerySwimlane("Accepted",
-                List.of(OrderItemStatus.ACCEPTED, OrderItemStatus.REJECTED));
+        acceptedSwimlane = new BakerySwimlane("Reviewed",
+                List.of(OrderItemStatus.REJECTED, OrderItemStatus.ACCEPTED));
         inProgressSwimlane = new BakerySwimlane("In Progress",
                 List.of(OrderItemStatus.IN_PROGRESS));
         completedSwimlane = new BakerySwimlane("Done",
-                List.of(OrderItemStatus.PRODUCED, OrderItemStatus.CANCELED));
+                List.of(OrderItemStatus.PRODUCED, OrderItemStatus.CANCELED),
+                Map.of(OrderItemStatus.PRODUCED, 2));
 
         var swimlanesLayout = new HorizontalLayout(
                 reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
-        swimlanesLayout.setSizeFull();
+        swimlanesLayout.setWidthFull();
         swimlanesLayout.setSpacing(false);
         swimlanesLayout.addClassName("bakery-swimlanes");
+        swimlanesLayout.getStyle().set("flex", "1 1 0").set("min-height", "0");
         swimlanesLayout.setFlexGrow(1,
                 reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
 
         // Event handlers
-        reviewSwimlane.setTileClickHandler(this::onTileClick);
-        acceptedSwimlane.setTileClickHandler(this::onTileClick);
-        inProgressSwimlane.setTileClickHandler(this::onTileClick);
-        completedSwimlane.setTileClickHandler(this::onTileClick);
-
-        reviewSwimlane.setDropHandler((tile, _) ->
-                transitionTile(tile, OrderItemStatus.PENDING_REVIEW));
-        acceptedSwimlane.setDropHandler(this::onAcceptedDrop);
-        inProgressSwimlane.setDropHandler((tile, _) ->
-                transitionTile(tile, OrderItemStatus.IN_PROGRESS));
-        completedSwimlane.setDropHandler((tile, _) ->
-                transitionTile(tile, OrderItemStatus.PRODUCED));
+        var allSwimlanes = List.of(reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
+        for (var swimlane : allSwimlanes) {
+            swimlane.setTileClickHandler(this::onTileClick);
+            swimlane.setTileDropHandler(this::onTileDrop);
+            swimlane.setDragStartHandler(this::onTileDragStart);
+            swimlane.setDragEndHandler(this::onTileDragEnd);
+        }
 
         // Signal bindings
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.orderVersion().get();
             refreshTriggerSignal.get();
             refreshBoard();
@@ -128,7 +131,7 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
         content.setPadding(false);
         content.setSpacing(false);
         content.add(toolbar, swimlanesLayout);
-        content.setFlexGrow(1, swimlanesLayout);
+
     }
 
     private void setDateRange(LocalDate start, LocalDate end) {
@@ -142,11 +145,11 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
     }
 
     private void refreshBoard() {
-        var tiles = bakeryService.listTiles(startDate, endDate);
-        reviewSwimlane.setTiles(tiles);
-        acceptedSwimlane.setTiles(tiles);
-        inProgressSwimlane.setTiles(tiles);
-        completedSwimlane.setTiles(tiles);
+        cachedTiles = bakeryService.listTiles(startDate, endDate);
+        reviewSwimlane.setTiles(cachedTiles);
+        acceptedSwimlane.setTiles(cachedTiles);
+        inProgressSwimlane.setTiles(cachedTiles);
+        completedSwimlane.setTiles(cachedTiles);
     }
 
     private void onTileClick(BakeryTile tile) {
@@ -155,20 +158,106 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
         overlay.open();
     }
 
-    private void onAcceptedDrop(BakeryTile tile, OrderItemStatus targetStatus) {
-        transitionTile(tile, OrderItemStatus.ACCEPTED);
+    private void onTileDragStart(BakeryTile tile) {
+        var activeTargets = computeActiveTargets(tile);
+        reviewSwimlane.enterDragMode(tile, activeTargets);
+        acceptedSwimlane.enterDragMode(tile, activeTargets);
+        inProgressSwimlane.enterDragMode(tile, activeTargets);
+        completedSwimlane.enterDragMode(tile, activeTargets);
+
+        // Enable auto-scroll on all swimlanes
+        reviewSwimlane.enableDragAutoScroll();
+        acceptedSwimlane.enableDragAutoScroll();
+        inProgressSwimlane.enableDragAutoScroll();
+        completedSwimlane.enableDragAutoScroll();
     }
 
-    private void transitionTile(BakeryTile tile, OrderItemStatus newStatus) {
-        // Validate: don't transition to same status
-        if (tile.getStatus() == newStatus) {
-            return;
+    private void onTileDragEnd() {
+        reviewSwimlane.exitDragMode();
+        acceptedSwimlane.exitDragMode();
+        inProgressSwimlane.exitDragMode();
+        completedSwimlane.exitDragMode();
+
+        // Disable auto-scroll on all swimlanes
+        reviewSwimlane.disableDragAutoScroll();
+        acceptedSwimlane.disableDragAutoScroll();
+        inProgressSwimlane.disableDragAutoScroll();
+        completedSwimlane.disableDragAutoScroll();
+    }
+
+    /**
+     * Unified drop handler for both status transitions and reordering.
+     *
+     * <p>If the target status matches the tile's current status, this is a reorder operation.
+     * Otherwise, it's a status transition with an optional position.
+     */
+    private void onTileDrop(BakeryTile tile, OrderItemStatus targetStatus, int position) {
+        if (tile.getStatus() == targetStatus) {
+            // Reorder within same status
+            reorderTile(tile, targetStatus, position);
+        } else {
+            // Status transition (with optional position)
+            transitionTile(tile, targetStatus, position);
+        }
+    }
+
+    /**
+     * Reorders a tile within its current status by computing the full new order
+     * and persisting all positions at once.
+     */
+    private void reorderTile(BakeryTile tile, OrderItemStatus status, int position) {
+        try {
+            // Build the current ordered list of grouping keys for this status + date
+            var currentOrder = new ArrayList<>(cachedTiles.stream()
+                    .filter(t -> t.getStatus() == status && t.getDueDate().equals(tile.getDueDate()))
+                    .map(BakeryTile::getGroupingKey)
+                    .toList());
+
+            // Remove the dragged tile from its current position
+            currentOrder.remove(tile.getGroupingKey());
+
+            // Insert at the target position (clamped to list size)
+            var insertAt = Math.min(position, currentOrder.size());
+            currentOrder.add(insertAt, tile.getGroupingKey());
+
+            bakeryService.saveTileOrder(status, tile.getDueDate(), currentOrder);
+            triggerRefresh();
+        } catch (Exception e) {
+            Notification.show("Failed to reorder: " + e.getMessage(),
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    /**
+     * Computes the set of statuses that are valid (active) drop targets for the given tile.
+     * Applies static transition rules from the enum plus dynamic constraints.
+     */
+    private Set<OrderItemStatus> computeActiveTargets(BakeryTile tile) {
+        var targets = new HashSet<>(tile.getStatus().getValidBakeryTargets());
+
+        // Today-only constraint: IN_PROGRESS only allowed for today's items
+        if (targets.contains(OrderItemStatus.IN_PROGRESS)
+                && tile.getDueDate().isAfter(LocalDate.now())) {
+            targets.remove(OrderItemStatus.IN_PROGRESS);
         }
 
+        // Hold constraint: IN_PROGRESS blocked if tile is on hold
+        if (targets.contains(OrderItemStatus.IN_PROGRESS) && tile.isOnHold()) {
+            targets.remove(OrderItemStatus.IN_PROGRESS);
+        }
+
+        return targets;
+    }
+
+    private void transitionTile(BakeryTile tile, OrderItemStatus newStatus, int position) {
         // Rejection requires a message dialog
         if (newStatus == OrderItemStatus.REJECTED) {
             var rejectDialog = new RejectMessageDialog();
-            rejectDialog.addConfirmListener(_ -> performTransition(tile, newStatus));
+            rejectDialog.addConfirmListener(_ -> {
+                performTransition(tile, newStatus);
+                savePositionAfterTransition(tile, newStatus, position);
+            });
             rejectDialog.open();
             return;
         }
@@ -191,6 +280,7 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
         }
 
         performTransition(tile, newStatus);
+        savePositionAfterTransition(tile, newStatus, position);
     }
 
     private void performTransition(BakeryTile tile, OrderItemStatus newStatus) {
@@ -227,6 +317,17 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
             Notification.show("Failed to update status: " + e.getMessage(),
                     5000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    /**
+     * Saves the tile position after a status transition, if a specific position was requested.
+     */
+    private void savePositionAfterTransition(BakeryTile tile, OrderItemStatus newStatus, int position) {
+        try {
+            bakeryService.saveTilePosition(tile.getGroupingKey(), newStatus, tile.getDueDate(), position);
+        } catch (Exception e) {
+            // Position save failure is non-critical; the transition already succeeded
         }
     }
 

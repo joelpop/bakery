@@ -475,7 +475,173 @@ vaadin-grid::part(row-highlight) {
     flex-shrink: 0;
 }
 
-/* Bakery tile cards */
+/* --- Overlay Panel (appears during drag on left ~30% of each swimlane) --- */
+
+.drop-zone-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 30%;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    gap: 1px;
+}
+
+/* Individual status zones in the panel */
+.panel-status-zone {
+    --_panel-zone-color: var(--lumo-contrast);
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Per-status zone colors (using badge theme names from OrderItemStatus) */
+.panel-zone-blue    { --_panel-zone-color: var(--lumo-primary-color); }
+.panel-zone-error   { --_panel-zone-color: var(--lumo-error-color); }
+.panel-zone-green   { --_panel-zone-color: var(--lumo-success-color); }
+.panel-zone-yellow  { --_panel-zone-color: hsl(45, 100%, 42%); }
+.panel-zone-orange  { --_panel-zone-color: hsl(25, 90%, 50%); }
+.panel-zone-contrast { --_panel-zone-color: var(--lumo-contrast-60pct); }
+
+/* Active status zone — translucent tinted background */
+.panel-status-zone.panel-zone-active {
+    background: color-mix(in srgb, var(--_panel-zone-color) 10%, transparent);
+    backdrop-filter: blur(1px);
+    border-right: 2px solid color-mix(in srgb, var(--_panel-zone-color) 50%, transparent);
+}
+
+/* Disabled status zone — subtle translucent grey */
+.panel-status-zone.panel-zone-disabled {
+    background: color-mix(in srgb, var(--lumo-contrast) 5%, transparent);
+    backdrop-filter: blur(1px);
+    border-right: 1px solid var(--lumo-contrast-10pct);
+}
+
+/* Status label — horizontal at the top of each zone */
+.panel-status-label {
+    font-size: var(--lumo-font-size-xxs);
+    font-weight: 600;
+    padding: var(--lumo-space-xs) var(--lumo-space-s);
+    flex-shrink: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--_panel-zone-color) 15%, transparent);
+}
+
+.panel-zone-active .panel-status-label {
+    color: color-mix(in srgb, var(--_panel-zone-color) 80%, black);
+}
+
+.panel-zone-disabled .panel-status-label {
+    color: var(--lumo-disabled-text-color);
+}
+
+/* Top/Bottom sub-zones — stacked vertically below the label */
+.panel-sub-zone {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+}
+
+/* Shift up icon toward top, down icon toward bottom */
+.panel-sub-zone:first-of-type {
+    align-items: flex-start;
+    padding-top: var(--lumo-space-s);
+}
+
+.panel-sub-zone:last-of-type {
+    align-items: flex-end;
+    padding-bottom: var(--lumo-space-s);
+}
+
+.panel-sub-zone + .panel-sub-zone {
+    border-top: 1px dashed color-mix(in srgb, var(--_panel-zone-color) 20%, transparent);
+}
+
+/* Arrow icon — large, blocky, in status color */
+.panel-sub-zone-icon {
+    width: 32px;
+    height: 32px;
+    color: color-mix(in srgb, var(--_panel-zone-color) 40%, transparent);
+    transition: color 0.15s;
+}
+
+/* Hover: invert — fill background with status color, icon turns white */
+.panel-sub-zone:hover {
+    background: color-mix(in srgb, var(--_panel-zone-color) 70%, transparent);
+}
+
+.panel-sub-zone:hover .panel-sub-zone-icon {
+    color: white;
+}
+
+/* Drag-over: same inverted style, slightly stronger */
+.panel-sub-zone.v-drag-over-target {
+    background: color-mix(in srgb, var(--_panel-zone-color) 85%, transparent);
+    outline: none;
+}
+
+.panel-sub-zone.v-drag-over-target .panel-sub-zone-icon {
+    color: white;
+}
+
+/* --- Reorder drop zones (insertion points between tiles) --- */
+
+/* Reorder mode: switch from flex gap to tile margins so zones add zero space */
+.reorder-active {
+    gap: 0 !important;
+}
+
+.reorder-active > :not(.reorder-drop-zone) {
+    margin-bottom: var(--lumo-space-s);
+}
+
+.reorder-active > :not(.reorder-drop-zone):last-child {
+    margin-bottom: 0;
+}
+
+/* Reorder drop zones — overlay from midpoint of above tile to midpoint of below tile */
+.reorder-drop-zone {
+    position: relative;
+    z-index: 1;
+    height: 48px;
+    margin-top: -24px;
+    margin-bottom: -24px;
+}
+
+/* Visual indicator — thin line only, no border or outline */
+.reorder-drop-zone::after {
+    content: '';
+    position: absolute;
+    left: var(--lumo-space-m);
+    right: var(--lumo-space-m);
+    top: 50%;
+    height: 3px;
+    border-radius: 2px;
+    transform: translateY(-50%);
+    background: var(--lumo-primary-color);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.reorder-drop-zone.v-drag-over-target::after {
+    opacity: 1;
+}
+
+/* Suppress generic drag-over styling on reorder zones (no outline/background) */
+.reorder-drop-zone.v-drag-over-target {
+    outline: none;
+    background: transparent;
+}
+
+/* --- Bakery tile cards --- */
+
 .bakery-tile {
     background: var(--lumo-base-color);
     border-radius: var(--lumo-border-radius-m);
@@ -496,14 +662,16 @@ vaadin-grid::part(row-highlight) {
     cursor: grabbing;
 }
 
-/* Drop target highlight */
+/* Generic drop target highlight (applied by Vaadin DnD framework) */
 .v-drag-over-target {
     outline: 2px dashed var(--lumo-primary-color);
     outline-offset: -2px;
     background: var(--lumo-primary-color-10pct);
 }
 
-/* Responsive: tablet - compressed columns */
+/* --- Responsive --- */
+
+/* Tablet: compressed columns */
 @media (max-width: 1024px) {
     .bakery-swimlanes {
         overflow-x: auto;
@@ -514,7 +682,7 @@ vaadin-grid::part(row-highlight) {
     }
 }
 
-/* Responsive: phone - horizontal scroll */
+/* Phone: horizontal scroll */
 @media (max-width: 480px) and (pointer: coarse) {
     .bakery-swimlanes {
         overflow-x: auto;
