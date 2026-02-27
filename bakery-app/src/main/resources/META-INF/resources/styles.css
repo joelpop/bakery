@@ -493,6 +493,7 @@ vaadin-grid::part(row-highlight) {
 /* Individual status zones in the panel */
 .panel-status-zone {
     --_panel-zone-color: var(--lumo-contrast);
+    position: relative;
     display: flex;
     flex-direction: column;
     pointer-events: auto;
@@ -511,35 +512,42 @@ vaadin-grid::part(row-highlight) {
 /* Active status zone — translucent tinted background */
 .panel-status-zone.panel-zone-active {
     background: color-mix(in srgb, var(--_panel-zone-color) 10%, transparent);
-    backdrop-filter: blur(1px);
     border-right: 2px solid color-mix(in srgb, var(--_panel-zone-color) 50%, transparent);
 }
 
 /* Disabled status zone — subtle translucent grey */
 .panel-status-zone.panel-zone-disabled {
     background: color-mix(in srgb, var(--lumo-contrast) 5%, transparent);
-    backdrop-filter: blur(1px);
     border-right: 1px solid var(--lumo-contrast-10pct);
 }
 
-/* Status label — horizontal at the top of each zone */
+/* Status label — big vertical text centered between icons, non-interactive */
 .panel-status-label {
-    font-size: var(--lumo-font-size-xxs);
-    font-weight: 600;
-    padding: var(--lumo-space-xs) var(--lumo-space-s);
-    flex-shrink: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--_panel-zone-color) 15%, transparent);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: var(--lumo-font-size-l);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    pointer-events: none;
 }
 
 .panel-zone-active .panel-status-label {
-    color: color-mix(in srgb, var(--_panel-zone-color) 80%, black);
+    color: color-mix(in srgb, var(--_panel-zone-color) 50%, transparent);
+    transition: opacity 0.15s;
 }
 
 .panel-zone-disabled .panel-status-label {
-    color: var(--lumo-disabled-text-color);
+    color: var(--lumo-contrast-10pct);
 }
 
-/* Top/Bottom sub-zones — stacked vertically below the label */
+/* Top/Bottom sub-zones — stacked vertically around the label */
 .panel-sub-zone {
     flex: 1;
     display: flex;
@@ -560,34 +568,39 @@ vaadin-grid::part(row-highlight) {
     padding-bottom: var(--lumo-space-s);
 }
 
-.panel-sub-zone + .panel-sub-zone {
-    border-top: 1px dashed color-mix(in srgb, var(--_panel-zone-color) 20%, transparent);
-}
-
-/* Arrow icon — large, blocky, in status color */
+/* Arrow icon — large, in status color */
 .panel-sub-zone-icon {
     width: 32px;
     height: 32px;
-    color: color-mix(in srgb, var(--_panel-zone-color) 40%, transparent);
+    color: color-mix(in srgb, var(--_panel-zone-color) 80%, transparent);
     transition: color 0.15s;
 }
 
-/* Hover: invert — fill background with status color, icon turns white */
+/* Hover: colored background fill, white icon, label fades out */
 .panel-sub-zone:hover {
-    background: color-mix(in srgb, var(--_panel-zone-color) 70%, transparent);
+    background: color-mix(in srgb, var(--_panel-zone-color) 30%, transparent);
 }
 
 .panel-sub-zone:hover .panel-sub-zone-icon {
     color: white;
 }
 
-/* Drag-over: same inverted style, slightly stronger */
+.panel-sub-zone:hover ~ .panel-status-label,
+.panel-status-zone:has(.panel-sub-zone:hover) > .panel-status-label {
+    color: white;
+}
+
+/* Drag-over: same treatment */
 .panel-sub-zone.v-drag-over-target {
-    background: color-mix(in srgb, var(--_panel-zone-color) 85%, transparent);
     outline: none;
+    background: color-mix(in srgb, var(--_panel-zone-color) 30%, transparent);
 }
 
 .panel-sub-zone.v-drag-over-target .panel-sub-zone-icon {
+    color: white;
+}
+
+.panel-status-zone:has(.panel-sub-zone.v-drag-over-target) > .panel-status-label {
     color: white;
 }
 
