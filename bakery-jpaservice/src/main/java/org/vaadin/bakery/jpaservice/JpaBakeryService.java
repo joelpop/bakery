@@ -158,6 +158,13 @@ public class JpaBakeryService implements BakeryService {
     }
 
     @Override
+    public void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate, List<String> orderedGroupingKeys) {
+        for (var i = 0; i < orderedGroupingKeys.size(); i++) {
+            saveTilePosition(orderedGroupingKeys.get(i), swimlane, dueDate, i);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<OrderItemStatus> getUndoStack(String groupingKey) {
         return tileUndoEntryRepository.findByGroupingKeyOrderBySequenceNumberDesc(groupingKey)

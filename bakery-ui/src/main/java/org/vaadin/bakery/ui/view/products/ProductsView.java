@@ -4,7 +4,7 @@ import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Image;
@@ -124,7 +124,7 @@ public class ProductsView extends Composite<VerticalLayout> implements HasSize, 
 
         // Reactive effect: re-fetches and rebuilds the grid whenever product data changes
         // in any session (via shared productVersion signal) or locally (via refreshTriggerSignal)
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.productVersion().get();
             refreshTriggerSignal.get();
             refreshGrid();

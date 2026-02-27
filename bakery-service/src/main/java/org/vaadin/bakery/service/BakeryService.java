@@ -43,6 +43,18 @@ public interface BakeryService {
     void saveTilePosition(String groupingKey, OrderItemStatus swimlane, LocalDate dueDate, int position);
 
     /**
+     * Persists positions for all tiles in a swimlane/date group at once.
+     *
+     * <p>Each grouping key in the list is assigned its list index as position (0, 1, 2, ...),
+     * ensuring consistent ordering across all tiles in the group.
+     *
+     * @param swimlane           the swimlane (item status)
+     * @param dueDate            the date group
+     * @param orderedGroupingKeys the grouping keys in their desired display order
+     */
+    void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate, List<String> orderedGroupingKeys);
+
+    /**
      * Returns the undo stack for a tile (list of previous statuses, newest first).
      *
      * @param groupingKey the tile's grouping key

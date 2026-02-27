@@ -17,12 +17,14 @@ import com.vaadin.flow.router.HasErrorParameter;
 import com.vaadin.flow.router.NotFoundException;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Error view for 404 Not Found errors.
  */
 @PageTitle("Page Not Found")
+@PermitAll
 public class NotFoundView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<NotFoundException> {
 
     public NotFoundView() {

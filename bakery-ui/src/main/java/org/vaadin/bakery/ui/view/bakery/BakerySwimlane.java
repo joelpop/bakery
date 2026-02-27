@@ -328,7 +328,7 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
                 var topZone = createPanelSubZone(status, 0, VaadinIcon.ANGLE_DOUBLE_UP);
                 var bottomZone = createPanelSubZone(status, Integer.MAX_VALUE, VaadinIcon.ANGLE_DOUBLE_DOWN);
 
-                zone.add(label, topZone, bottomZone);
+                zone.add(topZone, label, bottomZone);
             } else {
                 zone.addClassName("panel-zone-disabled");
                 zone.add(label);

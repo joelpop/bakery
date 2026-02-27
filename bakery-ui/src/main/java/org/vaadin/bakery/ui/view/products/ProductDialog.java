@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.products;
 
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -203,7 +203,7 @@ public class ProductDialog implements NonComponent {
 
             // Reactive effect: checks if the product was modified or deleted by another session
             // whenever the shared productVersion signal changes
-            ElementEffect.effect(dialog.getElement(), () -> {
+            Signal.effect(dialog, () -> {
                 DataChangeSignals.productVersion().get();
                 checkForExternalChanges();
             });

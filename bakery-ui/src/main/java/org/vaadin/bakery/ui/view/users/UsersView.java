@@ -4,7 +4,7 @@ import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.avatar.Avatar;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -118,7 +118,7 @@ public class UsersView extends Composite<VerticalLayout> implements HasSize, Has
 
         // Reactive effect: re-fetches and rebuilds the grid whenever user data changes
         // in any session (via shared userVersion signal) or locally (via refreshTriggerSignal)
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.userVersion().get();
             refreshTriggerSignal.get();
             refreshGrid();

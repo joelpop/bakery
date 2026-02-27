@@ -6,7 +6,7 @@ import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -124,7 +124,7 @@ public class StorefrontView extends Composite<VerticalLayout> implements HasSize
 
         // Reactive effect: re-fetches and rebuilds the orders display whenever order data changes
         // in any session (via shared orderVersion/messageVersion signals) or locally (via refreshTriggerSignal)
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.orderVersion().get();
             DataChangeSignals.messageVersion().get();
             refreshTriggerSignal.get();

@@ -4,7 +4,7 @@ import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -163,7 +163,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
 
         // Reactive effect: updates all display fields (status, customer, location, items, payment, history)
         // whenever the orderSignal value changes
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             var order = orderSignal.get();
             if (order == null) return;
 
@@ -215,7 +215,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
 
         // Reactive effect: rebuilds the action buttons (edit, change status, mark paid, cancel)
         // based on the current order status and payment state
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             var order = orderSignal.get();
             actionButtons.removeAll();
             if (order == null) return;
@@ -270,7 +270,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
 
         // Reactive effect: re-fetches the order from the database whenever any session modifies
         // order data (via shared orderVersion signal), keeping this view in sync across sessions
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.orderVersion().get();
             refreshOrder();
         });

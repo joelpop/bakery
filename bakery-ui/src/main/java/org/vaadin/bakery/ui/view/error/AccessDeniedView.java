@@ -17,6 +17,7 @@ import com.vaadin.flow.router.HasErrorParameter;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.AccessDeniedException;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
@@ -24,6 +25,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * Note: For security, this displays as a 404 to avoid information disclosure.
  */
 @PageTitle("Page not Found")
+@PermitAll
 public class AccessDeniedView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<AccessDeniedException> {
 
     public AccessDeniedView() {

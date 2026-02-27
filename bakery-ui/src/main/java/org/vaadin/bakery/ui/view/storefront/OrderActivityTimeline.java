@@ -18,7 +18,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.dom.DebouncePhase;
 import com.vaadin.flow.dom.DomEvent;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
@@ -99,7 +99,7 @@ public class OrderActivityTimeline extends Composite<VerticalLayout> implements 
         initialLoadDone = false;
         previousEntryCount = 0;
 
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.messageVersion().get();
             loadActivities();
         });

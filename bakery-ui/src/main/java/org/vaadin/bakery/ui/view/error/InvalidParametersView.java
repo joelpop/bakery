@@ -16,12 +16,14 @@ import com.vaadin.flow.router.ErrorParameter;
 import com.vaadin.flow.router.HasErrorParameter;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Error view for 400 Bad Request / Invalid Parameters errors.
  */
 @PageTitle("Invalid Request")
+@PermitAll
 public class InvalidParametersView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<IllegalArgumentException> {
 
     private final Paragraph detailsMessage;

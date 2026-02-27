@@ -21,6 +21,7 @@ import com.vaadin.flow.router.ErrorParameter;
 import com.vaadin.flow.router.HasErrorParameter;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ import java.util.UUID;
  * Error view for 500 Internal Server errors.
  */
 @PageTitle("System Error")
+@PermitAll
 public class SystemErrorView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<Exception> {
 
     private static final Logger logger = LoggerFactory.getLogger(SystemErrorView.class);

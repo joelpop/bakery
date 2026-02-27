@@ -4,7 +4,7 @@ import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.dom.ElementEffect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -117,7 +117,7 @@ public class DashboardView extends Composite<VerticalLayout> implements HasSize,
 
         // Reactive effect: re-fetches and rebuilds the dashboard KPIs and upcoming orders
         // whenever order or product data changes in any session, or when triggered locally
-        ElementEffect.effect(this.getElement(), () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.orderVersion().get();
             DataChangeSignals.productVersion().get();
             refreshTriggerSignal.get();
