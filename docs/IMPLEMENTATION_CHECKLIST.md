@@ -1020,7 +1020,7 @@ The following features are documented in the spec but not yet implemented, or di
 
 - [ ] **Tile hover/tap action buttons** — Spec calls for status transition buttons, undo button, and reorder arrows (Top/Up/Down/Bottom) appearing on hover (desktop) or tap (mobile). Not implemented; status transitions are performed exclusively via drag-and-drop. Click currently opens the detail overlay directly.
 - [ ] **Drag-to-undo** — Spec says dragging a tile to the swimlane it came from performs an undo. Not implemented; undo is temporarily accessible from the detail overlay until tile buttons are added.
-- [ ] **Rejection message persistence** — RejectMessageDialog captures the message, but it is not persisted to the order activity timeline. The `performTransition()` method does not call `OrderActivityService` to record the rejection reason.
+- [x] **Rejection message persistence** — `OrderService.rejectItem()` posts the rejection reason as a staff message to the activity timeline, referencing the specific item. `BakeryView` extracts the message from `RejectMessageDialog.ConfirmEvent` and passes it through `performTransition()`.
 - [ ] **Message viewing/posting in detail overlay** — TileDetailOverlay shows an "unread messages" indicator and "View Order" links, but does not embed the activity timeline or a message input. Spec calls for inline message posting from the overlay.
 - [ ] **Selectable items in detail overlay** — Spec says items should be selectable to filter the detail display. Not implemented; all items always shown.
 - [ ] **Unread message read-marking** — Opening the detail overlay should mark unread messages as read. Not implemented.

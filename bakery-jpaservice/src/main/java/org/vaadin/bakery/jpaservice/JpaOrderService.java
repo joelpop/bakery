@@ -317,6 +317,25 @@ public class JpaOrderService implements OrderService {
     }
 
     @Override
+    public void rejectItem(Long orderId, Long itemId, String message, Integer expectedItemVersion) {
+        var order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+        var item = order.getItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemId));
+
+        item.setVersion(expectedItemVersion);
+        item.setStatus(OrderItemStatusCode.REJECTED);
+        JpaServiceHelper.flushOrThrowStale(orderItemRepository, "order item", itemId);
+
+        createStaffMessage(order, message, item);
+        createSystemEvent(order, "Item \"" + item.getProduct().getName() + "\" rejected");
+        recalculateOrderStatus(order);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+    }
+
+    @Override
     public void resolveItem(Long orderId, Long itemId, String message, Integer expectedItemVersion) {
         var order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));

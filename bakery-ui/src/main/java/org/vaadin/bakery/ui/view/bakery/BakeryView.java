@@ -254,8 +254,8 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
         // Rejection requires a message dialog
         if (newStatus == OrderItemStatus.REJECTED) {
             var rejectDialog = new RejectMessageDialog();
-            rejectDialog.addConfirmListener(_ -> {
-                performTransition(tile, newStatus);
+            rejectDialog.addConfirmListener(e -> {
+                performTransition(tile, newStatus, e.getMessage());
                 savePositionAfterTransition(tile, newStatus, position);
             });
             rejectDialog.open();
@@ -279,11 +279,11 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
             return;
         }
 
-        performTransition(tile, newStatus);
+        performTransition(tile, newStatus, null);
         savePositionAfterTransition(tile, newStatus, position);
     }
 
-    private void performTransition(BakeryTile tile, OrderItemStatus newStatus) {
+    private void performTransition(BakeryTile tile, OrderItemStatus newStatus, String rejectionMessage) {
         try {
             if (tile.isBatchable()) {
                 // Transition all items in the batch
@@ -294,17 +294,29 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
                     var details = bakeryService.getTileDetails(tile.getGroupingKey());
                     for (var detail : details) {
                         if (detail.getItemId().equals(itemIds.get(i))) {
-                            orderService.updateItemStatus(
-                                    detail.getOrderId(), detail.getItemId(),
-                                    newStatus, itemVersions.get(i));
+                            if (newStatus == OrderItemStatus.REJECTED && rejectionMessage != null) {
+                                orderService.rejectItem(
+                                        detail.getOrderId(), detail.getItemId(),
+                                        rejectionMessage, itemVersions.get(i));
+                            } else {
+                                orderService.updateItemStatus(
+                                        detail.getOrderId(), detail.getItemId(),
+                                        newStatus, itemVersions.get(i));
+                            }
                             break;
                         }
                     }
                 }
             } else {
-                orderService.updateItemStatus(
-                        tile.getOrderId(), tile.getItemId(),
-                        newStatus, tile.getItemVersion());
+                if (newStatus == OrderItemStatus.REJECTED && rejectionMessage != null) {
+                    orderService.rejectItem(
+                            tile.getOrderId(), tile.getItemId(),
+                            rejectionMessage, tile.getItemVersion());
+                } else {
+                    orderService.updateItemStatus(
+                            tile.getOrderId(), tile.getItemId(),
+                            newStatus, tile.getItemVersion());
+                }
             }
             Notification.show("Status updated to " + newStatus.getDisplayName(),
                     3000, Notification.Position.BOTTOM_START)

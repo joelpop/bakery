@@ -90,6 +90,16 @@ public interface OrderService {
     void updateItemStatus(Long orderId, Long itemId, OrderItemStatus newStatus, Integer expectedItemVersion);
 
     /**
+     * Rejects an order item with a required reason message posted to the activity timeline.
+     *
+     * @param orderId             the order containing the item
+     * @param itemId              the item to reject
+     * @param message             the rejection reason (required)
+     * @param expectedItemVersion the expected item version for optimistic locking
+     */
+    void rejectItem(Long orderId, Long itemId, String message, Integer expectedItemVersion);
+
+    /**
      * Resolves a rejected item by setting it back to PENDING_REVIEW with an explanatory message.
      *
      * @param orderId             the order containing the item
