@@ -23,7 +23,7 @@ public interface DashboardService {
     Optional<LocalTime> getNextPickupTime();
 
     /**
-     * Count of new orders (NEW status).
+     * Count of new orders (IN_REVIEW status).
      */
     long getNewOrdersCount();
 

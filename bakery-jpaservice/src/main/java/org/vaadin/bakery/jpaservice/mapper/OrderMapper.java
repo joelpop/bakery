@@ -1,9 +1,11 @@
 package org.vaadin.bakery.jpaservice.mapper;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.MappingTarget;
+import org.vaadin.bakery.jpamodel.code.OrderItemStatusCode;
 import org.vaadin.bakery.jpamodel.entity.OrderEntity;
 import org.vaadin.bakery.uimodel.data.OrderDashboard;
 import org.vaadin.bakery.uimodel.data.OrderDetail;
@@ -81,6 +83,18 @@ public interface OrderMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     OrderEntity toNewEntity(OrderDetail detail);
+
+    /**
+     * After mapping an order to an OrderList, computes whether any item has REJECTED status.
+     */
+    @AfterMapping
+    default void computeHasRejectedItems(OrderEntity entity, @MappingTarget OrderList orderList) {
+        if (entity.getItems() != null) {
+            var hasRejected = entity.getItems().stream()
+                    .anyMatch(item -> item.getStatus() == OrderItemStatusCode.REJECTED);
+            orderList.setHasRejectedItems(hasRejected);
+        }
+    }
 
     /**
      * Builds a comma-separated summary string of order items (e.g., "2x Croissant, 1x Baguette").

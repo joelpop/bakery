@@ -1,6 +1,6 @@
 package org.vaadin.bakery.ui.view.users;
 
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -253,7 +253,7 @@ public class UserDialog implements NonComponent {
 
             // Reactive effect: checks if the user was modified or deleted by another session
             // whenever the shared userVersion signal changes
-            Effect.effect(dialog, () -> {
+            Signal.effect(dialog, () -> {
                 DataChangeSignals.userVersion().get();
                 checkForExternalChanges();
             });

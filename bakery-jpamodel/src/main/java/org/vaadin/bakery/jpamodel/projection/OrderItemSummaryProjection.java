@@ -1,5 +1,7 @@
 package org.vaadin.bakery.jpamodel.projection;
 
+import org.vaadin.bakery.jpamodel.code.OrderItemStatusCode;
+
 import java.math.BigDecimal;
 
 /**
@@ -8,6 +10,8 @@ import java.math.BigDecimal;
 public interface OrderItemSummaryProjection {
 
     Long getId();
+
+    OrderItemStatusCode getStatus();
 
     Integer getQuantity();
 

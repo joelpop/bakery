@@ -22,6 +22,7 @@ This document provides an overview of the JPA model for the Bakery application. 
 |------|-------------|----------|
 | UserRoleCode | User access levels | [user-role.md](codes/user-role.md) |
 | OrderStatusCode | Order lifecycle states | [order-status.md](codes/order-status.md) |
+| OrderItemStatusCode | Order item lifecycle states | [order-item-status.md](codes/order-item-status.md) |
 
 ---
 

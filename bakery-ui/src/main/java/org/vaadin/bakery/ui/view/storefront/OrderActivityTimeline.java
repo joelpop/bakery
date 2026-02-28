@@ -1,6 +1,8 @@
 package org.vaadin.bakery.ui.view.storefront;
 
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -16,12 +18,13 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.dom.DebouncePhase;
 import com.vaadin.flow.dom.DomEvent;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import tools.jackson.databind.JsonNode;
 import org.vaadin.bakery.service.OrderActivityService;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.OrderActivity;
 import org.vaadin.bakery.uimodel.type.OrderActivityType;
+import tools.jackson.databind.JsonNode;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,7 +40,7 @@ import java.util.Set;
  * with a message input area at the bottom. Unread messages are marked as read
  * when they become visible in the scroller viewport.
  */
-public class OrderActivityTimeline extends VerticalLayout {
+public class OrderActivityTimeline extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("MMM d, h:mm a");
 
@@ -65,11 +68,6 @@ public class OrderActivityTimeline extends VerticalLayout {
         this.orderId = orderId;
 
         // Component initializations
-        setPadding(false);
-        setSpacing(false);
-        setWidth("350px");
-        setSizeFull();
-
         var titleHeader = new H3("Activity");
         titleHeader.addClassNames(LumoUtility.Margin.NONE, LumoUtility.Margin.Bottom.SMALL);
 
@@ -101,14 +99,19 @@ public class OrderActivityTimeline extends VerticalLayout {
         initialLoadDone = false;
         previousEntryCount = 0;
 
-        Effect.effect(this, () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.messageVersion().get();
             loadActivities();
         });
 
-        // Layout assembly
-        add(titleHeader, scroller, newMessagesButton, inputArea);
-        setFlexGrow(1, scroller);
+        // Content layout
+        var content = getContent();
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.setWidth("350px");
+        content.setSizeFull();
+        content.add(titleHeader, scroller, newMessagesButton, inputArea);
+        content.setFlexGrow(1, scroller);
 
         // Scroll listener for visibility-based read marking
         scroller.getElement().addEventListener("scroll", this::onTimelineScroll)

@@ -51,7 +51,8 @@ This document describes the security architecture for the Bakery application.
 
 After login, users are redirected based on role:
 - **Admin**: Dashboard (business overview)
-- **Baker/Barista**: Storefront (order management)
+- **Baker**: Bakery (production board)
+- **Barista**: Storefront (order management)
 
 ## Security Configuration
 

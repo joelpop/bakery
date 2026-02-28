@@ -169,7 +169,7 @@ Provides analytics and KPI data.
 | remainingToday | int | Orders not yet ready for today |
 | nextPickupTime | LocalTime | Next pickup time today |
 | notAvailable | int | Count of unavailable products |
-| newOrders | int | Count of orders with NEW status |
+| newOrders | int | Count of orders with IN_REVIEW status |
 | sinceLastNewOrder | Duration | Time since last new order |
 | tomorrowOrders | int | Order count for tomorrow |
 | firstTomorrowPickup | LocalTime | First pickup time tomorrow |
@@ -281,4 +281,4 @@ Enums in `bakery-uimodel.type`:
 `ADMIN`, `BAKER`, `BARISTA`
 
 ### OrderStatus
-`NEW`, `VERIFIED`, `NOT_OK`, `CANCELLED`, `IN_PROGRESS`, `BAKED`, `PACKAGED`, `READY_FOR_PICK_UP`, `PICKED_UP`
+`IN_REVIEW`, `VERIFIED`, `IN_PROGRESS`, `PRODUCED`, `PACKAGED`, `IN_TRANSIT`, `READY_FOR_PICK_UP`, `PICKED_UP`, `CANCELED`

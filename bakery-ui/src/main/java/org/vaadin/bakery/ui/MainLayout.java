@@ -4,8 +4,8 @@ import com.vaadin.flow.component.AbstractField.ComponentValueChangeEvent;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ComponentEvent;
-import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.ComponentEventListener;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.avatar.Avatar;
@@ -30,15 +30,14 @@ import com.vaadin.flow.component.tabs.TabsVariant;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.Layout;
-import com.vaadin.flow.router.RouterLayout;
 import com.vaadin.flow.server.auth.AccessAnnotationChecker;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
-
 import org.springframework.beans.factory.ObjectProvider;
 import org.vaadin.bakery.service.CurrentUserService;
 import org.vaadin.bakery.service.LocationService;
@@ -64,8 +63,8 @@ import java.util.Map;
  * - Role-based navigation item visibility
  */
 @Layout
-@PermitAll
-public class MainLayout extends AppLayout implements RouterLayout, AfterNavigationObserver {
+@AnonymousAllowed
+public class MainLayout extends AppLayout implements AfterNavigationObserver {
 
     private final transient CurrentUserService currentUserService;
     private final transient AccessAnnotationChecker accessChecker;

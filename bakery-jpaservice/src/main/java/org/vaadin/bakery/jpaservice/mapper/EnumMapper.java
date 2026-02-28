@@ -4,9 +4,11 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.ValueMapping;
 import org.vaadin.bakery.jpamodel.code.OrderActivityTypeCode;
+import org.vaadin.bakery.jpamodel.code.OrderItemStatusCode;
 import org.vaadin.bakery.jpamodel.code.OrderStatusCode;
 import org.vaadin.bakery.jpamodel.code.UserRoleCode;
 import org.vaadin.bakery.uimodel.type.OrderActivityType;
+import org.vaadin.bakery.uimodel.type.OrderItemStatus;
 import org.vaadin.bakery.uimodel.type.OrderStatus;
 import org.vaadin.bakery.uimodel.type.UserRole;
 
@@ -37,6 +39,16 @@ public interface EnumMapper {
      */
     @ValueMapping(source = "READY_FOR_PICK_UP", target = "READY_FOR_PICK_UP")
     OrderStatusCode toOrderStatusCode(OrderStatus status);
+
+    /**
+     * Converts an {@link OrderItemStatusCode} JPA code to an {@link OrderItemStatus} UI type.
+     */
+    OrderItemStatus toOrderItemStatus(OrderItemStatusCode code);
+
+    /**
+     * Converts an {@link OrderItemStatus} UI type to an {@link OrderItemStatusCode} JPA code.
+     */
+    OrderItemStatusCode toOrderItemStatusCode(OrderItemStatus status);
 
     /**
      * Converts an {@link OrderActivityTypeCode} JPA code to an {@link OrderActivityType} UI type.

@@ -139,7 +139,7 @@ public class JpaOrderActivityService implements OrderActivityService {
         }
         unreadMessageTracker.markAsRead(activityIds);
         orderActivityRepository.markAsReadByIds(activityIds);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.MESSAGE);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.MESSAGE, 0L);
     }
 
     @Override

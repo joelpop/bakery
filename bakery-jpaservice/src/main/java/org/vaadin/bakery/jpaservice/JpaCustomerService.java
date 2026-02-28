@@ -21,15 +21,15 @@ public class JpaCustomerService implements CustomerService {
 
     private static final List<OrderStatusCode> IN_PROGRESS_STATUSES = List.of(
             OrderStatusCode.IN_PROGRESS,
-            OrderStatusCode.BAKED,
+            OrderStatusCode.PRODUCED,
             OrderStatusCode.PACKAGED,
+            OrderStatusCode.IN_TRANSIT,
             OrderStatusCode.READY_FOR_PICK_UP
     );
 
     private static final List<OrderStatusCode> PRE_PRODUCTION_STATUSES = List.of(
-            OrderStatusCode.NEW,
-            OrderStatusCode.VERIFIED,
-            OrderStatusCode.NOT_OK
+            OrderStatusCode.IN_REVIEW,
+            OrderStatusCode.VERIFIED
     );
 
     private final CustomerRepository customerRepository;
@@ -109,7 +109,7 @@ public class JpaCustomerService implements CustomerService {
         // Cancel pre-production orders
         var preProductionOrders = orderRepository.findByCustomerIdAndStatusIn(id, PRE_PRODUCTION_STATUSES);
         for (var order : preProductionOrders) {
-            order.setStatus(OrderStatusCode.CANCELLED);
+            order.setStatus(OrderStatusCode.CANCELED);
         }
 
         // Soft delete customer

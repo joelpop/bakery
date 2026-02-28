@@ -14,6 +14,7 @@ Café Sunshine is a comprehensive bakery order management system that enables ba
 ### Views
 - [Login](views/login.md) - Authentication (password and passkey)
 - [Storefront](views/storefront.md) - Order management and creation
+- [Bakery](views/bakery.md) - Production board with item swimlanes
 - [Dashboard](views/dashboard.md) - Business analytics and KPIs
 - [Users](views/users.md) - User management (CRUD)
 - [Products](views/products.md) - Product catalog management
@@ -25,6 +26,8 @@ Café Sunshine is a comprehensive bakery order management system that enables ba
 - [Navigation](features/navigation.md) - Desktop and mobile navigation patterns
 - [User Menu](features/user-menu.md) - User profile, preferences, and logout
 - [Orders](features/orders.md) - Order workflow, statuses, and data model
+- [Bakery Workflow](features/bakery-workflow.md) - Production board with item swimlanes
+- [Messaging](features/messaging.md) - Order activity timeline and staff messaging
 
 ### Persistence
 - [Overview](persistence/overview.md) - Persistence architecture and technology stack
@@ -51,6 +54,7 @@ Screenshots of the application are located in the [legacy/images](legacy/images/
 |------|---------|--------|
 | Login | User authentication | Anonymous |
 | Storefront | Manage customer orders | All users |
+| Bakery | Production board with item swimlanes | Admin, Baker |
 | Dashboard | View business analytics | All users |
 | Users | Manage user accounts | Admin only |
 | Products | Manage product catalog | Admin (edit), Baker (read-only) |

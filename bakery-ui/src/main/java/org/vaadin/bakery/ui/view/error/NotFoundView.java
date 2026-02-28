@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.view.error;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
@@ -14,20 +17,18 @@ import com.vaadin.flow.router.HasErrorParameter;
 import com.vaadin.flow.router.NotFoundException;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Error view for 404 Not Found errors.
  */
 @PageTitle("Page Not Found")
-public class NotFoundView extends VerticalLayout implements HasErrorParameter<NotFoundException> {
+@PermitAll
+public class NotFoundView extends Composite<VerticalLayout> implements HasSize, HasStyle, HasErrorParameter<NotFoundException> {
 
     public NotFoundView() {
-        addClassName("error-view");
-        setSizeFull();
-        setAlignItems(FlexComponent.Alignment.CENTER);
-        setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-
+        // Component initializations
         var container = new Div();
         container.addClassNames(
                 LumoUtility.Display.FLEX,
@@ -57,7 +58,14 @@ public class NotFoundView extends VerticalLayout implements HasErrorParameter<No
         );
 
         container.add(icon, heading, message, homeLink);
-        add(container);
+
+        // Content layout
+        var content = getContent();
+        content.addClassName("error-view");
+        content.setSizeFull();
+        content.setAlignItems(FlexComponent.Alignment.CENTER);
+        content.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
+        content.add(container);
     }
 
     @Override

@@ -43,19 +43,19 @@ Customer deletion is a **soft delete** (marking as inactive), with rules based o
 | Scenario | Behavior |
 |----------|----------|
 | Customer has in-progress orders | **Block deletion** - Notify user that customer cannot be deleted while orders are being fulfilled |
-| Customer has open pre-production orders | **Prompt confirmation** - Ask user to confirm cancellation of NEW/VERIFIED/NOT_OK orders before soft-deleting |
+| Customer has open pre-production orders | **Prompt confirmation** - Ask user to confirm cancellation of IN_REVIEW/VERIFIED orders before soft-deleting |
 | Customer has no open orders | **Prompt confirmation** - Simple confirmation before soft-deleting |
 
 ### In-Progress Order Statuses (Block Deletion)
 - IN_PROGRESS
-- BAKED
+- PRODUCED
 - PACKAGED
+- IN_TRANSIT
 - READY_FOR_PICK_UP
 
 ### Pre-Production Order Statuses (Cancel on Confirmation)
-- NEW
+- IN_REVIEW
 - VERIFIED
-- NOT_OK
 
 ### Soft Delete Effect
 - `active` field is set to `false`

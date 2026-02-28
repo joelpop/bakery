@@ -30,7 +30,7 @@ public class OrderEntity extends AbstractAuditableEntity {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private OrderStatusCode status = OrderStatusCode.NEW;
+    private OrderStatusCode status = OrderStatusCode.IN_REVIEW;
 
     @NotNull
     @Column(name = "due_date", nullable = false)

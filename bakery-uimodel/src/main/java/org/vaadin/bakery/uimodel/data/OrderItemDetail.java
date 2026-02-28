@@ -1,5 +1,7 @@
 package org.vaadin.bakery.uimodel.data;
 
+import org.vaadin.bakery.uimodel.type.OrderItemStatus;
+
 import java.math.BigDecimal;
 
 /**
@@ -10,6 +12,7 @@ public class OrderItemDetail extends AbstractModel {
     private Long productId;
     private String productName;
     private String productSize;
+    private OrderItemStatus status;
     private Integer quantity;
     private String details;
     private BigDecimal unitPrice;
@@ -37,6 +40,14 @@ public class OrderItemDetail extends AbstractModel {
 
     public void setProductSize(String productSize) {
         this.productSize = productSize;
+    }
+
+    public OrderItemStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(OrderItemStatus status) {
+        this.status = status;
     }
 
     public Integer getQuantity() {

@@ -25,6 +25,7 @@ A horizontal navigation bar at the top of the screen containing:
 | Tab | Icon | View | Access |
 |-----|------|------|--------|
 | Storefront | Clipboard/Edit icon | Order management | All users |
+| Bakery | Oven/Kitchen icon | Production board | Admin, Baker |
 | Dashboard | Clock/Chart icon | Business analytics | All users |
 | Users | Person icon | User management | Admin only |
 | Products | Grid icon | Product catalog | Admin (edit), Baker (read-only) |
@@ -37,8 +38,9 @@ A horizontal navigation bar at the top of the screen containing:
 ### Technical Note: Route Configuration
 ```
 Routes:
-  /storefront      -> StorefrontView (default for Baker/Barista)
+  /storefront      -> StorefrontView (default for Barista)
   /storefront/{id} -> StorefrontView with order selected
+  /bakery          -> BakeryView (default for Baker)
   /dashboard       -> DashboardView (default for Admin)
   /users           -> UsersView (Admin only)
   /products        -> ProductsView (Admin edit, Baker read-only)
@@ -58,6 +60,7 @@ A bottom tab bar with overflow menu for additional items.
 | Tab | Icon | Description |
 |-----|------|-------------|
 | Storefront | Clipboard icon | Always visible |
+| Bakery | Oven/Kitchen icon | Visible for Admin, Baker |
 | Dashboard | Clock icon | Always visible |
 | Users | Person icon | Visible for Admin |
 | Products | Grid icon | May be in overflow |
@@ -79,11 +82,11 @@ When tapped, slides up to reveal additional navigation options:
 
 Navigation items are conditionally displayed based on user role:
 
-| Role | Visible Navigation Items |
-|------|-------------------------|
-| Admin | Storefront, Dashboard, Users, Products, Locations |
-| Baker | Storefront, Dashboard, Products (read-only) |
-| Barista | Storefront, Dashboard |
+| Role | Visible Navigation Items | Default View |
+|------|-------------------------|--------------|
+| Admin | Storefront, Bakery, Dashboard, Users, Products, Locations | Dashboard |
+| Baker | Storefront, Bakery, Dashboard, Products (read-only) | Bakery |
+| Barista | Storefront, Dashboard | Storefront |
 
 ### Security Note
 
@@ -96,7 +99,7 @@ Access control is enforced by Spring Security via `@RolesAllowed` annotations on
 ### App Branding (Left)
 - Application name: "Café Sunshine"
 - May include logo
-- Clicking returns to default view (Storefront)
+- Clicking returns to the user's role-specific default view (Admin → Dashboard, Baker → Bakery, Barista → Storefront)
 
 ### User Menu (Right)
 - User avatar

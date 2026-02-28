@@ -12,6 +12,7 @@ public class ProductSummary extends AbstractModel {
     private String size;
     private BigDecimal price;
     private boolean available;
+    private boolean batchable;
     private byte[] photo;
     private String photoContentType;
 
@@ -53,6 +54,14 @@ public class ProductSummary extends AbstractModel {
 
     public void setAvailable(boolean available) {
         this.available = available;
+    }
+
+    public boolean isBatchable() {
+        return batchable;
+    }
+
+    public void setBatchable(boolean batchable) {
+        this.batchable = batchable;
     }
 
     public byte[] getPhoto() {

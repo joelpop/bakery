@@ -12,50 +12,68 @@ Defines the workflow status of an order as it progresses through fulfillment.
 
 | Value | Description |
 |-------|-------------|
-| NEW | Order just received, not yet reviewed by bakery |
-| VERIFIED | Order reviewed and accepted by bakery |
-| NOT_OK | Problem requiring attention (customer contact needed) |
-| CANCELLED | Cancelled on purpose, no further action needed |
-| IN_PROGRESS | Being manufactured at bakery |
-| BAKED | Baking completed at bakery |
-| PACKAGED | Packaged and ready for transport to café |
-| READY_FOR_PICK_UP | Available for customer pickup at café |
-| PICKED_UP | Picked up by customer |
+| IN_REVIEW | Order needs review — newly received or item(s) flagged with a problem |
+| VERIFIED | Order reviewed and accepted — all items accepted, ready for production |
+| IN_PROGRESS | Order being manufactured — at least one item in production |
+| PRODUCED | Production completed — all non-canceled items produced |
+| PACKAGED | Packaged for transport |
+| IN_TRANSIT | Being transported to pickup location |
+| READY_FOR_PICK_UP | Available for customer pickup |
+| PICKED_UP | Customer collected order |
+| CANCELED | Order will not be fulfilled |
+
+**Renames**: `IN_REVIEW` replaces `NEW`, `PRODUCED` replaces `BAKED`, `CANCELED` replaces `CANCELLED`. `NOT_OK` has been removed — its function is absorbed by `IN_REVIEW`.
+
+**New**: `IN_TRANSIT` represents the transport phase between bakery and pickup location.
 
 ---
 
 ## Status Workflow
 
-Orders progress through statuses in the following sequence:
+Order status has two distinct phases: **derived** (pre-production, driven by item statuses) and **manual** (post-production, driven by staff actions).
+
+### Pre-Production (Derived from Item Statuses)
 
 ```
-NEW → VERIFIED → IN_PROGRESS → BAKED → PACKAGED → READY_FOR_PICK_UP → PICKED_UP
-        ↓
-     NOT_OK ←→ VERIFIED
-        ↓
-    CANCELLED
+IN_REVIEW → VERIFIED → IN_PROGRESS → PRODUCED
+     ↑           │
+     └───────────┘ (item rejected on bakery board)
+     │
+     ↓
+  CANCELED
 ```
 
-### Normal Flow
+Pre-production order statuses are **not set directly** — they are computed from the aggregate of the order's item statuses. See [Bakery Workflow — Order Status Roll-Up](../../features/bakery-workflow.md#order-status-roll-up) for the full priority cascade.
 
-| Transition | Trigger | Actor |
-|------------|---------|-------|
-| NEW → VERIFIED | Bakery reviews and accepts the order | Baker, Admin |
-| VERIFIED → IN_PROGRESS | Production begins | Baker |
-| IN_PROGRESS → BAKED | Baking completed | Baker |
-| BAKED → PACKAGED | Order packaged for transport | Baker |
-| PACKAGED → READY_FOR_PICK_UP | Order delivered to café | Barista, Baker |
-| READY_FOR_PICK_UP → PICKED_UP | Customer picks up order | Barista, Admin |
+| Priority | Condition | Order Status |
+|----------|-----------|--------------|
+| 1 | All items CANCELED | CANCELED |
+| 2 | Any item PENDING_REVIEW or REJECTED | IN_REVIEW |
+| 3 | All items ACCEPTED or CANCELED | VERIFIED |
+| 4 | Any item IN_PROGRESS | IN_PROGRESS |
+| 5 | All non-canceled items PRODUCED | PRODUCED |
 
-### Problem Flow
+### Post-Production (Manual)
 
-| Transition | Trigger | Actor |
-|------------|---------|-------|
-| NEW → NOT_OK | Problem identified before verification | Baker, Admin |
-| VERIFIED → NOT_OK | Problem identified during production | Baker, Admin |
-| NOT_OK → VERIFIED | Issue resolved, order back on track | Baker, Admin |
-| NOT_OK → CANCELLED | Order cannot be fulfilled | Admin |
-| Any (pre-pickup) → CANCELLED | Order cancelled at request | Admin |
+```
+PRODUCED → PACKAGED → IN_TRANSIT → READY_FOR_PICK_UP → PICKED_UP
+```
+
+| Transition | Description | Actor |
+|------------|-------------|-------|
+| PRODUCED → PACKAGED | Order packaged for transport | Baker |
+| PACKAGED → IN_TRANSIT | Order dispatched to pickup location | Baker |
+| IN_TRANSIT → READY_FOR_PICK_UP | Order received at pickup location | Barista |
+| READY_FOR_PICK_UP → PICKED_UP | Customer collects order | Barista, Admin |
+
+Details of post-production transitions (e.g., whether IN_TRANSIT is skippable for bakery-pickup orders) are to be specified.
+
+### Order Cancellation
+
+| Action | Effect |
+|--------|--------|
+| Cancel entire order (storefront) | All non-terminal items cascade to CANCELED; order becomes CANCELED |
+| Cancel individual item (storefront) | Item moves to CANCELED; order status recalculates per roll-up rules |
 
 ---
 
@@ -65,15 +83,15 @@ Each status is displayed with a distinctive visual treatment:
 
 | Status | Badge Style | Purpose |
 |--------|-------------|---------|
-| NEW | Accent/Blue | Draw attention to orders needing review |
+| IN_REVIEW | Accent/Blue | Draw attention to orders needing review |
 | VERIFIED | Primary color | Order accepted, awaiting production |
-| NOT_OK | Warning/Orange | Alert staff to issues requiring action |
-| CANCELLED | Muted/Gray | Order terminated, no further action |
 | IN_PROGRESS | Primary color | Order being manufactured |
-| BAKED | Success/Light green | Baking complete |
+| PRODUCED | Success/Light green | Production complete |
 | PACKAGED | Success/Green | Ready for transport |
+| IN_TRANSIT | Success/Green | Being transported |
 | READY_FOR_PICK_UP | Success/Bright green | Customer can pick up |
 | PICKED_UP | Muted/Gray | Order complete |
+| CANCELED | Muted/Gray | Order terminated, no further action |
 
 ---
 
@@ -82,13 +100,15 @@ Each status is displayed with a distinctive visual treatment:
 | Rule | Description |
 |------|-------------|
 | Just-in-time production | Orders are typically manufactured the morning of the due date |
-| Problem notification | NOT_OK status triggers alert; customer may need to be contacted |
 | Paid is separate | Payment status is tracked independently from order status |
 | No delivery | All orders are customer pickup; no shipping/delivery workflow |
+| Hold behavior | ACCEPTED items cannot advance while sibling items are PENDING_REVIEW or REJECTED |
 
 ---
 
 ## Related Documentation
 
 - [OrderEntity](../entities/order.md) - Entity that uses this code
+- [OrderItemStatusCode](order-item-status.md) - Item-level status enum (items drive pre-production order status)
+- [Bakery Workflow](../../features/bakery-workflow.md) - Production workflow and roll-up rules
 - [Orders Feature](../../features/orders.md) - Order workflow details

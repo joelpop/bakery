@@ -2,36 +2,39 @@ package org.vaadin.bakery.jpamodel.code;
 
 /**
  * Order item lifecycle states for individual items within an order.
- * Subset of OrderStatusCode for item-level tracking.
+ *
+ * <p>Item statuses drive the order-level status via roll-up rules. Transitions are
+ * performed from the Bakery board (drag-and-drop) and from the Storefront
+ * (resolve/cancel rejected items).
  */
 public enum OrderItemStatusCode {
     /**
-     * Item just received - initial state when order is created.
+     * Item awaiting review — initial state, or re-entered after rejection correction.
      */
-    NEW,
+    PENDING_REVIEW,
 
     /**
-     * Item reviewed and accepted - ready for production.
+     * Item reviewed and accepted — ready for production.
      */
-    VERIFIED,
+    ACCEPTED,
 
     /**
-     * Problem requiring attention - item has issues that need resolution.
-     */
-    NOT_OK,
-
-    /**
-     * Item cancelled - will not be fulfilled.
-     */
-    CANCELLED,
-
-    /**
-     * Being manufactured - item is currently in production.
+     * Being manufactured — item is currently in production.
      */
     IN_PROGRESS,
 
     /**
-     * Baking completed - item is baked and cooling.
+     * Production completed — item has been produced.
      */
-    BAKED
+    PRODUCED,
+
+    /**
+     * Item flagged with a problem requiring storefront attention.
+     */
+    REJECTED,
+
+    /**
+     * Item canceled — will not be fulfilled.
+     */
+    CANCELED
 }

@@ -39,6 +39,9 @@ public class ProductEntity extends AbstractAuditableEntity implements ProductSum
     @Column(name = "available", nullable = false)
     private boolean available = true;
 
+    @Column(name = "batchable", nullable = false)
+    private boolean batchable = true;
+
     @Lob
     @Column(name = "photo", columnDefinition = "BLOB")
     private byte[] photo;
@@ -84,6 +87,14 @@ public class ProductEntity extends AbstractAuditableEntity implements ProductSum
 
     public void setAvailable(boolean available) {
         this.available = available;
+    }
+
+    public boolean isBatchable() {
+        return batchable;
+    }
+
+    public void setBatchable(boolean batchable) {
+        this.batchable = batchable;
     }
 
     public byte[] getPhoto() {

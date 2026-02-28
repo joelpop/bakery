@@ -17,22 +17,27 @@ The Storefront is the primary view for managing customer orders. It provides a c
 
 ### Layout
 Orders are displayed in a card-based list, grouped by time period:
+- **Needs Attention** - Orders with rejected items (IN_REVIEW with REJECTED items), shown at the top regardless of due date, with **pink background** to indicate they require storefront action
 - **Today** - Orders due today with specific date shown
 - **Tomorrow** - Orders due tomorrow
 - **This Week** - Orders due within the current week (date range shown)
 - **Upcoming** - Orders after the current week
+
+Orders in the "Needs Attention" group are removed from their normal date group to avoid duplication. Once all rejected items are resolved or canceled, the order's status recalculates and the card returns to its normal date group position.
 
 ### Order Card Information
 Each order card displays:
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| Status Badge | Current order status | "New", "Verified", "Baked", "Ready for Pick Up" |
+| Status Badge | Current order status | "In Review", "Verified", "Produced", "Ready for Pick Up" |
 | Paid Indicator | Payment status | Checkmark or empty |
 | Time | Pickup time | "12:00 p.m.", "08:00 a.m." |
 | Location | Pickup location | "Café", "Bakery" |
 | Customer Name | Full customer name | "Carolyn Christensen" |
 | Order Items | Products with quantities | "1 Princess Cake, 12 ppl" |
+
+Cards in the "Needs Attention" group have a **pink background** to visually distinguish them from normal orders and draw immediate attention.
 
 ### Card Actions
 Clicking an order card opens the order detail view where staff can:
@@ -40,6 +45,7 @@ Clicking an order card opens the order detail view where staff can:
 - Update status (progress to next state)
 - Mark as paid
 - Edit order details (if not yet picked up)
+- Resolve or cancel rejected items (see [Problem Handling](#problem-handling))
 
 ---
 
@@ -53,7 +59,7 @@ Located at the top of the view with:
 
 ### Filter Options
 The filter dropdown includes:
-- **Status filters**: New, Verified, In Progress, Baked, etc.
+- **Status filters**: In Review, Verified, In Progress, Produced, etc.
 - **Customer filters**: List of customer names
 - **Paid status**: Paid / Unpaid
 
@@ -173,28 +179,50 @@ Clicking an order opens a detail panel with full order information and actions.
 
 ### Status Progression
 
-Staff can advance the order to the next status:
+Pre-production statuses (In Review through Produced) are **derived from item statuses** on the [Bakery board](../features/bakery-workflow.md) and cannot be changed from the order detail view. Post-production statuses are advanced manually:
 
 | Current Status | Next Action | Actor |
 |----------------|-------------|-------|
-| New | Verify order | Baker |
-| Verified | Start production | Baker |
-| In Progress | Mark as baked | Baker |
-| Baked | Mark as packaged | Baker |
-| Packaged | Mark as ready for pickup | Baker/Barista |
-| Ready for Pick Up | Mark as picked up | Barista |
+| Produced | Mark as packaged | Baker |
+| Packaged | Mark as in transit | Baker |
+| In Transit | Mark as ready for pickup | Barista |
+| Ready for Pick Up | Mark as picked up | Barista, Admin |
 
 ### Payment
 
-- **Mark as Paid** button available at any status
+- **Mark as Paid** button available at any status (toggleable — click again to revert)
 - Payment status is independent of fulfillment status
 - Orders can be picked up and billed later, or prepaid
 
+### Picked Up Button
+
+- **Mark as Picked Up** button available when Ready for Pick Up (toggleable — click again to revert)
+
+### Item Status Display
+
+Each item in the order detail view displays its current status (Pending Review, Accepted, In Progress, Produced, Rejected, Canceled). Rejected items are visually highlighted to draw attention.
+
 ### Problem Handling
 
-- **Mark as Not OK** button available at New, Verified, or In Progress status
-- Prompts for problem description
-- Customer may need to be contacted
+Item-level problems are flagged as **Rejected** on the [Bakery board](../features/bakery-workflow.md). The baker's rejection message (required at rejection time) explains what's wrong and appears in the activity timeline referencing the specific item.
+
+Orders with rejected items appear in the **"Needs Attention"** group at the top of the storefront with a pink background. When the order detail is opened, each rejected item shows two action buttons:
+
+| Button | Action | Message Required |
+|--------|--------|------------------|
+| **Resolve** | Returns item to Pending Review (re-enters bakery workflow) | Yes — explanation of what was corrected |
+| **Cancel Item** | Moves item to Canceled | Yes — reason the item cannot be fulfilled |
+
+**Resolution flow**:
+1. Review the baker's rejection message in the activity timeline
+2. Optionally **edit the order** to fix the issue (correct item details, swap product, adjust quantity)
+3. Click **Resolve** next to the rejected item
+4. Enter a required message explaining the resolution (e.g., "Fixed cake name spelling — should be 'Lily' not 'Lilly'")
+5. Item returns to **Pending Review** and re-enters the bakery workflow
+
+If the item cannot be fulfilled, click **Cancel Item** instead and provide a reason. If the entire order is no longer viable, use **Cancel Order**.
+
+When all rejected items are resolved or canceled, the order's status recalculates per [roll-up rules](../features/bakery-workflow.md#order-status-roll-up) and the card moves out of "Needs Attention" back to its normal date group.
 
 ---
 

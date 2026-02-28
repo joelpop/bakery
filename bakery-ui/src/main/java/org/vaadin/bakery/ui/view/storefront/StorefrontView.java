@@ -1,9 +1,12 @@
 package org.vaadin.bakery.ui.view.storefront;
 
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.signals.impl.Effect;
+import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -51,7 +54,7 @@ import java.util.stream.Collectors;
 @PageTitle("Storefront")
 @Menu(order = 1, icon = LineAwesomeIconUrl.STORE_ALT_SOLID)
 @RolesAllowed({UserRole.ROLE_ADMIN, UserRole.ROLE_BAKER, UserRole.ROLE_BARISTA})
-public class StorefrontView extends VerticalLayout {
+public class StorefrontView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     /** Route path for this view. */
     public static final String ROUTE = "orders";
@@ -66,10 +69,10 @@ public class StorefrontView extends VerticalLayout {
     private final TextField searchField;
 
     // Signal incremented to trigger a same-session data refresh (e.g., after local filter change or save)
-    private final transient ValueSignal<Integer> refreshTriggerSignal;
+    private final ValueSignal<Integer> refreshTriggerSignal;
 
     // Tracks version changes between refreshes to identify new and modified orders for highlight animation
-    private final transient ChangeTracker<OrderList> changeTracker;
+    private final ChangeTracker<OrderList> changeTracker;
 
     private Registration locationChangeRegistration;
 
@@ -86,11 +89,6 @@ public class StorefrontView extends VerticalLayout {
         this.editOrderDialogProvider = editOrderDialogProvider;
 
         // Component initializations
-        addClassName("storefront-view");
-        setSizeFull();
-        setPadding(false);
-        setSpacing(false);
-
         searchField = new TextField();
         searchField.setPlaceholder("Filter orders");
         searchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
@@ -118,7 +116,7 @@ public class StorefrontView extends VerticalLayout {
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
-        changeTracker = new ChangeTracker<>();
+        changeTracker = new ChangeTracker<>(DataChangeSignals.orderChanges());
 
         // Signal bindings - trigger a local refresh when user changes search text or filter criteria
         searchField.addValueChangeListener(_ -> triggerRefresh());
@@ -126,18 +124,21 @@ public class StorefrontView extends VerticalLayout {
 
         // Reactive effect: re-fetches and rebuilds the orders display whenever order data changes
         // in any session (via shared orderVersion/messageVersion signals) or locally (via refreshTriggerSignal)
-        Effect.effect(this, () -> {
+        Signal.effect(this, () -> {
             DataChangeSignals.orderVersion().get();
             DataChangeSignals.messageVersion().get();
             refreshTriggerSignal.get();
             rebuildOrdersDisplay();
         });
 
-        // Layout assembly
-        add(header);
-        add(filterBar);
-        add(scroller);
-        setFlexGrow(1, scroller);
+        // Content layout
+        var content = getContent();
+        content.addClassName("storefront-view");
+        content.setSizeFull();
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.add(header, filterBar, scroller);
+        content.setFlexGrow(1, scroller);
     }
 
     @Override
@@ -208,7 +209,7 @@ public class StorefrontView extends VerticalLayout {
                 : orderActivityService.findOrderIdsWithUnreadMessages(orderIds);
 
         // Compare current data versions against previous snapshot to identify new/changed orders
-        changeTracker.detectChanges(orders);
+        changeTracker.processChanges(orders);
 
         // Apply search filter (customer name)
         var searchTerm = searchField.getValue();
@@ -235,15 +236,23 @@ public class StorefrontView extends VerticalLayout {
                     .toList();
         }
 
-        // Group by date
-        Map<LocalDate, List<OrderList>> ordersByDate = orders.stream()
+        // Partition orders: "Needs Attention" (rejected items) vs normal
+        var needsAttention = orders.stream()
+                .filter(OrderList::isHasRejectedItems)
+                .toList();
+        var normalOrders = orders.stream()
+                .filter(o -> !o.isHasRejectedItems())
+                .toList();
+
+        // Group normal orders by date
+        Map<LocalDate, List<OrderList>> ordersByDate = normalOrders.stream()
                 .collect(Collectors.groupingBy(
                         OrderList::getDueDate,
                         LinkedHashMap::new,
                         Collectors.toList()
                 ));
 
-        if (ordersByDate.isEmpty()) {
+        if (needsAttention.isEmpty() && ordersByDate.isEmpty()) {
             var emptyMessage = new Div();
             emptyMessage.addClassNames(
                     LumoUtility.Display.FLEX,
@@ -257,12 +266,59 @@ public class StorefrontView extends VerticalLayout {
             return;
         }
 
-        // Create sections for each date
         var finalUnreadOrderIds = unreadOrderIds;
+
+        // "Needs Attention" section at top for orders with rejected items
+        if (!needsAttention.isEmpty()) {
+            var section = createNeedsAttentionSection(needsAttention, finalUnreadOrderIds);
+            ordersContainer.add(section);
+        }
+
+        // Create sections for each date
         ordersByDate.forEach((date, dateOrders) -> {
             var section = createDateSection(date, dateOrders, finalUnreadOrderIds);
             ordersContainer.add(section);
         });
+    }
+
+    private Div createNeedsAttentionSection(List<OrderList> orders, Set<Long> unreadOrderIds) {
+        var section = new Div();
+        section.addClassNames(
+                LumoUtility.Display.FLEX,
+                LumoUtility.FlexDirection.COLUMN,
+                LumoUtility.Gap.MEDIUM,
+                LumoUtility.Padding.MEDIUM,
+                LumoUtility.BorderRadius.MEDIUM
+        );
+        section.getStyle().set("background-color", "var(--lumo-error-color-10pct)");
+
+        var header = new H3("Needs Attention");
+        header.addClassNames(
+                LumoUtility.Margin.NONE,
+                LumoUtility.FontSize.MEDIUM,
+                LumoUtility.TextColor.ERROR
+        );
+        section.add(header);
+
+        var cardsContainer = new Div();
+        cardsContainer.getStyle()
+                .set("display", "grid")
+                .set("grid-template-columns", "repeat(auto-fill, minmax(280px, 1fr))")
+                .set("gap", "var(--lumo-space-m)");
+
+        for (var order : orders) {
+            var card = new OrderCard(order, unreadOrderIds.contains(order.getId()));
+            if (changeTracker.isNew(order.getId())) {
+                card.addClassName("card-new");
+            } else if (changeTracker.isHighlighted(order.getId())) {
+                card.addClassName("card-highlight");
+            }
+            card.addOrderClickListener(e -> openOrderDetail(e.getOrder().getId()));
+            cardsContainer.add(card);
+        }
+
+        section.add(cardsContainer);
+        return section;
     }
 
     private Div createDateSection(LocalDate date, List<OrderList> orders, Set<Long> unreadOrderIds) {

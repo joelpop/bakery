@@ -3,7 +3,6 @@ package org.vaadin.bakery.app.config.security;
 import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -14,8 +13,7 @@ import org.vaadin.bakery.ui.view.login.LoginView;
 /**
  * Spring Security configuration for the Bakery application.
  * Features:
- * - Vaadin security integration
- * - Session management with concurrent session control
+ * - Vaadin security integration via VaadinSecurityConfigurer
  * - BCrypt password encoding
  *
  * Note: WebAuthn passkey authentication is prepared in the UI but requires
@@ -23,19 +21,14 @@ import org.vaadin.bakery.ui.view.login.LoginView;
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    /** Configures the security filter chain with Vaadin integration, login view, and session management. */
+    /** Configures the security filter chain with Vaadin integration and login view. */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
-            configurer.loginView(LoginView.class);
-        })
-        .sessionManagement(session -> {
-            session.maximumSessions(5);
-        })
-        .build();
+        return http.with(VaadinSecurityConfigurer.vaadin(),
+                        configurer -> configurer.loginView(LoginView.class))
+                .build();
     }
 
     /** Provides a BCrypt password encoder for hashing user passwords. */

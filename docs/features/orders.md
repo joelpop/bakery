@@ -4,58 +4,54 @@ This document describes the order data model, statuses, and workflow throughout 
 
 ## Order Statuses
 
-Orders progress through several statuses during their lifecycle:
+Orders progress through several statuses during their lifecycle. Pre-production statuses are **derived from item statuses** (see [Order Status Roll-Up](bakery-workflow.md#order-status-roll-up)); post-production statuses are manual staff actions.
 
 | Status | Badge Color | Description |
 |--------|-------------|-------------|
-| **New** | Blue | Order just received, not yet reviewed |
-| **Verified** | Primary | Order reviewed and accepted by bakery |
-| **Not OK** | Orange/Warning | Problem requiring attention; customer may need contact |
-| **Cancelled** | Gray | Order cancelled, no further action needed |
-| **In Progress** | Primary | Being manufactured at bakery |
-| **Baked** | Light Green | Baking completed |
-| **Packaged** | Green | Packaged and ready for transport |
+| **In Review** | Blue | Order needs review — newly received or item(s) flagged with a problem |
+| **Verified** | Primary | Order reviewed and accepted — all items accepted |
+| **In Progress** | Primary | Being manufactured — at least one item in production |
+| **Produced** | Light Green | Production completed — all non-canceled items produced |
+| **Packaged** | Green | Packaged for transport |
+| **In Transit** | Green | Being transported to pickup location |
 | **Ready for Pick Up** | Bright Green | Available at café for customer pickup |
 | **Picked Up** | Gray | Order complete, picked up by customer |
+| **Canceled** | Gray | Order will not be fulfilled |
+
+**Renames**: In Review (was New), Produced (was Baked), Canceled (was Cancelled). Not OK has been removed — its function is absorbed by In Review.
 
 ### Status Workflow
 
 ```
-┌─────────┐     ┌──────────┐     ┌─────────────┐     ┌────────┐
-│   New   │────>│ Verified │────>│ In Progress │────>│ Baked  │
-└─────────┘     └──────────┘     └─────────────┘     └────────┘
-                     │                                    │
-                     v                                    v
-                ┌─────────┐                          ┌──────────┐
-                │ Not OK  │                          │ Packaged │
-                └─────────┘                          └──────────┘
-                     │                                    │
-                     v                                    v
-               ┌───────────┐                    ┌─────────────────┐
-               │ Cancelled │                    │ Ready for Pick  │
-               └───────────┘                    │       Up        │
-                                                └─────────────────┘
-                                                         │
-                                                         v
-                                                   ┌───────────┐
-                                                   │ Picked Up │
-                                                   └───────────┘
+[Derived from item statuses]                   [Manual post-production]
+IN_REVIEW → VERIFIED → IN_PROGRESS → PRODUCED → PACKAGED → IN_TRANSIT → READY_FOR_PICK_UP → PICKED_UP
+     ↑           │
+     └───────────┘ (item rejected on bakery board)
+     │
+     ↓
+  CANCELED
 ```
 
-### Status Transitions
+### Pre-Production Transitions (Derived)
 
-| From | To | Trigger |
-|------|----|---------|
-| New | Verified | Bakery reviews and accepts order |
-| New | Not OK | Problem identified before verification |
-| Verified | In Progress | Production begins |
-| Verified | Not OK | Problem identified |
-| Not OK | Verified | Issue resolved |
-| Not OK | Cancelled | Order cannot be fulfilled |
-| In Progress | Baked | Baking completed |
-| Baked | Packaged | Order packaged for transport |
-| Packaged | Ready for Pick Up | Order delivered to café |
-| Ready for Pick Up | Picked Up | Customer picks up order |
+Pre-production order statuses are computed from the order's item statuses. Bakers transition items on the [Bakery board](bakery-workflow.md); the order status follows automatically.
+
+| Priority | Condition | Order Status |
+|----------|-----------|--------------|
+| 1 | All items CANCELED | CANCELED |
+| 2 | Any item PENDING_REVIEW or REJECTED | IN_REVIEW |
+| 3 | All items ACCEPTED or CANCELED | VERIFIED |
+| 4 | Any item IN_PROGRESS | IN_PROGRESS |
+| 5 | All non-canceled items PRODUCED | PRODUCED |
+
+### Post-Production Transitions (Manual)
+
+| From | To | Trigger | Actor |
+|------|----|---------|-------|
+| Produced | Packaged | Order packaged for transport | Baker |
+| Packaged | In Transit | Order dispatched to pickup location | Baker |
+| In Transit | Ready for Pick Up | Order received at pickup location | Barista |
+| Ready for Pick Up | Picked Up | Customer collects order | Barista, Admin |
 
 ---
 
@@ -109,10 +105,13 @@ Payment is tracked separately from order status via the `paid` boolean field.
 | id | Long | Item identifier |
 | order | Order | Parent order |
 | product | Product | Product reference |
+| status | OrderItemStatus | Item lifecycle status (PENDING_REVIEW, ACCEPTED, IN_PROGRESS, PRODUCED, REJECTED, CANCELED) |
 | quantity | Integer | Number of items |
 | details | String | Per-item notes (optional, e.g., customizations) |
 | unitPrice | BigDecimal | Price at order time (snapshot) |
 | lineTotal | BigDecimal | quantity × unitPrice |
+
+Item statuses are managed on the [Bakery production board](bakery-workflow.md) and drive the order's pre-production status via [roll-up rules](bakery-workflow.md#order-status-roll-up). When a new order is created, all items enter PENDING_REVIEW.
 
 ### Customer
 
@@ -165,9 +164,9 @@ Within each group, orders are sorted by:
 
 | Filter | Type | Options |
 |--------|------|---------|
-| Status | Multi-select chips | New, Verified, In Progress, etc. |
+| Status | Multi-select chips | In Review, Verified, In Progress, etc. |
 | Customer | Searchable dropdown | Customer names |
-| Show past orders | Checkbox | Include completed/cancelled orders |
+| Show past orders | Checkbox | Include completed/canceled orders |
 | Paid | Checkbox | Filter by payment status |
 
 ### Filter Behavior
@@ -328,21 +327,25 @@ When a customer arrives to collect their order:
 
 ## Problem Handling
 
-When an issue is identified with an order:
+Problems are handled at the **item level** on the [Bakery board](bakery-workflow.md), not at the order level:
 
-1. Change status to **Not OK**
-2. Record the problem in notes/additional details
-3. Contact customer if needed
-4. Either:
-   - Resolve issue and return to **Verified** status
-   - Cancel order if unresolvable
+1. Baker **rejects** an item on the bakery board (item → REJECTED) with a **required message** explaining the issue (e.g., "Out of pink sugarcoating", "Instructions unclear")
+2. Order status automatically drops to **In Review**; other accepted items are [held](bakery-workflow.md#hold-behavior)
+3. The order appears in the **"Needs Attention"** group at the top of the Storefront with a pink background
+4. The order detail view shows each item's current status; rejected items display **Resolve** and **Cancel Item** buttons
+5. Storefront staff reviews the baker's rejection message in the activity timeline, then:
+   - **Resolve**: Optionally edits the order to fix the issue, clicks Resolve, enters a required message explaining the correction → item returns to Pending Review
+   - **Cancel Item**: Clicks Cancel Item, enters a required message explaining why → item moves to Canceled
+   - **Cancel Order**: Cancels the entire order if no longer viable
+
+Both resolve and cancel actions require a message, which is posted to the activity timeline referencing the item. Once all rejected items are addressed, the order recalculates per [roll-up rules](bakery-workflow.md#order-status-roll-up) and returns to its normal position in the storefront.
 
 ### Common Problems
 
-- Ingredient unavailable
+- Ingredient unavailable for a specific item
 - Short notice for complex order
 - Misread/misunderstood specifications
-- Customer requested change
+- Customer requested change to an item
 
 ---
 
@@ -351,7 +354,7 @@ When an issue is identified with an order:
 ### Past Orders
 
 - Accessed via "Show past orders" filter
-- Includes Picked Up and Cancelled orders
+- Includes Picked Up and Canceled orders
 - Read-only (cannot modify completed orders)
 
 ### Audit Trail
@@ -377,16 +380,16 @@ Orders can be referenced directly via URL for communication:
 
 Editing permissions vary by role and order status:
 
-| Role | Before Production (NEW, VERIFIED) | During/After Production | After Completion |
-|------|-----------------------------------|-------------------------|------------------|
+| Role | Before Production (IN_REVIEW, VERIFIED) | During/After Production | After Completion |
+|------|------------------------------------------|-------------------------|------------------|
 | Admin | Full edit | Full edit | Read-only |
 | Baker | Add notes only | Add notes only | Read-only |
 | Barista | Add notes only | Add notes only | Read-only |
 
 **Notes**:
 - "Production" starts at IN_PROGRESS status
-- "Completion" means PICKED_UP or CANCELLED status
-- Order notes can be added by Baker or Admin until the order is picked up or cancelled
+- "Completion" means PICKED_UP or CANCELED status
+- Order notes can be added by Baker or Admin until the order is picked up or canceled
 - Only Admin can modify order details (items, customer, dates) once production has started
 
 ---
@@ -394,5 +397,7 @@ Editing permissions vary by role and order status:
 ## Related Documentation
 
 - [Storefront View](../views/storefront.md) - Order list and creation UI
-- [OrderStatusCode](../persistence/model/codes/order-status.md) - Status enum values
+- [Bakery Workflow](bakery-workflow.md) - Item-level production workflow and order status roll-up
+- [OrderStatusCode](../persistence/model/codes/order-status.md) - Order status enum values
+- [OrderItemStatusCode](../persistence/model/codes/order-item-status.md) - Item status enum values
 - [OrderEntity](../persistence/model/entities/order.md) - Database entity

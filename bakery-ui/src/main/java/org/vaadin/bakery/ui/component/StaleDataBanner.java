@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.component;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Span;
@@ -12,23 +15,14 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
  * A banner component for displaying stale data notifications in edit dialogs.
  * Shows when the record being edited has been modified or deleted by another user.
  */
-public class StaleDataBanner extends HorizontalLayout {
+public class StaleDataBanner extends Composite<HorizontalLayout> implements HasSize, HasStyle {
 
     private final Span messageSpan;
     private final HorizontalLayout actionsLayout;
 
     /** Creates a stale data banner, initially hidden. */
     public StaleDataBanner() {
-        setVisible(false);
-        addClassName("stale-data-banner");
-        setWidthFull();
-        setAlignItems(FlexComponent.Alignment.CENTER);
-        addClassNames(
-                LumoUtility.Padding.Horizontal.MEDIUM,
-                LumoUtility.Padding.Vertical.SMALL,
-                LumoUtility.BorderRadius.MEDIUM
-        );
-
+        // Component initializations
         var icon = VaadinIcon.WARNING.create();
         icon.setSize("var(--lumo-icon-size-s)");
 
@@ -38,8 +32,19 @@ public class StaleDataBanner extends HorizontalLayout {
         actionsLayout = new HorizontalLayout();
         actionsLayout.addClassNames(LumoUtility.Gap.SMALL);
 
-        add(icon, messageSpan, actionsLayout);
-        setFlexGrow(1, messageSpan);
+        // Content layout
+        var content = getContent();
+        content.setVisible(false);
+        content.addClassName("stale-data-banner");
+        content.setWidthFull();
+        content.setAlignItems(FlexComponent.Alignment.CENTER);
+        content.addClassNames(
+                LumoUtility.Padding.Horizontal.MEDIUM,
+                LumoUtility.Padding.Vertical.SMALL,
+                LumoUtility.BorderRadius.MEDIUM
+        );
+        content.add(icon, messageSpan, actionsLayout);
+        content.setFlexGrow(1, messageSpan);
     }
 
     /**
@@ -58,9 +63,9 @@ public class StaleDataBanner extends HorizontalLayout {
         dismissButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
 
         actionsLayout.add(reloadButton, dismissButton);
-        removeClassName("stale-data-banner-error");
-        addClassName("stale-data-banner-warning");
-        setVisible(true);
+        getContent().removeClassName("stale-data-banner-error");
+        getContent().addClassName("stale-data-banner-warning");
+        getContent().setVisible(true);
     }
 
     /**
@@ -76,15 +81,13 @@ public class StaleDataBanner extends HorizontalLayout {
         closeButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 
         actionsLayout.add(closeButton);
-        removeClassName("stale-data-banner-warning");
-        addClassName("stale-data-banner-error");
-        setVisible(true);
+        getContent().removeClassName("stale-data-banner-warning");
+        getContent().addClassName("stale-data-banner-error");
+        getContent().setVisible(true);
     }
 
-    /**
-     * Hides the banner.
-     */
+    /** Hides the banner. */
     public void hide() {
-        setVisible(false);
+        getContent().setVisible(false);
     }
 }

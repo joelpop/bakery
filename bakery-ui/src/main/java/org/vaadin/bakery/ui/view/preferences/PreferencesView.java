@@ -1,5 +1,8 @@
 package org.vaadin.bakery.ui.view.preferences;
 
+import com.vaadin.flow.component.Composite;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.HasStyle;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -8,6 +11,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -31,7 +35,7 @@ import org.vaadin.bakery.uimodel.data.UserDetail;
 @Route(PreferencesView.ROUTE)
 @PageTitle("Preferences")
 @PermitAll
-public class PreferencesView extends VerticalLayout {
+public class PreferencesView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     /** Route path for this view. */
     public static final String ROUTE = "preferences";
@@ -55,11 +59,6 @@ public class PreferencesView extends VerticalLayout {
         this.userService = userService;
 
         // Component initializations
-        addClassName("preferences-view");
-        setSizeFull();
-        setPadding(false);
-        setSpacing(false);
-
         var header = new ViewHeader("Preferences");
 
         profileAvatar = new Avatar();
@@ -96,7 +95,7 @@ public class PreferencesView extends VerticalLayout {
         var avatarSection = new VerticalLayout();
         avatarSection.setPadding(false);
         avatarSection.setSpacing(true);
-        avatarSection.setAlignItems(Alignment.CENTER);
+        avatarSection.setAlignItems(FlexComponent.Alignment.CENTER);
         avatarSection.setWidth("auto");
         avatarSection.add(profileAvatar, upload);
 
@@ -122,7 +121,7 @@ public class PreferencesView extends VerticalLayout {
         infoForm.add(roleField, 1);
 
         var profileLayout = new HorizontalLayout();
-        profileLayout.setAlignItems(Alignment.START);
+        profileLayout.setAlignItems(FlexComponent.Alignment.START);
         profileLayout.setSpacing(true);
         profileLayout.add(avatarSection, infoForm);
         profileLayout.setFlexGrow(1, infoForm);
@@ -163,8 +162,14 @@ public class PreferencesView extends VerticalLayout {
         scroller.setSizeFull();
         scroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
 
-        add(header, scroller);
-        setFlexGrow(1, scroller);
+        // Content layout
+        var outerContent = getContent();
+        outerContent.addClassName("preferences-view");
+        outerContent.setSizeFull();
+        outerContent.setPadding(false);
+        outerContent.setSpacing(false);
+        outerContent.add(header, scroller);
+        outerContent.setFlexGrow(1, scroller);
 
         // Value settings
         currentUserService.getCurrentUser().ifPresent(user -> {

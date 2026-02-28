@@ -69,13 +69,20 @@ public class MainLayout extends AppLayout {
 
         // Always visible
         nav.add(createTab("Storefront", StorefrontView.class));
+
+        // Admin and Baker
+        if (currentUserService.isAdmin() || currentUserService.isBaker()) {
+            nav.add(createTab("Bakery", BakeryView.class));
+        }
+
+        // Always visible
         nav.add(createTab("Dashboard", DashboardView.class));
 
         // Admin only
         if (currentUserService.isAdmin()) {
             nav.add(createTab("Users", UsersView.class));
             nav.add(createTab("Products", ProductsView.class));
-            nav.add(createTab("Admin", AdminView.class));
+            nav.add(createTab("Locations", LocationsView.class));
         }
 
         addToNavbar(nav);

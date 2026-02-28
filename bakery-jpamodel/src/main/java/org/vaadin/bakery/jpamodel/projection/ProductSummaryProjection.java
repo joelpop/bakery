@@ -19,6 +19,8 @@ public interface ProductSummaryProjection {
 
     boolean isAvailable();
 
+    boolean isBatchable();
+
     byte[] getPhoto();
 
     String getPhotoContentType();

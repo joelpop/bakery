@@ -14,4 +14,6 @@ public interface ProductSelectProjection {
     String getSize();
 
     BigDecimal getPrice();
+
+    boolean isBatchable();
 }

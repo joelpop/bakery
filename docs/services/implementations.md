@@ -186,7 +186,7 @@ All service implementations use declarative transaction management:
    - Calculates line total
 5. Applies discount if provided
 6. Calculates order total from line totals minus discount
-7. Sets initial status to NEW
+7. Sets initial order status to IN_REVIEW; sets all item statuses to PENDING_REVIEW
 8. Sets paid to false
 9. Sets createdBy from current user
 10. Saves and returns as UI model

@@ -37,8 +37,8 @@ For Admin users, additional metrics may be visible:
 
 | KPI | Description |
 |-----|-------------|
-| **Warnings** | Orders with NOT_OK status requiring attention |
-| **Failures** | Cancelled orders this period |
+| **Warnings** | Orders in IN_REVIEW status with rejected items requiring attention |
+| **Failures** | Canceled orders this period |
 | **Month Total** | Orders this month with dual comparison deltas |
 | **Year Total** | Orders this year with dual comparison deltas |
 
@@ -64,7 +64,7 @@ A notification area for important messages and alerts:
 | Alert Type | Description | Example |
 |------------|-------------|---------|
 | **Ingredient Alert** | Low stock or unavailable items | "We're out of pink sugarcoating!" |
-| **Problem Orders** | Orders marked as NOT_OK | "Order #234 needs attention" |
+| **Problem Orders** | Orders in IN_REVIEW with rejected items | "Order #234 needs attention" |
 | **Staff Messages** | Communications between staff | General announcements |
 
 Alerts help ensure issues are spotted quickly by everyone.
@@ -121,7 +121,7 @@ A summary list of upcoming orders displayed alongside the products chart:
 
 | Column | Description |
 |--------|-------------|
-| Status | Order status badge (Verified, In Progress, Baked, etc.) |
+| Status | Order status badge (In Review, Verified, In Progress, Produced, etc.) |
 | Paid | Payment indicator |
 | Day | Day of week and date |
 | Time | Pickup time |
