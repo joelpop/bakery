@@ -39,6 +39,9 @@ Each order card displays:
 
 Cards in the "Needs Attention" group have a **pink background** to visually distinguish them from normal orders and draw immediate attention.
 
+### Cross-Session Updates
+The storefront auto-refreshes via shared signals when orders are modified in another session. New and changed order cards receive a temporary gold highlight animation via the `ChangeTracker` utility.
+
 ### Card Actions
 Clicking an order card opens the order detail view where staff can:
 - View full order information
@@ -53,21 +56,17 @@ Clicking an order card opens the order detail view where staff can:
 
 ### Filter Bar
 Located at the top of the view with:
-- **Search/Filter Input** - Text field with dropdown for filter options
-- **Show past orders** - Checkbox to include completed/cancelled orders
-- **Clear filters** - Link to reset all filters
+- **Search** - Text field for filtering by customer name
+- **Status filter** - Multi-select for filtering by order status
+- **Location filter** - Dropdown with "Current Location" option (uses session-scoped working location)
 
-### Filter Options
-The filter dropdown includes:
-- **Status filters**: In Review, Verified, In Progress, Produced, etc.
-- **Customer filters**: List of customer names
-- **Paid status**: Paid / Unpaid
-
-### Applied Filters
-When filters are active:
-- Selected filters appear as chips in the search bar
-- Results update immediately
-- "Clear filters" link becomes visible
+### Deferred Filter Features
+The following filter features are planned but not yet implemented:
+- Customer filter (searchable dropdown)
+- Paid/Unpaid filter
+- "Show past orders" checkbox
+- "Clear filters" link
+- Filter chips for applied filters
 
 ---
 
@@ -239,11 +238,11 @@ When a customer arrives to collect their order:
 
 ## Direct Order Links
 
-Orders can be referenced by URL: `/storefront/{orderId}`
+Orders can be referenced by URL: `/orders/{orderId}`
 
 This allows staff to share order links: "Take a look at order #234"
 
-The storefront view will open with the specified order selected/expanded.
+The OrderDetailView opens directly for the specified order, with a back button to return to the Storefront.
 
 ---
 

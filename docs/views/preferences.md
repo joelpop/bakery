@@ -12,9 +12,10 @@ The Preferences view allows users to manage their account settings, security cre
 
 The preferences view is organized into sections:
 
-1. Profile Settings
-2. Security Settings
-3. Display Settings
+1. Profile Settings — **implemented**
+2. Security Settings (password change) — **implemented**
+3. Security Settings (passkey management) — *deferred*
+4. Display Settings (theme) — *deferred*
 
 ---
 
@@ -54,47 +55,18 @@ The preferences view is organized into sections:
 - Not in common password blocklist
 - Visual strength meter: Weak → Fair → Good → Strong → Very Strong
 
-### Passkey Management
+### Passkey Management *(Deferred)*
 
-| Element | Description |
-|---------|-------------|
-| Registered Passkeys | List of registered WebAuthn credentials |
-| Add Passkey | Button to register new passkey |
-| Remove Passkey | Button to delete existing passkey |
-
-#### Add Passkey Flow
-
-| Step | Description |
-|------|-------------|
-| 1 | User clicks "Add Passkey" |
-| 2 | Browser prompts for authenticator selection |
-| 3 | User completes biometric/PIN verification |
-| 4 | Passkey is registered with descriptive name |
-| 5 | New passkey appears in list |
-
-#### Passkey List Item
-
-| Field | Description |
-|-------|-------------|
-| Name | User-provided name (e.g., "MacBook TouchID") |
-| Created | Registration date |
-| Last Used | Last authentication date |
-| Remove | Button to delete credential |
-
----
+> **Note**: Passkey management deferred — requires WebAuthn integration. See [Login View](login.md) for details.
 
 ---
 
 > **Note**: The originally planned notification preferences section has been removed. Staff communication is handled by the order messaging system, which uses the activity timeline on each order. See [Messaging](../features/messaging.md) for details.
 
 
-## Display Settings
+## Display Settings *(Deferred)*
 
-| Setting | Type | Options | Description |
-|---------|------|---------|-------------|
-| Theme | Radio/Toggle | Light, Dark, System | UI color scheme preference |
-
-**Note**: Language selection may be added as future enhancement.
+> **Note**: Theme selection (Light/Dark/System) is planned but not yet implemented.
 
 ---
 

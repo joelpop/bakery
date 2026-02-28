@@ -26,8 +26,10 @@ A searchable data grid displaying all users in the system.
 | Role | User role | Yes |
 
 ### Row Actions
-- Click row to edit user (opens Edit User dialog)
-- Edit icon button on hover for quick access
+- Click row to edit user (opens User Dialog)
+
+### Cross-Session Updates
+The user grid auto-refreshes via shared signals when users are modified in another session. Changed rows receive a temporary gold highlight animation.
 
 ### Technical Note: User List Query
 ```
@@ -43,9 +45,9 @@ UserListItem {
 
 ---
 
-## New/Edit User Dialog
+## User Dialog
 
-A side panel dialog for creating or editing user accounts.
+A dialog for creating or editing user accounts. Uses delegation pattern (wraps Dialog rather than extending it). Includes stale data detection with a warning banner when external changes are detected.
 
 ### Form Fields
 
@@ -55,8 +57,9 @@ A side panel dialog for creating or editing user accounts.
 | Email (login) | Email Input | Yes | Unique login identifier |
 | First name | Text Input | Yes | User's first name |
 | Last name | Text Input | Yes | User's last name |
-| Password | Password Input | Yes | Account password (with show/hide toggle) |
+| Password | Password Input | Yes (create) | Account password (with show/hide toggle) |
 | Role | Dropdown | Yes | User role selection |
+| Primary Location | Dropdown | No | User's default working location (used to initialize session location) |
 
 ### Role Options
 

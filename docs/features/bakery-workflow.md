@@ -400,7 +400,7 @@ When two users drag tiles simultaneously, the system must handle conflicts grace
 
 ### Change Highlighting
 
-When a tile's status, position, or contributing order/item data changes (from any source — drag-and-drop, storefront edits, new orders), all users see a **temporary highlight** on the affected tile, following the same highlight pattern used in the Storefront and other list views.
+When a tile's status, position, or contributing order/item data changes (from any source — drag-and-drop, storefront edits, new orders), all users see a **temporary gold highlight** on the affected tile (6-second fade animation), following the same highlight pattern used in the Storefront and other list views. Change detection uses the `tileChanges` SharedMapSignal for tile identity and timestamp-based comparison for freshness.
 
 ---
 
@@ -513,38 +513,62 @@ These affect `OrderItemStatusCode` (JPA enum), `OrderItemStatus` (UI enum, to be
 
 A new UI-layer enum mirroring `OrderItemStatusCode` with display names, colors, and helper methods (following the pattern of the existing `OrderStatus` enum).
 
-### New: Tile Position Persistence
+### Tile Position Persistence
 
-A new entity to store tile ordering within swimlanes. Details TBD during implementation, but conceptually:
+`TilePositionEntity` stores tile ordering within swimlanes:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| swimlane | OrderItemStatus | Which swimlane the tile is in |
+| swimlane | OrderItemStatusCode | Which swimlane the tile is in |
 | dueDate | LocalDate | The date group within the swimlane |
-| groupingKey | String | Product ID (batchable) or item ID (non-batchable) |
+| groupingKey | String | Grouping key (see below) |
 | position | Integer | Sort order within the date group |
 
-### New: Tile Undo Stack
+Unique constraint on `(swimlane, dueDate, groupingKey)`.
 
-Per-tile undo history to support multi-level undo. Conceptually:
+### Tile Undo Stack
+
+`TileUndoEntryEntity` stores per-tile undo history for multi-level undo:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| tileKey | String | The tile's grouping key |
-| previousStatus | OrderItemStatus | The status before the transition |
-| activityIds | List\<Long\> | Activity timeline entries to remove on undo |
+| groupingKey | String | The tile's grouping key |
+| previousStatus | OrderItemStatusCode | The status before the transition |
+| sequenceNumber | Integer | Stack ordering (higher = more recent) |
+| activityIds | String | Comma-separated activity IDs to remove on undo |
 
 ---
 
 ## Real-Time Updates
 
-The view uses **shared signals and component effects** to stay in sync across sessions, following the same reactive pattern used in the Storefront and other views:
+The view uses **shared signals and component effects** to stay in sync across sessions. The update architecture has two paths:
 
-- When a baker drags a tile to a new status, other users viewing the board see the tile move immediately
+### Full Load
+
+Used for initial render and date range changes. Fetches all tiles and rebuilds all swimlane DOM from scratch. No diffing or highlighting.
+
+### Reconcile
+
+Used for both local drag-and-drop operations and cross-session changes. The same code path handles both scenarios:
+
+1. **Fetch fresh tiles** from the service
+2. **Read `tileChanges` SharedMapSignal** — a tile-level `SharedMapSignal<Long>` that maps grouping keys to change timestamps
+3. **Identify highlighted keys** by comparing signal timestamps against the session's `lastUpdateTimestamp`
+4. **Detect structural changes** — tiles that appeared or disappeared (e.g., batch tile key changes on status transitions)
+5. **Re-render affected swimlanes** — only swimlanes containing highlighted or structurally changed tiles are rebuilt via `renderAll()`
+6. **Apply highlight animations** — gold highlight CSS class applied to changed tiles (6-second fade)
+
+### Dispatcher
+
+A `Signal.effect()` subscribes to `DataChangeSignals.orderVersion()` (cross-session trigger) and a local `refreshTriggerSignal` (local operations). An `operationInProgress` guard prevents mid-operation re-entry — local DnD operations persist to the service, release the guard, then call `triggerRefresh()` to fire the effect and reconcile with fresh data.
+
+### Observable Behavior
+
+- When a baker drags a tile to a new status, other users viewing the board see the tile move immediately with a gold highlight
 - When new orders are created (items appear in the Pending Review lane), the board updates without requiring a page refresh
 - When items are modified from the Storefront or Order Detail views, the board reflects the changes
 - Tile reordering within a swimlane is reflected across sessions
-- Changed tiles receive a **temporary highlight** visible to all users
+- Changed tiles receive a **temporary gold highlight** visible to all users (6-second fade)
 
 ---
 

@@ -30,15 +30,19 @@ Service implementations reside in `bakery-jpaservice` and use JPA repositories w
 
 Service implementations follow the pattern `Jpa{ServiceName}`:
 
-| Interface | Implementation |
-|-----------|----------------|
-| UserService | JpaUserService |
-| CustomerService | JpaCustomerService |
-| ProductService | JpaProductService |
-| LocationService | JpaLocationService |
-| OrderService | JpaOrderService |
-| OrderActivityService | JpaOrderActivityService |
-| DashboardService | JpaDashboardService |
+| Interface | Implementation | Module |
+|-----------|----------------|--------|
+| UserService | JpaUserService | bakery-jpaservice |
+| CustomerService | JpaCustomerService | bakery-jpaservice |
+| ProductService | JpaProductService | bakery-jpaservice |
+| LocationService | JpaLocationService | bakery-jpaservice |
+| OrderService | JpaOrderService | bakery-jpaservice |
+| OrderActivityService | JpaOrderActivityService | bakery-jpaservice |
+| BakeryService | JpaBakeryService | bakery-jpaservice |
+| DashboardService | JpaDashboardService | bakery-jpaservice |
+| UserLocationService | SessionUserLocationService | bakery-jpaservice |
+| DataChangeNotifier | DataChangeSignalUpdater | bakery-ui |
+| ClientDetailsService | VaadinClientDetailsService | bakery-ui |
 
 ---
 
@@ -50,13 +54,15 @@ Mappers convert between JPA entities/projections and UI models. They are Spring 
 
 | Mapper | Converts Between |
 |--------|------------------|
-| UserMapper | UserEntity ↔ User, UserSummaryProjection → User |
-| CustomerMapper | CustomerEntity ↔ Customer, CustomerSummaryProjection → Customer |
-| ProductMapper | ProductEntity ↔ Product, ProductSummaryProjection → Product |
-| LocationMapper | LocationEntity ↔ Location, LocationSummaryProjection → Location |
-| OrderMapper | OrderEntity ↔ Order, OrderListProjection → OrderSummary (includes paid, discount) |
-| OrderItemMapper | OrderItemEntity ↔ OrderItem, OrderItemSummaryProjection → OrderItemSummary |
+| UserMapper | UserEntity ↔ UserSummary/UserDetail, UserSummaryProjection → UserSummary |
+| CustomerMapper | CustomerEntity ↔ CustomerSummary, CustomerSummaryProjection → CustomerSummary |
+| ProductMapper | ProductEntity ↔ ProductSummary/ProductSelect, ProductSummaryProjection → ProductSummary |
+| LocationMapper | LocationEntity ↔ LocationSummary, LocationSummaryProjection → LocationSummary |
+| OrderMapper | OrderEntity ↔ OrderList/OrderDetail/OrderDashboard |
+| OrderItemMapper | OrderItemEntity ↔ OrderItemSummary/OrderItemDetail |
 | OrderActivityMapper | OrderActivityEntity → OrderActivity |
+| EnumMapper | OrderItemStatusCode ↔ OrderItemStatus, OrderStatusCode ↔ OrderStatus, etc. |
+| InstantMapper | Instant ↔ LocalDateTime (using browser timezone from ClientDetailsService) |
 
 ### Mapping Conventions
 
@@ -259,6 +265,66 @@ Aggregates multiple repository queries:
 ---
 
 > **Note**: The originally planned `JpaNotificationService` has been superseded by `JpaOrderActivityService`. See [Messaging](../features/messaging.md) for details.
+
+---
+
+## JpaBakeryService
+
+### Dependencies
+- OrderItemRepository
+- ProductRepository
+- TilePositionRepository
+- TileUndoEntryRepository
+- OrderStatusRollUpHelper
+- OrderActivityService
+- DataChangeNotifier
+
+### Key Behaviors
+
+**listTiles(startDate, endDate)**
+1. Fetches order items with their products and orders for the date range
+2. Groups items by product batchability: batchable items aggregate into single tiles per product/date/status; non-batchable items become individual tiles
+3. Merges persisted positions from TilePositionRepository
+4. Includes overdue non-terminal items regardless of date range
+5. Returns `List<BakeryTile>` with grouping keys, quantities, indicators
+
+**transitionTile(tile, newStatus, position, rejectionMessage)**
+1. Atomic operation: updates all items in the tile to new status (with per-item version checks)
+2. Records activity timeline entries (rejection messages if applicable)
+3. Manages tile positions (removes from source swimlane, inserts at position in target)
+4. Creates undo stack entry for the transition
+5. Recalculates order status via OrderStatusRollUpHelper
+6. Notifies via DataChangeNotifier (both entity-level and tile-level signals)
+
+**undoTileTransition(groupingKey)**
+1. Pops the most recent undo stack entry
+2. Reverts all affected items to previous status
+3. Removes the activity timeline entries created by the undone transition
+4. Repositions tile at end of date group in target swimlane
+5. Returns the previous status for notification
+
+**saveTileOrder(swimlane, dueDate, orderedGroupingKeys, movedGroupingKey)**
+1. Persists the full ordered list of tile positions atomically
+2. Notifies tile-level change for the moved tile
+
+---
+
+## DataChangeSignalUpdater
+
+Located in `bakery-ui` (not `bakery-jpaservice`), implements `DataChangeNotifier`.
+
+### Key Behaviors
+
+**notifyChange(entityType, entityId)**
+1. Records the entity ID and timestamp in the appropriate `SharedMapSignal` (e.g., `orderChanges()`)
+2. Increments the corresponding version counter `SharedNumberSignal` (e.g., `orderVersion()`)
+
+**notifyTileChange(groupingKey)**
+1. Records the grouping key and timestamp in `tileChanges()` SharedMapSignal
+2. Increments `orderVersion()` to trigger BakeryView's signal effect
+
+**notifyMessage(notification)**
+1. Fires message broadcast via `MessageBroadcaster` for targeted toast delivery
 
 ---
 

@@ -11,36 +11,31 @@ The Dashboard provides a comprehensive overview of business performance with KPI
 
 ## Layout
 
-The dashboard is organized into several sections:
-1. KPI Cards (top row)
-2. Alerts / Bulletin Board
-3. Pickup Charts (second row)
-4. Sales Trend Chart (third row)
-5. Products Breakdown and Upcoming Orders (bottom row)
+The dashboard is organized into the following sections:
+1. KPI Cards (top row) — **implemented**
+2. Alerts / Bulletin Board — *deferred*
+3. Pickup Charts (second row) — *placeholder added, charts deferred*
+4. Sales Trend Chart (third row) — *deferred*
+5. Products Breakdown (bottom row) — *placeholder added, chart deferred*
+6. Upcoming Orders (bottom row) — **implemented**
+
+### Cross-Session Updates
+The dashboard auto-refreshes via shared signals (`DataChangeSignals.orderVersion()` and `DataChangeSignals.productVersion()`) when data changes in another session.
 
 ---
 
 ## KPI Cards
 
-Key performance indicators displayed as cards across the top:
+Six key performance indicators displayed as cards across the top (all visible to all authenticated users):
 
 | KPI | Description | Visual |
 |-----|-------------|--------|
-| **Remaining Today** | Orders still to be fulfilled today | Number with "Next pickup" time |
-| **Not Available** | Products currently unavailable | Number with "Orders due today with N/A products" note |
-| **New** | New orders awaiting verification | Number with "Last X ago" timestamp |
-| **Tomorrow** | Orders scheduled for tomorrow | Number with "First pickup" time |
-
-### Additional KPIs (Back-Office)
-
-For Admin users, additional metrics may be visible:
-
-| KPI | Description |
-|-----|-------------|
-| **Warnings** | Orders in IN_REVIEW status with rejected items requiring attention |
-| **Failures** | Canceled orders this period |
-| **Month Total** | Orders this month with dual comparison deltas |
-| **Year Total** | Orders this year with dual comparison deltas |
+| **Remaining Today** | Orders still to be fulfilled today | Count + "Next pickup" time |
+| **Not Available** | Products currently unavailable | Count |
+| **New** | New orders awaiting verification (IN_REVIEW) | Count + "Last X ago" timestamp |
+| **Tomorrow** | Orders scheduled for tomorrow | Count + "First pickup" time |
+| **Month Total** | Orders this month | Count + dual delta (vs prev month AND vs same month last year) |
+| **Year Total** | Orders this year | Count + dual delta (vs prev year AND vs same period last year) |
 
 ### KPI Delta Calculations
 
@@ -57,9 +52,11 @@ This dual comparison helps distinguish between:
 
 ---
 
-## Alerts / Bulletin Board
+## Alerts / Bulletin Board *(Deferred)*
 
-A notification area for important messages and alerts:
+> **Note**: The alerts/bulletin board section is deferred to a future enhancement.
+
+Planned alert types:
 
 | Alert Type | Description | Example |
 |------------|-------------|---------|
@@ -67,11 +64,11 @@ A notification area for important messages and alerts:
 | **Problem Orders** | Orders in IN_REVIEW with rejected items | "Order #234 needs attention" |
 | **Staff Messages** | Communications between staff | General announcements |
 
-Alerts help ensure issues are spotted quickly by everyone.
-
 ---
 
-## Pickup Charts
+## Pickup Charts *(Placeholders — Charts Deferred)*
+
+> **Note**: Chart placeholders are displayed in the UI. Actual chart implementations are deferred.
 
 ### Pickups in [Current Month]
 - **Type**: Bar chart
@@ -87,7 +84,7 @@ Alerts help ensure issues are spotted quickly by everyone.
 
 ---
 
-## Sales Trend Chart
+## Sales Trend Chart *(Deferred)*
 
 ### Sales Last Years
 - **Type**: Multi-line chart
@@ -98,20 +95,14 @@ Alerts help ensure issues are spotted quickly by everyone.
 
 ---
 
-## Products Delivered Breakdown
+## Products Delivered Breakdown *(Placeholder — Chart Deferred)*
+
+> **Note**: A placeholder is displayed in the UI. The actual chart implementation is deferred.
 
 ### Products Delivered in [Current Month]
 - **Type**: Donut/Pie chart
 - **Segments**: Product categories with quantities
 - **Center**: Total count for the period
-
-Example segments:
-- Princess Cake
-- Vanilla Bun
-- Bacon Tart
-- Bacon Cheese Cake
-- Blueberry Strawberry Cake
-- Custom Cakes
 
 ---
 
@@ -133,13 +124,15 @@ This is a condensed view of the order list, showing only the most imminent order
 
 ---
 
-## Soon Due Orders
+## Soon Due Orders *(Not Yet Implemented)*
 
-Orders that are due soon (today or tomorrow) and require attention:
+> **Note**: This feature is planned but not yet implemented. Currently, upcoming orders show all upcoming orders without urgency prioritization.
+
+Planned urgency indicators:
 
 | Status | Urgency |
 |--------|---------|
-| New (today) | High - needs verification urgently |
+| In Review (today) | High — needs verification urgently |
 | Verified (today) | Should be in progress |
 | In Progress (past due time) | Running late |
 

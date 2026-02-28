@@ -17,7 +17,7 @@ Remaining tasks for the Café Sunshine Bakery Order Management System. Completed
 
 ### 6.3 Login View (bakery-ui)
 
-- [ ] Redirect based on role after login:
+- [ ] Redirect based on role after login *(currently all roles land on Storefront, the default route)*:
   - [ ] Admin → Dashboard
   - [ ] Baker → Bakery
   - [ ] Barista → Storefront
@@ -132,8 +132,8 @@ Remaining tasks for the Café Sunshine Bakery Order Management System. Completed
 
 The following features are documented in the spec but not yet implemented, or differ from the spec.
 
-- [ ] **Tile hover/tap action buttons** — Spec calls for status transition buttons, undo button, and reorder arrows (Top/Up/Down/Bottom) appearing on hover (desktop) or tap (mobile). Not implemented; status transitions are performed exclusively via drag-and-drop. Click currently opens the detail overlay directly.
-- [ ] **Drag-to-undo** — Spec says dragging a tile to the swimlane it came from performs an undo. Not implemented; undo is temporarily accessible from the detail overlay until tile buttons are added.
+- [ ] **Tile hover/tap action buttons** — Spec calls for status transition buttons, undo button, and reorder arrows (Top/Up/Down/Bottom) appearing on hover (desktop) or tap (mobile). Not implemented; status transitions are performed exclusively via drag-and-drop. Undo is accessible from the detail overlay. Click currently opens the detail overlay directly.
+- [ ] **Drag-to-undo** — Spec says dragging a tile to the swimlane it came from performs an undo. Not implemented; undo is accessible from the detail overlay until tile buttons are added.
 - [ ] **Message viewing/posting in detail overlay** — TileDetailOverlay shows an "unread messages" indicator and "View Order" links, but does not embed the activity timeline or a message input. Spec calls for inline message posting from the overlay.
 - [ ] **Selectable items in detail overlay** — Spec says items should be selectable to filter the detail display. Not implemented; all items always shown.
 - [ ] **Unread message read-marking** — Opening the detail overlay should mark unread messages as read. Not implemented.

@@ -141,7 +141,7 @@ Items in the overlay are **selectable** — selecting specific items filters the
 
 Opening the overlay marks unread messages as read, consistent with the [Messaging](../features/messaging.md#unread-tracking) feature's read model.
 
-**Current implementation**: The overlay shows contributing order cards with customer name, quantity, item details, additional details, unread indicator, and "View Order" link. Not yet implemented: inline activity timeline / message posting, selectable item filtering, unread read-marking on open.
+**Current implementation**: The overlay shows contributing order cards with customer name, quantity, item details, additional details, unread indicator, and "View Order" link. Undo button is available when the tile has undo history. Not yet implemented: inline activity timeline / message posting, selectable item filtering, unread read-marking on open.
 
 ### Date Group Headers
 
@@ -155,9 +155,9 @@ Within a date group, tiles are ordered by their persisted position. Bakers can r
 
 ### Change Highlighting
 
-When a tile's status, position, or contributing order/item data changes (from any source), all users see a **temporary highlight** on the affected tile, following the same highlight pattern used in the Storefront and other list views.
+When a tile's status, position, or contributing order/item data changes (from any source), all users see a **temporary gold highlight** on the affected tile (6-second fade animation), following the same highlight pattern used in the Storefront and other list views.
 
-**Current implementation**: Signal-based auto-refresh is working (board refreshes on data changes), but per-tile change highlighting animations are not yet implemented.
+Change detection uses a tile-level `SharedMapSignal<Long>` (`tileChanges`) that maps grouping keys to change timestamps. Each session compares timestamps against its `lastUpdateTimestamp` to identify which tiles changed since the last reconcile, then applies the highlight CSS class to those tiles.
 
 ---
 

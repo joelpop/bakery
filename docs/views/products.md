@@ -1,62 +1,56 @@
 # Products View
 
-The Products view provides CRUD functionality for managing the bakery's product catalog. This view is accessible under the Admin menu.
+The Products view provides product catalog management with role-based access: Admin users have full CRUD functionality, while Baker users have read-only access.
 
-> **Note**: No direct screenshots of this view are available. This documentation is inferred from product data visible in order screens and dashboard charts.
+**Route**: `/products`
 
-## Inferred Product Data
+**Access**: Admin (full CRUD), Baker (read-only)
 
-From order screenshots, the following products are visible:
+## Product List
 
-| Product Name | Size/Servings | Price | Notes |
-|--------------|---------------|-------|-------|
-| Princess Cake | 12 ppl | $39.90 | Most frequently ordered |
-| Strawberry Cake | 12 ppl | $29.90 | |
-| Salami Pastry | (individual) | $7.90 | Sold in larger quantities (e.g., 32) |
-| Blueberry Cheese Cake | (unknown) | (unknown) | |
-| Vanilla Bun | (unknown) | (unknown) | |
-| Bacon Tart | (unknown) | (unknown) | |
-| Bacon Cheese Cake | (unknown) | (unknown) | |
-| Bacon Cracker | (unknown) | (unknown) | |
+### Layout
+A searchable data grid displaying all products.
 
-## Expected Layout
+### Toolbar
 
-Based on the Users view pattern (similar CRUD interface), the Products view likely includes:
+| Element | Description |
+|---------|-------------|
+| Search | Filter products by name |
+| + New product | Button to create a new product (Admin only) |
 
-### Product List
-- Searchable data grid
-- "+ New product" button
-- Sortable columns
-
-### Expected Grid Columns
+### Grid Columns
 
 | Column | Description |
 |--------|-------------|
-| (Image) | Product photo (optional) |
+| (Image) | Product photo thumbnail |
 | Name | Product name |
-| Size | Serving size (e.g., "12 ppl", "individual") |
+| Size | Serving size (e.g., "12 ppl", "Individual") |
 | Price | Unit price |
-| Available | Availability status |
+| Available | Availability status toggle |
 
-### Technical Note: Product Entity
+### Cross-Session Updates
+The product grid auto-refreshes via shared signals when products are modified in another session. Changed rows receive a temporary gold highlight animation.
+
+### Product Entity
 ```
 Product {
   id: Long
   name: String
   description: String (optional)
-  size: String (e.g., "12 ppl", "individual")
+  size: String (e.g., "12 ppl", "Individual")
   price: BigDecimal
-  available: Boolean
-  photo: Blob (optional)
+  available: boolean
+  batchable: boolean (default: true)
+  photo: byte[] (optional)
   photoContentType: String (optional)
 }
 ```
 
 ---
 
-## New/Edit Product Dialog
+## Product Dialog
 
-Expected side panel dialog with:
+A dialog for creating and editing products (Admin only). Uses delegation pattern (wraps Dialog rather than extending it). Includes stale data detection with a warning banner when external changes are detected.
 
 ### Form Fields
 
@@ -73,20 +67,21 @@ Expected side panel dialog with:
 ### Actions
 - **Save** - Save product and close
 - **Cancel** - Discard changes
-- **Delete** - Remove product (with order dependency check)
+- **Delete** - Remove product (with confirmation)
 
 ### Validation Rules
 - Name must be unique
 - Price must be positive
-- Products with pending orders cannot be deleted (soft delete or warning)
 
 ---
 
 ## Access Control
 
-- Only users with **Admin** role can access Products management
-- Products appears under the "Admin" overflow menu in navigation
-- Non-admin users can view products in order creation but cannot edit them
+- **Admin**: Full CRUD access (create, edit, delete products)
+- **Baker**: Read-only access (can view but not modify the product catalog)
+- Products appears in the main navigation for both Admin and Baker roles
+- Barista users cannot access this view
+- All authenticated users can see products in the order creation dialog
 
 ---
 
