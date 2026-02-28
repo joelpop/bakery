@@ -59,6 +59,8 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
     private Runnable dragEndHandler;
     private TileDropHandler tileDropHandler;
     private List<BakeryTile> cachedTiles;
+    private Set<String> highlightedKeys;
+    private Set<String> newKeys;
 
     // Drag mode state — tracks components inserted during drag so they can be removed on exit
     private List<Component> dragModeInsertions;
@@ -140,14 +142,18 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
     }
 
     /**
-     * Sets the tiles to display in this swimlane.
+     * Sets the tiles to display in this swimlane with change highlighting.
      * Also cleans up any active drag mode state, since a data refresh
      * effectively ends the drag interaction.
      *
-     * @param allTiles all tiles from the board; this method filters to relevant statuses
+     * @param allTiles        all tiles from the board; this method filters to relevant statuses
+     * @param highlightedKeys grouping keys of tiles that are new or modified
+     * @param newKeys         grouping keys of tiles that are newly added
      */
-    public void setTiles(List<BakeryTile> allTiles) {
+    public void setTiles(List<BakeryTile> allTiles, Set<String> highlightedKeys, Set<String> newKeys) {
         cachedTiles = allTiles;
+        this.highlightedKeys = highlightedKeys;
+        this.newKeys = newKeys;
         // Clean up drag mode artifacts before rendering (data refresh ends the drag)
         cleanUpDragMode();
         renderNormalMode();
@@ -610,6 +616,14 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
                 tileClickHandler.accept(e.getTile());
             }
         });
+
+        // Change highlighting
+        var key = tile.getGroupingKey();
+        if (newKeys != null && newKeys.contains(key)) {
+            component.addClassName("tile-new");
+        } else if (highlightedKeys != null && highlightedKeys.contains(key)) {
+            component.addClassName("tile-highlight");
+        }
 
         // Add drag listeners for view-level coordination
         var dragSource = DragSource.configure(component);

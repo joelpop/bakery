@@ -55,6 +55,23 @@ public interface BakeryService {
     void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate, List<String> orderedGroupingKeys);
 
     /**
+     * Manages tile positions for a status transition.
+     *
+     * <p>Removes the tile from the source (fromStatus, dueDate) group, inserts it into
+     * the target (toStatus, dueDate) group at the specified position, and resequences
+     * both groups to maintain sequential positions (0, 1, 2, ...).
+     *
+     * @param groupingKey the tile's grouping key (batch keys are resolved internally)
+     * @param fromStatus  the tile's current status (source swimlane)
+     * @param toStatus    the target status (target swimlane)
+     * @param dueDate     the date group the tile belongs to
+     * @param position    desired zero-based position in the target group;
+     *                    {@code Integer.MAX_VALUE} means append to end
+     */
+    void transitionTilePosition(String groupingKey, OrderItemStatus fromStatus,
+                                OrderItemStatus toStatus, LocalDate dueDate, int position);
+
+    /**
      * Returns the undo stack for a tile (list of previous statuses, newest first).
      *
      * @param groupingKey the tile's grouping key

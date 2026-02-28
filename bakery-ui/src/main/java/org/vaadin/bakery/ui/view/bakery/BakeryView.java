@@ -27,9 +27,11 @@ import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -53,6 +55,9 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
     private LocalDate startDate;
     private LocalDate endDate;
     private List<BakeryTile> cachedTiles;
+    private Map<String, Integer> previousTileHashes;
+    private Set<String> highlightedKeys;
+    private Set<String> newKeys;
 
     /** Creates the bakery board view with toolbar and four swimlane columns. */
     public BakeryView(BakeryService bakeryService, OrderService orderService) {
@@ -62,6 +67,8 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
         startDate = LocalDate.now();
         endDate = LocalDate.now();
         cachedTiles = List.of();
+        highlightedKeys = Set.of();
+        newKeys = Set.of();
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
@@ -146,10 +153,46 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
 
     private void refreshBoard() {
         cachedTiles = bakeryService.listTiles(startDate, endDate);
-        reviewSwimlane.setTiles(cachedTiles);
-        acceptedSwimlane.setTiles(cachedTiles);
-        inProgressSwimlane.setTiles(cachedTiles);
-        completedSwimlane.setTiles(cachedTiles);
+        detectTileChanges(cachedTiles);
+        reviewSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
+        acceptedSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
+        inProgressSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
+        completedSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
+    }
+
+    /**
+     * Detects new and modified tiles by comparing content hashes against the previous refresh.
+     * Skips on the first load to avoid highlighting every tile on page open.
+     */
+    private void detectTileChanges(List<BakeryTile> tiles) {
+        highlightedKeys = new HashSet<>();
+        newKeys = new HashSet<>();
+
+        if (previousTileHashes != null) {
+            for (var tile : tiles) {
+                var key = tile.getGroupingKey();
+                var hash = computeTileHash(tile);
+                var prevHash = previousTileHashes.get(key);
+                if (prevHash == null) {
+                    highlightedKeys.add(key);
+                    newKeys.add(key);
+                } else if (!prevHash.equals(hash)) {
+                    highlightedKeys.add(key);
+                }
+            }
+        }
+
+        previousTileHashes = new HashMap<>();
+        for (var tile : tiles) {
+            previousTileHashes.put(tile.getGroupingKey(), computeTileHash(tile));
+        }
+    }
+
+    private static int computeTileHash(BakeryTile tile) {
+        return Objects.hash(
+                tile.getStatus(), tile.getTotalQuantity(), tile.getOrderCount(),
+                tile.isHasNotes(), tile.isHasUnreadMessages(),
+                tile.isOnHold());
     }
 
     private void onTileClick(BakeryTile tile) {
@@ -256,7 +299,7 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
             var rejectDialog = new RejectMessageDialog();
             rejectDialog.addConfirmListener(e -> {
                 performTransition(tile, newStatus, e.getMessage());
-                savePositionAfterTransition(tile, newStatus, position);
+                updateTilePosition(tile, newStatus, position);
             });
             rejectDialog.open();
             return;
@@ -280,7 +323,7 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
         }
 
         performTransition(tile, newStatus, null);
-        savePositionAfterTransition(tile, newStatus, position);
+        updateTilePosition(tile, newStatus, position);
     }
 
     private void performTransition(BakeryTile tile, OrderItemStatus newStatus, String rejectionMessage) {
@@ -333,13 +376,16 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
     }
 
     /**
-     * Saves the tile position after a status transition, if a specific position was requested.
+     * Updates tile positions after a status transition: removes from the source group,
+     * inserts into the target group at the requested position, and resequences both groups.
      */
-    private void savePositionAfterTransition(BakeryTile tile, OrderItemStatus newStatus, int position) {
+    private void updateTilePosition(BakeryTile tile, OrderItemStatus newStatus, int position) {
         try {
-            bakeryService.saveTilePosition(tile.getGroupingKey(), newStatus, tile.getDueDate(), position);
+            bakeryService.transitionTilePosition(
+                    tile.getGroupingKey(), tile.getStatus(), newStatus,
+                    tile.getDueDate(), position);
         } catch (Exception e) {
-            // Position save failure is non-critical; the transition already succeeded
+            // Position save failure is non-critical; the status transition already succeeded
         }
     }
 

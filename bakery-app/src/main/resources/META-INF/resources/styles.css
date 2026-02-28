@@ -669,6 +669,15 @@ vaadin-grid::part(row-highlight) {
     transform: translateY(-1px);
 }
 
+/* Tile change highlighting — reuses existing highlight-fade and card-appear keyframes */
+.bakery-tile.tile-highlight {
+    animation: highlight-fade 4s ease;
+}
+
+.bakery-tile.tile-new {
+    animation: card-appear 0.3s ease-out;
+}
+
 /* Dragged tile ghost */
 .bakery-tile.v-dragged {
     opacity: 0.5;

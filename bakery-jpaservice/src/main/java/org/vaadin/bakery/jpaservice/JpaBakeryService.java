@@ -3,8 +3,8 @@ package org.vaadin.bakery.jpaservice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.bakery.jpamodel.code.OrderItemStatusCode;
-import org.vaadin.bakery.jpamodel.entity.OrderActivityEntity;
 import org.vaadin.bakery.jpamodel.entity.OrderItemEntity;
+import org.vaadin.bakery.jpamodel.entity.TilePositionEntity;
 import org.vaadin.bakery.jpaclient.repository.OrderActivityRepository;
 import org.vaadin.bakery.jpaclient.repository.OrderItemRepository;
 import org.vaadin.bakery.jpaclient.repository.TilePositionRepository;
@@ -20,8 +20,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -62,7 +64,6 @@ public class JpaBakeryService implements BakeryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<BakeryTile> listTiles(LocalDate startDate, LocalDate endDate) {
         var items = orderItemRepository.findItemsForBakeryBoard(startDate, endDate, TERMINAL_ITEM_STATUSES);
 
@@ -143,12 +144,19 @@ public class JpaBakeryService implements BakeryService {
     @Override
     public void saveTilePosition(String groupingKey, OrderItemStatus swimlane, LocalDate dueDate, int position) {
         var swimlaneCode = enumMapper.toOrderItemStatusCode(swimlane);
+
+        // For batch tiles, the grouping key includes the status ("batch:{productId}:{dueDate}:{status}").
+        // After a status transition the caller still has the old key, so update the status segment
+        // to match the target swimlane. This ensures the position record matches the key that
+        // listTiles() will generate for the transitioned items.
+        var resolvedKey = resolveBatchGroupingKey(groupingKey, swimlaneCode);
+
         var existing = tilePositionRepository.findBySwimlaneAndDueDateAndGroupingKey(
-                swimlaneCode, dueDate, groupingKey);
+                swimlaneCode, dueDate, resolvedKey);
 
         var entity = existing.orElseGet(() -> {
-            var newEntity = new org.vaadin.bakery.jpamodel.entity.TilePositionEntity();
-            newEntity.setGroupingKey(groupingKey);
+            var newEntity = new TilePositionEntity();
+            newEntity.setGroupingKey(resolvedKey);
             newEntity.setSwimlane(swimlaneCode);
             newEntity.setDueDate(dueDate);
             return newEntity;
@@ -157,10 +165,64 @@ public class JpaBakeryService implements BakeryService {
         tilePositionRepository.save(entity);
     }
 
+    /**
+     * For batch grouping keys ({@code "batch:{productId}:{dueDate}:{status}"}), replaces the
+     * status segment with the target swimlane status. Non-batch keys are returned unchanged.
+     */
+    private static String resolveBatchGroupingKey(String groupingKey, OrderItemStatusCode swimlane) {
+        if (groupingKey.startsWith("batch:")) {
+            var lastColon = groupingKey.lastIndexOf(':');
+            return groupingKey.substring(0, lastColon + 1) + swimlane.name();
+        }
+        return groupingKey;
+    }
+
     @Override
     public void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate, List<String> orderedGroupingKeys) {
         for (var i = 0; i < orderedGroupingKeys.size(); i++) {
             saveTilePosition(orderedGroupingKeys.get(i), swimlane, dueDate, i);
+        }
+    }
+
+    @Override
+    public void transitionTilePosition(String groupingKey, OrderItemStatus fromStatus,
+                                        OrderItemStatus toStatus, LocalDate dueDate, int position) {
+        var fromCode = enumMapper.toOrderItemStatusCode(fromStatus);
+        var toCode = enumMapper.toOrderItemStatusCode(toStatus);
+        var oldKey = resolveBatchGroupingKey(groupingKey, fromCode);
+        var newKey = resolveBatchGroupingKey(groupingKey, toCode);
+
+        // Remove from source group
+        tilePositionRepository.findBySwimlaneAndDueDateAndGroupingKey(fromCode, dueDate, oldKey)
+                .ifPresent(tilePositionRepository::delete);
+        tilePositionRepository.flush();
+
+        // Load target group records in position order
+        var targetRecords = new ArrayList<>(
+                tilePositionRepository.findBySwimlaneAndDueDateOrderByPositionAsc(toCode, dueDate));
+
+        // Clamp position to valid range and insert
+        var insertAt = Math.min(position, targetRecords.size());
+        var newRecord = new TilePositionEntity();
+        newRecord.setGroupingKey(newKey);
+        newRecord.setSwimlane(toCode);
+        newRecord.setDueDate(dueDate);
+        targetRecords.add(insertAt, newRecord);
+
+        // Resequence target group: 0, 1, 2, ...
+        for (var i = 0; i < targetRecords.size(); i++) {
+            targetRecords.get(i).setPosition(i);
+        }
+        tilePositionRepository.saveAll(targetRecords);
+
+        // Resequence source group to close the gap
+        var sourceRecords = tilePositionRepository
+                .findBySwimlaneAndDueDateOrderByPositionAsc(fromCode, dueDate);
+        for (var i = 0; i < sourceRecords.size(); i++) {
+            sourceRecords.get(i).setPosition(i);
+        }
+        if (!sourceRecords.isEmpty()) {
+            tilePositionRepository.saveAll(sourceRecords);
         }
     }
 
@@ -180,8 +242,12 @@ public class JpaBakeryService implements BakeryService {
 
         var previousStatus = topEntry.getPreviousStatus();
 
-        // Revert all items in the group back to previous status
+        // Determine current status before reverting (needed for position management)
         var items = findItemsByGroupingKey(groupingKey);
+        var currentStatusCode = items.isEmpty() ? null : items.getFirst().getStatus();
+        var dueDate = items.isEmpty() ? null : items.getFirst().getOrder().getDueDate();
+
+        // Revert all items in the group back to previous status
         for (var item : items) {
             item.setStatus(previousStatus);
         }
@@ -210,8 +276,37 @@ public class JpaBakeryService implements BakeryService {
             }
         }
 
-        // Clean up old tile positions for this grouping key
-        tilePositionRepository.deleteByGroupingKey(groupingKey);
+        // Surgical position management: move tile from current group to reverted group
+        if (currentStatusCode != null && dueDate != null) {
+            var currentKey = resolveBatchGroupingKey(groupingKey, currentStatusCode);
+
+            // Remove from current group
+            tilePositionRepository.findBySwimlaneAndDueDateAndGroupingKey(
+                    currentStatusCode, dueDate, currentKey)
+                    .ifPresent(tilePositionRepository::delete);
+            tilePositionRepository.flush();
+
+            // Resequence current (source) group to close the gap
+            var sourceRecords = tilePositionRepository
+                    .findBySwimlaneAndDueDateOrderByPositionAsc(currentStatusCode, dueDate);
+            for (var i = 0; i < sourceRecords.size(); i++) {
+                sourceRecords.get(i).setPosition(i);
+            }
+            if (!sourceRecords.isEmpty()) {
+                tilePositionRepository.saveAll(sourceRecords);
+            }
+
+            // Append to reverted (target) group at end
+            var targetKey = resolveBatchGroupingKey(groupingKey, previousStatus);
+            var targetRecords = tilePositionRepository
+                    .findBySwimlaneAndDueDateOrderByPositionAsc(previousStatus, dueDate);
+            var newRecord = new TilePositionEntity();
+            newRecord.setGroupingKey(targetKey);
+            newRecord.setSwimlane(previousStatus);
+            newRecord.setDueDate(dueDate);
+            newRecord.setPosition(targetRecords.size());
+            tilePositionRepository.save(newRecord);
+        }
 
         dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
         return enumMapper.toOrderItemStatus(previousStatus);
@@ -296,18 +391,76 @@ public class JpaBakeryService implements BakeryService {
         return tile;
     }
 
+    /**
+     * Applies persisted positions to tiles, self-healing any inconsistencies.
+     *
+     * <p>Groups tiles by (status, dueDate) and verifies each group has sequential
+     * positions (0, 1, 2, ...) with no gaps, orphans, or unpositioned tiles. If any
+     * group is inconsistent, it is resequenced and persisted before positions are applied.
+     */
     private void applyPositions(List<BakeryTile> tiles) {
-        // Build a lookup of persisted positions by grouping key
-        var allPositions = tilePositionRepository.findAll();
-        Map<String, Integer> positionMap = new HashMap<>();
-        for (var pos : allPositions) {
-            positionMap.put(pos.getGroupingKey(), pos.getPosition());
+        // Group tiles by (swimlane, dueDate) to know what should exist in each group
+        var tilesByGroup = new HashMap<String, Set<String>>();
+        for (var tile : tiles) {
+            var swimlaneCode = enumMapper.toOrderItemStatusCode(tile.getStatus());
+            var groupKey = swimlaneCode + "|" + tile.getDueDate();
+            tilesByGroup.computeIfAbsent(groupKey, _ -> new LinkedHashSet<>())
+                    .add(tile.getGroupingKey());
         }
 
-        // Apply positions: tiles with persisted positions get their value, others get MAX_VALUE
+        // Load all position records and group by (swimlane, dueDate)
+        var allPositions = tilePositionRepository.findAll();
+        var recordsByGroup = new HashMap<String, List<TilePositionEntity>>();
+        for (var pos : allPositions) {
+            var groupKey = pos.getSwimlane() + "|" + pos.getDueDate();
+            recordsByGroup.computeIfAbsent(groupKey, _ -> new ArrayList<>()).add(pos);
+        }
+
+        // Detect and heal inconsistencies per group
+        var dirtyGroups = new ArrayList<String>();
+        for (var entry : tilesByGroup.entrySet()) {
+            var groupKey = entry.getKey();
+            var liveKeys = entry.getValue();
+            var records = recordsByGroup.getOrDefault(groupKey, List.of());
+
+            if (isGroupInconsistent(liveKeys, records)) {
+                dirtyGroups.add(groupKey);
+            }
+        }
+
+        // Also check for orphaned groups: position records for groups with no live tiles
+        for (var groupKey : recordsByGroup.keySet()) {
+            if (tilesByGroup.containsKey(groupKey)) {
+                continue; // Already checked above
+            }
+            // Position records exist but no tiles — orphaned group, will be cleaned up
+            dirtyGroups.add(groupKey);
+        }
+
+        if (!dirtyGroups.isEmpty()) {
+            for (var groupKey : dirtyGroups) {
+                var parts = groupKey.split("\\|", 2);
+                var swimlaneCode = OrderItemStatusCode.valueOf(parts[0]);
+                var dueDate = LocalDate.parse(parts[1]);
+                var liveKeys = tilesByGroup.getOrDefault(groupKey, Set.of());
+                resequenceGroup(swimlaneCode, dueDate, liveKeys);
+            }
+
+            // Reload positions after healing
+            allPositions = tilePositionRepository.findAll();
+        }
+
+        // Build composite lookup and apply to tiles
+        Map<String, Integer> positionMap = new HashMap<>();
+        for (var pos : allPositions) {
+            positionMap.put(pos.getSwimlane() + ":" + pos.getGroupingKey(), pos.getPosition());
+        }
+
         for (var tile : tiles) {
-            var pos = positionMap.get(tile.getGroupingKey());
-            tile.setPosition(pos != null ? pos : Integer.MAX_VALUE);
+            var swimlaneCode = enumMapper.toOrderItemStatusCode(tile.getStatus());
+            var compositeKey = swimlaneCode + ":" + tile.getGroupingKey();
+            var pos = positionMap.get(compositeKey);
+            tile.setPosition(pos != null ? pos : 0);
         }
 
         // Sort by: status, dueDate, position, productName
@@ -316,6 +469,89 @@ public class JpaBakeryService implements BakeryService {
                 .thenComparing(BakeryTile::getDueDate)
                 .thenComparing(BakeryTile::getPosition)
                 .thenComparing(BakeryTile::getProductName));
+    }
+
+    /**
+     * Checks whether a (swimlane, dueDate) group has inconsistent positions.
+     *
+     * <p>Returns {@code true} if there are unpositioned tiles, orphaned records,
+     * or positions that are not sequential (0, 1, 2, ...).
+     */
+    private static boolean isGroupInconsistent(Set<String> liveKeys,
+                                                List<TilePositionEntity> records) {
+        // Check: all live keys have records and all records match live keys
+        var recordKeys = records.stream()
+                .map(TilePositionEntity::getGroupingKey)
+                .collect(Collectors.toSet());
+        if (!recordKeys.equals(liveKeys)) {
+            return true;
+        }
+
+        // Check: positions are sequential 0..n-1
+        var positions = records.stream()
+                .map(TilePositionEntity::getPosition)
+                .sorted()
+                .toList();
+        for (var i = 0; i < positions.size(); i++) {
+            if (positions.get(i) != i) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resequences all tile positions in a (swimlane, dueDate) group to be sequential.
+     *
+     * <p>Deletes orphaned records (tiles no longer in the group), creates records for
+     * unpositioned tiles (appended at end sorted by grouping key), and reassigns
+     * positions as 0, 1, 2, ...
+     */
+    private void resequenceGroup(OrderItemStatusCode swimlane, LocalDate dueDate,
+                                  Set<String> liveTileKeys) {
+        var records = tilePositionRepository
+                .findBySwimlaneAndDueDateOrderByPositionAsc(swimlane, dueDate);
+
+        // Separate live from orphaned
+        var liveRecords = new ArrayList<TilePositionEntity>();
+        var orphanedRecords = new ArrayList<TilePositionEntity>();
+        for (var record : records) {
+            if (liveTileKeys.contains(record.getGroupingKey())) {
+                liveRecords.add(record);
+            } else {
+                orphanedRecords.add(record);
+            }
+        }
+
+        // Delete orphaned records
+        if (!orphanedRecords.isEmpty()) {
+            tilePositionRepository.deleteAll(orphanedRecords);
+        }
+
+        // Create records for unpositioned tiles, appended at end
+        var positionedKeys = liveRecords.stream()
+                .map(TilePositionEntity::getGroupingKey)
+                .collect(Collectors.toSet());
+        var unpositionedKeys = liveTileKeys.stream()
+                .filter(k -> !positionedKeys.contains(k))
+                .sorted()
+                .toList();
+        for (var key : unpositionedKeys) {
+            var entity = new TilePositionEntity();
+            entity.setGroupingKey(key);
+            entity.setSwimlane(swimlane);
+            entity.setDueDate(dueDate);
+            liveRecords.add(entity);
+        }
+
+        // Reassign sequential positions and save
+        for (var i = 0; i < liveRecords.size(); i++) {
+            liveRecords.get(i).setPosition(i);
+        }
+        if (!liveRecords.isEmpty()) {
+            tilePositionRepository.saveAll(liveRecords);
+        }
     }
 
     private List<OrderItemEntity> findItemsByGroupingKey(String groupingKey) {
