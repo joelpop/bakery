@@ -117,7 +117,7 @@ public class ProductsView extends Composite<VerticalLayout> implements HasSize, 
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
-        changeTracker = new ChangeTracker<>();
+        changeTracker = new ChangeTracker<>(DataChangeSignals.productChanges());
 
         // Signal bindings - apply "row-highlight" CSS part to changed rows for animated highlight
         grid.setPartNameGenerator(product -> changeTracker.isHighlighted(product.getId()) ? "row-highlight" : null);
@@ -177,7 +177,7 @@ public class ProductsView extends Composite<VerticalLayout> implements HasSize, 
 
     private void refreshGrid() {
         var newData = productService.list();
-        changeTracker.detectChanges(newData);
+        changeTracker.processChanges(newData);
         allProducts = newData;
         filterGrid(searchField.getValue());
     }

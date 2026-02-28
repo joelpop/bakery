@@ -51,8 +51,10 @@ public interface BakeryService {
      * @param swimlane           the swimlane (item status)
      * @param dueDate            the date group
      * @param orderedGroupingKeys the grouping keys in their desired display order
+     * @param movedGroupingKey   the grouping key of the tile that was directly moved
      */
-    void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate, List<String> orderedGroupingKeys);
+    void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate,
+                       List<String> orderedGroupingKeys, String movedGroupingKey);
 
     /**
      * Manages tile positions for a status transition.
@@ -70,6 +72,20 @@ public interface BakeryService {
      */
     void transitionTilePosition(String groupingKey, OrderItemStatus fromStatus,
                                 OrderItemStatus toStatus, LocalDate dueDate, int position);
+
+    /**
+     * Atomically transitions a tile: position management, item status updates,
+     * system events, order status roll-up, and undo recording in one transaction.
+     * Fires a single change notification per affected order on success.
+     *
+     * @param tile              the tile being transitioned (carries grouping key, versions, etc.)
+     * @param newStatus         the target item status
+     * @param position          zero-based position in the target swimlane
+     * @param rejectionMessage  rejection message text, or {@code null} for non-rejection transitions
+     * @throws StaleDataException if any item version has been concurrently modified
+     */
+    void transitionTile(BakeryTile tile, OrderItemStatus newStatus,
+                        int position, String rejectionMessage);
 
     /**
      * Returns the undo stack for a tile (list of previous statuses, newest first).

@@ -401,7 +401,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void openEditDialog() {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         var editDialog = editOrderDialogProvider.getObject();
@@ -411,7 +411,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void openStatusChangeDialog() {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         var dialog = new Dialog();
@@ -463,7 +463,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void updateStatus(OrderStatus newStatus) {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         try {
@@ -484,7 +484,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void togglePaid() {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         try {
@@ -505,7 +505,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void togglePickedUp() {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         try {
@@ -579,7 +579,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void resolveItem(OrderItemDetail item, String message) {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         try {
@@ -599,7 +599,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void cancelItem(OrderItemDetail item, String message) {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         try {
@@ -619,7 +619,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void confirmCancel() {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         var dialog = new Dialog();
@@ -638,7 +638,7 @@ public class OrderDetailView extends Composite<VerticalLayout> implements HasSiz
     }
 
     private void cancelOrder() {
-        var order = orderSignal.get();
+        var order = orderSignal.peek();
         if (order == null) return;
 
         try {

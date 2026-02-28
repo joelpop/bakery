@@ -2,9 +2,13 @@ package org.vaadin.bakery.jpaservice;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.vaadin.bakery.jpamodel.code.OrderActivityTypeCode;
 import org.vaadin.bakery.jpamodel.code.OrderItemStatusCode;
+import org.vaadin.bakery.jpamodel.entity.OrderActivityEntity;
+import org.vaadin.bakery.jpamodel.entity.OrderEntity;
 import org.vaadin.bakery.jpamodel.entity.OrderItemEntity;
 import org.vaadin.bakery.jpamodel.entity.TilePositionEntity;
+import org.vaadin.bakery.jpamodel.entity.TileUndoEntryEntity;
 import org.vaadin.bakery.jpaclient.repository.OrderActivityRepository;
 import org.vaadin.bakery.jpaclient.repository.OrderItemRepository;
 import org.vaadin.bakery.jpaclient.repository.TilePositionRepository;
@@ -12,10 +16,12 @@ import org.vaadin.bakery.jpaclient.repository.TileUndoEntryRepository;
 import org.vaadin.bakery.jpaservice.mapper.EnumMapper;
 import org.vaadin.bakery.service.BakeryService;
 import org.vaadin.bakery.service.DataChangeNotifier;
+import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.uimodel.data.BakeryTile;
 import org.vaadin.bakery.uimodel.data.BakeryTileDetail;
 import org.vaadin.bakery.uimodel.type.OrderItemStatus;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -178,10 +184,12 @@ public class JpaBakeryService implements BakeryService {
     }
 
     @Override
-    public void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate, List<String> orderedGroupingKeys) {
+    public void saveTileOrder(OrderItemStatus swimlane, LocalDate dueDate,
+                              List<String> orderedGroupingKeys, String movedGroupingKey) {
         for (var i = 0; i < orderedGroupingKeys.size(); i++) {
             saveTilePosition(orderedGroupingKeys.get(i), swimlane, dueDate, i);
         }
+        dataChangeNotifier.notifyTileChange(movedGroupingKey);
     }
 
     @Override
@@ -201,13 +209,30 @@ public class JpaBakeryService implements BakeryService {
         var targetRecords = new ArrayList<>(
                 tilePositionRepository.findBySwimlaneAndDueDateOrderByPositionAsc(toCode, dueDate));
 
+        // Reuse existing record if present (self-healing may have created one already),
+        // otherwise create a new one. This avoids unique constraint violations on
+        // (swimlane, dueDate, groupingKey).
+        var existingIdx = -1;
+        for (var i = 0; i < targetRecords.size(); i++) {
+            if (targetRecords.get(i).getGroupingKey().equals(newKey)) {
+                existingIdx = i;
+                break;
+            }
+        }
+
+        TilePositionEntity record;
+        if (existingIdx >= 0) {
+            record = targetRecords.remove(existingIdx);
+        } else {
+            record = new TilePositionEntity();
+            record.setGroupingKey(newKey);
+            record.setSwimlane(toCode);
+            record.setDueDate(dueDate);
+        }
+
         // Clamp position to valid range and insert
         var insertAt = Math.min(position, targetRecords.size());
-        var newRecord = new TilePositionEntity();
-        newRecord.setGroupingKey(newKey);
-        newRecord.setSwimlane(toCode);
-        newRecord.setDueDate(dueDate);
-        targetRecords.add(insertAt, newRecord);
+        targetRecords.add(insertAt, record);
 
         // Resequence target group: 0, 1, 2, ...
         for (var i = 0; i < targetRecords.size(); i++) {
@@ -224,6 +249,96 @@ public class JpaBakeryService implements BakeryService {
         if (!sourceRecords.isEmpty()) {
             tilePositionRepository.saveAll(sourceRecords);
         }
+    }
+
+    @Override
+    public void transitionTile(BakeryTile tile, OrderItemStatus newStatus,
+                               int position, String rejectionMessage) {
+        var items = findItemsByGroupingKey(tile.getGroupingKey());
+        if (items.isEmpty()) {
+            throw new IllegalStateException("No items found for tile: " + tile.getGroupingKey());
+        }
+
+        var newStatusCode = enumMapper.toOrderItemStatusCode(newStatus);
+        var previousStatusCode = items.getFirst().getStatus();
+        var dueDate = items.getFirst().getOrder().getDueDate();
+
+        // Validation: hold enforcement
+        if (newStatusCode == OrderItemStatusCode.IN_PROGRESS) {
+            for (var item : items) {
+                if (OrderStatusRollUpHelper.isOnHold(item, item.getOrder().getItems())) {
+                    throw new IllegalStateException("Item is on hold — resolve or cancel sibling items first");
+                }
+            }
+        }
+
+        // Validation: today-only rule for IN_PROGRESS
+        if (newStatusCode == OrderItemStatusCode.IN_PROGRESS
+                && dueDate != null && dueDate.isAfter(LocalDate.now())) {
+            throw new IllegalStateException("Cannot start production for future-dated items");
+        }
+
+        // Version check: set expected versions from the tile
+        var expectedVersions = new HashMap<Long, Integer>();
+        if (tile.isBatchable()) {
+            for (var i = 0; i < tile.getItemIds().size(); i++) {
+                expectedVersions.put(tile.getItemIds().get(i), tile.getItemVersions().get(i));
+            }
+        } else {
+            expectedVersions.put(tile.getItemId(), tile.getItemVersion());
+        }
+        for (var item : items) {
+            var expectedVersion = expectedVersions.get(item.getId());
+            if (expectedVersion != null) {
+                item.setVersion(expectedVersion);
+            }
+        }
+
+        // Position management
+        transitionTilePosition(tile.getGroupingKey(), tile.getStatus(), newStatus, dueDate, position);
+
+        // Status update
+        for (var item : items) {
+            item.setStatus(newStatusCode);
+        }
+        JpaServiceHelper.flushOrThrowStale(orderItemRepository, "order item", items.getFirst().getId());
+
+        // System events and rejection messages
+        var activityIds = new ArrayList<Long>();
+        for (var item : items) {
+            var order = item.getOrder();
+            var event = createSystemEvent(order,
+                    "Item \"" + item.getProduct().getName() + "\" status changed to "
+                            + newStatus.getDisplayName());
+            activityIds.add(event.getId());
+
+            if (newStatusCode == OrderItemStatusCode.REJECTED && rejectionMessage != null) {
+                var msg = createStaffMessage(order, rejectionMessage, item);
+                activityIds.add(msg.getId());
+            }
+        }
+
+        // Order status roll-up
+        var affectedOrders = items.stream()
+                .map(OrderItemEntity::getOrder)
+                .distinct()
+                .toList();
+        for (var order : affectedOrders) {
+            var derivedStatus = OrderStatusRollUpHelper.deriveOrderStatus(order.getItems());
+            if (order.getStatus() != derivedStatus) {
+                order.setStatus(derivedStatus);
+            }
+        }
+
+        // Undo entry
+        recordUndoEntry(tile.getGroupingKey(), previousStatusCode, activityIds);
+
+        // Notifications (one per affected order + tile-level)
+        for (var order : affectedOrders) {
+            dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, order.getId());
+        }
+        var newKey = resolveBatchGroupingKey(tile.getGroupingKey(), newStatusCode);
+        dataChangeNotifier.notifyTileChange(newKey);
     }
 
     @Override
@@ -308,7 +423,11 @@ public class JpaBakeryService implements BakeryService {
             tilePositionRepository.save(newRecord);
         }
 
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        for (var order : affectedOrders) {
+            dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, order.getId());
+        }
+        var revertedKey = resolveBatchGroupingKey(groupingKey, previousStatus);
+        dataChangeNotifier.notifyTileChange(revertedKey);
         return enumMapper.toOrderItemStatus(previousStatus);
     }
 
@@ -576,5 +695,54 @@ public class JpaBakeryService implements BakeryService {
                     .toList();
         }
         return List.of();
+    }
+
+    /**
+     * Creates a system event activity entry for the given order.
+     *
+     * @return the persisted activity entity (with generated ID)
+     */
+    private OrderActivityEntity createSystemEvent(OrderEntity order, String text) {
+        var event = new OrderActivityEntity();
+        event.setOrder(order);
+        event.setType(OrderActivityTypeCode.SYSTEM_EVENT);
+        event.setText(text);
+        event.setPostedAt(Instant.now());
+        event.setRead(true);
+        return orderActivityRepository.save(event);
+    }
+
+    /**
+     * Creates a staff message activity entry for a rejection.
+     *
+     * @return the persisted activity entity (with generated ID)
+     */
+    private OrderActivityEntity createStaffMessage(OrderEntity order, String text,
+                                                    OrderItemEntity referencedItem) {
+        var event = new OrderActivityEntity();
+        event.setOrder(order);
+        event.setType(OrderActivityTypeCode.STAFF_MESSAGE);
+        event.setText(text);
+        event.setReferencedItem(referencedItem);
+        event.setPostedAt(Instant.now());
+        event.setRead(false);
+        return orderActivityRepository.save(event);
+    }
+
+    /**
+     * Records an undo stack entry for a tile transition.
+     */
+    private void recordUndoEntry(String groupingKey, OrderItemStatusCode previousStatus,
+                                  List<Long> activityIds) {
+        var maxSeq = tileUndoEntryRepository
+                .findFirstByGroupingKeyOrderBySequenceNumberDesc(groupingKey)
+                .map(TileUndoEntryEntity::getSequenceNumber).orElse(-1);
+        var entry = new TileUndoEntryEntity();
+        entry.setGroupingKey(groupingKey);
+        entry.setPreviousStatus(previousStatus);
+        entry.setSequenceNumber(maxSeq + 1);
+        entry.setActivityIds(activityIds.stream()
+                .map(String::valueOf).collect(Collectors.joining(",")));
+        tileUndoEntryRepository.save(entry);
     }
 }

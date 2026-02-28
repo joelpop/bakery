@@ -116,7 +116,7 @@ public class StorefrontView extends Composite<VerticalLayout> implements HasSize
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
-        changeTracker = new ChangeTracker<>();
+        changeTracker = new ChangeTracker<>(DataChangeSignals.orderChanges());
 
         // Signal bindings - trigger a local refresh when user changes search text or filter criteria
         searchField.addValueChangeListener(_ -> triggerRefresh());
@@ -209,7 +209,7 @@ public class StorefrontView extends Composite<VerticalLayout> implements HasSize
                 : orderActivityService.findOrderIdsWithUnreadMessages(orderIds);
 
         // Compare current data versions against previous snapshot to identify new/changed orders
-        changeTracker.detectChanges(orders);
+        changeTracker.processChanges(orders);
 
         // Apply search filter (customer name)
         var searchTerm = searchField.getValue();

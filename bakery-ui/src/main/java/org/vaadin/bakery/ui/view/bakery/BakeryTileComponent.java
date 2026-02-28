@@ -17,10 +17,14 @@ import org.vaadin.bakery.uimodel.data.BakeryTile;
 /**
  * Card component representing a single bakery board tile.
  * Supports drag-and-drop for status transitions.
+ *
+ * <p>The root element is stable across content updates — calling {@link #update(BakeryTile)}
+ * refreshes the inner content without replacing the root {@code <div>}, so CSS animations
+ * (e.g., highlight fade) on the root element continue undisturbed.
  */
 public class BakeryTileComponent extends Composite<Div> implements HasSize, HasStyle {
 
-    private final BakeryTile tile;
+    private BakeryTile tile;
 
     /**
      * Creates a tile component for the given bakery tile model.
@@ -38,11 +42,38 @@ public class BakeryTileComponent extends Composite<Div> implements HasSize, HasS
                 LumoUtility.Gap.XSMALL
         );
 
-        // Configure as drag source
+        // Configure as drag source (one-time setup — drag data reads this.tile,
+        // which is updated by update() so subsequent drags carry fresh data)
         var dragSource = DragSource.configure(this);
         dragSource.setDraggable(true);
         dragSource.setDragData(tile);
 
+        buildContent(content);
+    }
+
+    /**
+     * Updates this component's tile data and refreshes the displayed content.
+     * The root element is preserved, so CSS class state (including animations)
+     * is not affected.
+     *
+     * @param newTile the updated tile data
+     */
+    public void update(BakeryTile newTile) {
+        this.tile = newTile;
+
+        // Update drag data to carry fresh tile reference
+        DragSource.configure(this).setDragData(newTile);
+
+        var content = getContent();
+        content.removeAll();
+        buildContent(content);
+    }
+
+    /**
+     * Builds the inner content (header, quantity, order info, details, click handler)
+     * into the given root div. Called from both the constructor and {@link #update}.
+     */
+    private void buildContent(Div content) {
         // Header: product name + indicators
         var header = new Div();
         header.addClassNames(

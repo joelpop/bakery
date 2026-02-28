@@ -9,15 +9,14 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.RolesAllowed;
 import org.vaadin.bakery.service.BakeryService;
-import org.vaadin.bakery.service.OrderService;
 import org.vaadin.bakery.service.StaleDataException;
 import org.vaadin.bakery.ui.event.DataChangeSignals;
 import org.vaadin.bakery.uimodel.data.BakeryTile;
@@ -27,15 +26,23 @@ import org.vaadin.lineawesome.LineAwesomeIconUrl;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Kanban-style bakery production board showing order items as tiles in status swimlanes.
+ *
+ * <p>Two update strategies:
+ * <ul>
+ *   <li><b>Full load</b> ({@link #fullLoad}): Initial render and date range changes.</li>
+ *   <li><b>Reconcile</b> ({@link #reconcile}): Reads the {@code tileChanges} SharedMapSignal
+ *       to identify which tiles changed, then re-renders affected swimlanes and applies
+ *       highlights. Used for both local DnD and cross-session changes — one code path.</li>
+ * </ul>
  */
 @Route("bakery")
 @PageTitle("Bakery Board")
@@ -44,7 +51,6 @@ import java.util.Set;
 public class BakeryView extends Composite<VerticalLayout> implements HasSize, HasStyle {
 
     private final transient BakeryService bakeryService;
-    private final transient OrderService orderService;
     private final ValueSignal<Integer> refreshTriggerSignal;
 
     private final BakerySwimlane reviewSwimlane;
@@ -55,20 +61,18 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
     private LocalDate startDate;
     private LocalDate endDate;
     private List<BakeryTile> cachedTiles;
-    private Map<String, Integer> previousTileHashes;
-    private Set<String> highlightedKeys;
-    private Set<String> newKeys;
+    private long lastUpdateTimestamp;
+    private boolean initialized;
+    private boolean dateRangeChanged;
+    private boolean operationInProgress;
 
     /** Creates the bakery board view with toolbar and four swimlane columns. */
-    public BakeryView(BakeryService bakeryService, OrderService orderService) {
+    public BakeryView(BakeryService bakeryService) {
         this.bakeryService = bakeryService;
-        this.orderService = orderService;
 
         startDate = LocalDate.now();
         endDate = LocalDate.now();
         cachedTiles = List.of();
-        highlightedKeys = Set.of();
-        newKeys = Set.of();
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
@@ -104,7 +108,7 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
                 List.of(OrderItemStatus.IN_PROGRESS));
         completedSwimlane = new BakerySwimlane("Done",
                 List.of(OrderItemStatus.PRODUCED, OrderItemStatus.CANCELED),
-                Map.of(OrderItemStatus.PRODUCED, 2));
+                java.util.Map.of(OrderItemStatus.PRODUCED, 2));
 
         var swimlanesLayout = new HorizontalLayout(
                 reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane);
@@ -124,11 +128,21 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
             swimlane.setDragEndHandler(this::onTileDragEnd);
         }
 
-        // Signal bindings
+        // Signal bindings — dispatcher: full load vs cross-session reconciliation
         Signal.effect(this, () -> {
             DataChangeSignals.orderVersion().get();
             refreshTriggerSignal.get();
-            refreshBoard();
+            if (operationInProgress) {
+                return;
+            }
+
+            if (!initialized || dateRangeChanged) {
+                initialized = true;
+                dateRangeChanged = false;
+                fullLoad();
+            } else {
+                reconcile();
+            }
         });
 
         // Content layout
@@ -138,61 +152,172 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
         content.setPadding(false);
         content.setSpacing(false);
         content.add(toolbar, swimlanesLayout);
-
     }
+
+    // ========== Path 1: Full Load ==========
+
+    /**
+     * Fetches all tiles and rebuilds all swimlanes from scratch.
+     * Used for initial load and date range changes.
+     */
+    private void fullLoad() {
+        cachedTiles = bakeryService.listTiles(startDate, endDate);
+        reviewSwimlane.renderAll(cachedTiles);
+        acceptedSwimlane.renderAll(cachedTiles);
+        inProgressSwimlane.renderAll(cachedTiles);
+        completedSwimlane.renderAll(cachedTiles);
+        lastUpdateTimestamp = System.currentTimeMillis();
+    }
+
+    // ========== Persist + Reconcile ==========
+
+    /**
+     * Reorders a tile within its current status. Persists the new order,
+     * then triggers a reconcile to update the DOM.
+     */
+    private void reorderTile(BakeryTile tile, OrderItemStatus status, int position) {
+        try {
+            var currentOrder = cachedTiles.stream()
+                    .filter(t -> t.getStatus() == status && t.getDueDate().equals(tile.getDueDate()))
+                    .sorted(Comparator.comparingInt(BakeryTile::getPosition))
+                    .map(BakeryTile::getGroupingKey)
+                    .collect(Collectors.toCollection(ArrayList::new));
+            currentOrder.remove(tile.getGroupingKey());
+            var insertAt = Math.min(position, currentOrder.size());
+            currentOrder.add(insertAt, tile.getGroupingKey());
+
+            runGuarded(() -> bakeryService.saveTileOrder(status, tile.getDueDate(),
+                    currentOrder, tile.getGroupingKey()));
+            triggerRefresh();
+        } catch (Exception e) {
+            Notification.show("Failed to reorder: " + e.getMessage(),
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    /**
+     * Executes the atomic tile transition. Persists via the service,
+     * then triggers a reconcile to update the DOM.
+     */
+    private void executeTransition(BakeryTile tile, OrderItemStatus newStatus,
+                                    int position, String rejectionMessage) {
+        try {
+            runGuarded(() ->
+                    bakeryService.transitionTile(tile, newStatus, position, rejectionMessage));
+            triggerRefresh();
+
+            Notification.show("Status updated to " + newStatus.getDisplayName(),
+                    3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } catch (StaleDataException _) {
+            Notification.show("Item was modified by another user. Board refreshed.",
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
+        } catch (Exception e) {
+            Notification.show("Failed to update status: " + e.getMessage(),
+                    5000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    // ========== Reconciliation ==========
+
+    /**
+     * Handles both local and cross-session changes. Reads the {@code tileChanges}
+     * SharedMapSignal to identify which tiles changed, re-fetches all data, then
+     * re-renders affected swimlanes and applies highlights.
+     */
+    private void reconcile() {
+        var newTiles = bakeryService.listTiles(startDate, endDate);
+        var tileChanges = DataChangeSignals.tileChanges().peek();
+        var now = System.currentTimeMillis();
+
+        // 1. Build key indexes
+        var oldByKey = new HashMap<String, BakeryTile>();
+        for (var t : cachedTiles) {
+            oldByKey.put(t.getGroupingKey(), t);
+        }
+        var newByKey = new HashMap<String, BakeryTile>();
+        for (var t : newTiles) {
+            newByKey.put(t.getGroupingKey(), t);
+        }
+
+        // 2. Find highlighted keys from tileChanges SharedMapSignal
+        var highlightKeys = new HashSet<String>();
+        for (var key : oldByKey.keySet()) {
+            var entry = tileChanges.get(key);
+            if (entry != null && entry.peek() > lastUpdateTimestamp) {
+                highlightKeys.add(key);
+            }
+        }
+        for (var key : newByKey.keySet()) {
+            var entry = tileChanges.get(key);
+            if (entry != null && entry.peek() > lastUpdateTimestamp) {
+                highlightKeys.add(key);
+            }
+        }
+
+        // 3. Find affected swimlanes from highlights and structural changes
+        var affectedSwimlanes = new HashSet<BakerySwimlane>();
+
+        for (var key : highlightKeys) {
+            var oldTile = oldByKey.get(key);
+            var newTile = newByKey.get(key);
+            if (oldTile != null) {
+                affectedSwimlanes.add(swimlaneForStatus(oldTile.getStatus()));
+            }
+            if (newTile != null) {
+                affectedSwimlanes.add(swimlaneForStatus(newTile.getStatus()));
+            }
+        }
+
+        // Tiles that appeared or disappeared (batch key changes on transition)
+        for (var key : oldByKey.keySet()) {
+            if (!newByKey.containsKey(key)) {
+                affectedSwimlanes.add(swimlaneForStatus(oldByKey.get(key).getStatus()));
+            }
+        }
+        for (var key : newByKey.keySet()) {
+            if (!oldByKey.containsKey(key)) {
+                affectedSwimlanes.add(swimlaneForStatus(newByKey.get(key).getStatus()));
+            }
+        }
+
+        if (affectedSwimlanes.isEmpty()) {
+            cachedTiles = newTiles;
+            lastUpdateTimestamp = now;
+            return;
+        }
+
+        // 4. Re-render affected swimlanes
+        for (var swimlane : affectedSwimlanes) {
+            swimlane.renderAll(newTiles);
+        }
+
+        // 5. Apply highlights
+        for (var key : highlightKeys) {
+            var newTile = newByKey.get(key);
+            if (newTile != null) {
+                swimlaneForStatus(newTile.getStatus()).highlightTile(key);
+            }
+        }
+
+        cachedTiles = newTiles;
+        lastUpdateTimestamp = now;
+    }
+
+    // ========== Event Handlers ==========
 
     private void setDateRange(LocalDate start, LocalDate end) {
         this.startDate = start;
         this.endDate = end;
+        dateRangeChanged = true;
         triggerRefresh();
     }
 
     private void triggerRefresh() {
         refreshTriggerSignal.update(v -> v + 1);
-    }
-
-    private void refreshBoard() {
-        cachedTiles = bakeryService.listTiles(startDate, endDate);
-        detectTileChanges(cachedTiles);
-        reviewSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
-        acceptedSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
-        inProgressSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
-        completedSwimlane.setTiles(cachedTiles, highlightedKeys, newKeys);
-    }
-
-    /**
-     * Detects new and modified tiles by comparing content hashes against the previous refresh.
-     * Skips on the first load to avoid highlighting every tile on page open.
-     */
-    private void detectTileChanges(List<BakeryTile> tiles) {
-        highlightedKeys = new HashSet<>();
-        newKeys = new HashSet<>();
-
-        if (previousTileHashes != null) {
-            for (var tile : tiles) {
-                var key = tile.getGroupingKey();
-                var hash = computeTileHash(tile);
-                var prevHash = previousTileHashes.get(key);
-                if (prevHash == null) {
-                    highlightedKeys.add(key);
-                    newKeys.add(key);
-                } else if (!prevHash.equals(hash)) {
-                    highlightedKeys.add(key);
-                }
-            }
-        }
-
-        previousTileHashes = new HashMap<>();
-        for (var tile : tiles) {
-            previousTileHashes.put(tile.getGroupingKey(), computeTileHash(tile));
-        }
-    }
-
-    private static int computeTileHash(BakeryTile tile) {
-        return Objects.hash(
-                tile.getStatus(), tile.getTotalQuantity(), tile.getOrderCount(),
-                tile.isHasNotes(), tile.isHasUnreadMessages(),
-                tile.isOnHold());
     }
 
     private void onTileClick(BakeryTile tile) {
@@ -230,77 +355,27 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
 
     /**
      * Unified drop handler for both status transitions and reordering.
-     *
-     * <p>If the target status matches the tile's current status, this is a reorder operation.
-     * Otherwise, it's a status transition with an optional position.
+     * Cleans up drag mode on all swimlanes first, because the subsequent
+     * reconcile will replace tile components — destroying the drag source
+     * element and preventing the browser's {@code dragend} event from
+     * reaching the server.
      */
     private void onTileDrop(BakeryTile tile, OrderItemStatus targetStatus, int position) {
+        onTileDragEnd();
+
         if (tile.getStatus() == targetStatus) {
-            // Reorder within same status
             reorderTile(tile, targetStatus, position);
         } else {
-            // Status transition (with optional position)
             transitionTile(tile, targetStatus, position);
         }
-    }
-
-    /**
-     * Reorders a tile within its current status by computing the full new order
-     * and persisting all positions at once.
-     */
-    private void reorderTile(BakeryTile tile, OrderItemStatus status, int position) {
-        try {
-            // Build the current ordered list of grouping keys for this status + date
-            var currentOrder = new ArrayList<>(cachedTiles.stream()
-                    .filter(t -> t.getStatus() == status && t.getDueDate().equals(tile.getDueDate()))
-                    .map(BakeryTile::getGroupingKey)
-                    .toList());
-
-            // Remove the dragged tile from its current position
-            currentOrder.remove(tile.getGroupingKey());
-
-            // Insert at the target position (clamped to list size)
-            var insertAt = Math.min(position, currentOrder.size());
-            currentOrder.add(insertAt, tile.getGroupingKey());
-
-            bakeryService.saveTileOrder(status, tile.getDueDate(), currentOrder);
-            triggerRefresh();
-        } catch (Exception e) {
-            Notification.show("Failed to reorder: " + e.getMessage(),
-                    5000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
-
-    /**
-     * Computes the set of statuses that are valid (active) drop targets for the given tile.
-     * Applies static transition rules from the enum plus dynamic constraints.
-     */
-    private Set<OrderItemStatus> computeActiveTargets(BakeryTile tile) {
-        var targets = new HashSet<>(tile.getStatus().getValidBakeryTargets());
-
-        // Today-only constraint: IN_PROGRESS only allowed for today's items
-        if (targets.contains(OrderItemStatus.IN_PROGRESS)
-                && tile.getDueDate().isAfter(LocalDate.now())) {
-            targets.remove(OrderItemStatus.IN_PROGRESS);
-        }
-
-        // Hold constraint: IN_PROGRESS blocked if tile is on hold
-        if (targets.contains(OrderItemStatus.IN_PROGRESS) && tile.isOnHold()) {
-            targets.remove(OrderItemStatus.IN_PROGRESS);
-        }
-
-        return targets;
     }
 
     private void transitionTile(BakeryTile tile, OrderItemStatus newStatus, int position) {
         // Rejection requires a message dialog
         if (newStatus == OrderItemStatus.REJECTED) {
             var rejectDialog = new RejectMessageDialog();
-            rejectDialog.addConfirmListener(e -> {
-                performTransition(tile, newStatus, e.getMessage());
-                updateTilePosition(tile, newStatus, position);
-            });
+            rejectDialog.addConfirmListener(e ->
+                    executeTransition(tile, newStatus, position, e.getMessage()));
             rejectDialog.open();
             return;
         }
@@ -322,77 +397,16 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
             return;
         }
 
-        performTransition(tile, newStatus, null);
-        updateTilePosition(tile, newStatus, position);
-    }
-
-    private void performTransition(BakeryTile tile, OrderItemStatus newStatus, String rejectionMessage) {
-        try {
-            if (tile.isBatchable()) {
-                // Transition all items in the batch
-                var itemIds = tile.getItemIds();
-                var itemVersions = tile.getItemVersions();
-                for (var i = 0; i < itemIds.size(); i++) {
-                    // Find the order for this item
-                    var details = bakeryService.getTileDetails(tile.getGroupingKey());
-                    for (var detail : details) {
-                        if (detail.getItemId().equals(itemIds.get(i))) {
-                            if (newStatus == OrderItemStatus.REJECTED && rejectionMessage != null) {
-                                orderService.rejectItem(
-                                        detail.getOrderId(), detail.getItemId(),
-                                        rejectionMessage, itemVersions.get(i));
-                            } else {
-                                orderService.updateItemStatus(
-                                        detail.getOrderId(), detail.getItemId(),
-                                        newStatus, itemVersions.get(i));
-                            }
-                            break;
-                        }
-                    }
-                }
-            } else {
-                if (newStatus == OrderItemStatus.REJECTED && rejectionMessage != null) {
-                    orderService.rejectItem(
-                            tile.getOrderId(), tile.getItemId(),
-                            rejectionMessage, tile.getItemVersion());
-                } else {
-                    orderService.updateItemStatus(
-                            tile.getOrderId(), tile.getItemId(),
-                            newStatus, tile.getItemVersion());
-                }
-            }
-            Notification.show("Status updated to " + newStatus.getDisplayName(),
-                    3000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-        } catch (StaleDataException _) {
-            Notification.show("Item was modified by another user. Board refreshed.",
-                    5000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_WARNING);
-        } catch (Exception e) {
-            Notification.show("Failed to update status: " + e.getMessage(),
-                    5000, Notification.Position.BOTTOM_START)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
-
-    /**
-     * Updates tile positions after a status transition: removes from the source group,
-     * inserts into the target group at the requested position, and resequences both groups.
-     */
-    private void updateTilePosition(BakeryTile tile, OrderItemStatus newStatus, int position) {
-        try {
-            bakeryService.transitionTilePosition(
-                    tile.getGroupingKey(), tile.getStatus(), newStatus,
-                    tile.getDueDate(), position);
-        } catch (Exception e) {
-            // Position save failure is non-critical; the status transition already succeeded
-        }
+        executeTransition(tile, newStatus, position, null);
     }
 
     private void undoTransition(BakeryTile tile) {
         try {
-            var previousStatus = bakeryService.undoTileTransition(tile.getGroupingKey());
-            Notification.show("Reverted to " + previousStatus.getDisplayName(),
+            var previousStatus = new OrderItemStatus[1];
+            runGuarded(() ->
+                    previousStatus[0] = bakeryService.undoTileTransition(tile.getGroupingKey()));
+            fullLoad();
+            Notification.show("Reverted to " + previousStatus[0].getDisplayName(),
                     3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (Exception e) {
@@ -400,5 +414,49 @@ public class BakeryView extends Composite<VerticalLayout> implements HasSize, Ha
                     5000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    // ========== Utilities ==========
+
+    /**
+     * Runs a service operation with the signal effect guard active.
+     * Prevents mid-operation refreshes caused by synchronous signal notifications.
+     */
+    private void runGuarded(Runnable operation) {
+        operationInProgress = true;
+        try {
+            operation.run();
+        } finally {
+            operationInProgress = false;
+        }
+    }
+
+    private BakerySwimlane swimlaneForStatus(OrderItemStatus status) {
+        for (var swimlane : List.of(reviewSwimlane, acceptedSwimlane, inProgressSwimlane, completedSwimlane)) {
+            if (swimlane.handlesStatus(status)) {
+                return swimlane;
+            }
+        }
+        throw new IllegalArgumentException("No swimlane for " + status);
+    }
+
+    /**
+     * Computes the set of statuses that are valid (active) drop targets for the given tile.
+     */
+    private Set<OrderItemStatus> computeActiveTargets(BakeryTile tile) {
+        var targets = new HashSet<>(tile.getStatus().getValidBakeryTargets());
+
+        // Today-only constraint: IN_PROGRESS only allowed for today's items
+        if (targets.contains(OrderItemStatus.IN_PROGRESS)
+                && tile.getDueDate().isAfter(LocalDate.now())) {
+            targets.remove(OrderItemStatus.IN_PROGRESS);
+        }
+
+        // Hold constraint: IN_PROGRESS blocked if tile is on hold
+        if (targets.contains(OrderItemStatus.IN_PROGRESS) && tile.isOnHold()) {
+            targets.remove(OrderItemStatus.IN_PROGRESS);
+        }
+
+        return targets;
     }
 }

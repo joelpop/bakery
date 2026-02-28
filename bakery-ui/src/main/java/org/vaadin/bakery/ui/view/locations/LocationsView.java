@@ -82,7 +82,7 @@ public class LocationsView extends Composite<VerticalLayout> implements HasSize,
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
-        changeTracker = new ChangeTracker<>();
+        changeTracker = new ChangeTracker<>(DataChangeSignals.locationChanges());
 
         // Signal bindings - apply "row-highlight" CSS part to changed rows for animated highlight
         grid.setPartNameGenerator(location -> changeTracker.isHighlighted(location.getId()) ? "row-highlight" : null);
@@ -119,7 +119,7 @@ public class LocationsView extends Composite<VerticalLayout> implements HasSize,
 
     private void refreshGrid() {
         var newData = locationService.list();
-        changeTracker.detectChanges(newData);
+        changeTracker.processChanges(newData);
         grid.setItems(newData);
     }
 }

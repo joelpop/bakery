@@ -54,7 +54,7 @@ public class JpaProductService implements ProductService {
     public ProductSummary create(ProductSummary product) {
         var entity = productMapper.toNewEntity(product);
         var saved = productRepository.save(entity);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT, saved.getId());
         return productMapper.toSummary(saved);
     }
 
@@ -64,14 +64,14 @@ public class JpaProductService implements ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
         productMapper.toEntity(product, entity);
         JpaServiceHelper.flushOrThrowStale(productRepository, "product", id);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT, id);
         return productMapper.toSummary(entity);
     }
 
     @Override
     public void delete(Long id) {
         productRepository.deleteById(id);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.PRODUCT, id);
     }
 
     @Override

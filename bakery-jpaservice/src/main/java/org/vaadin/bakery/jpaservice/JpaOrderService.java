@@ -158,7 +158,7 @@ public class JpaOrderService implements OrderService {
 
         var saved = orderRepository.save(entity);
         createSystemEvent(saved, "Order created");
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, saved.getId());
         var result = orderMapper.toDetail(saved);
         result.setNewCustomerCreated(newCustomerCreated);
         return result;
@@ -223,7 +223,7 @@ public class JpaOrderService implements OrderService {
             createSystemEvent(entity, "Additional details updated");
         }
 
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, id);
         return orderMapper.toDetail(entity);
     }
 
@@ -242,7 +242,7 @@ public class JpaOrderService implements OrderService {
             clearUndoEntriesForOrder(entity);
         }
 
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, id);
     }
 
     @Override
@@ -253,7 +253,7 @@ public class JpaOrderService implements OrderService {
         entity.setPaid(true);
         JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
         createSystemEvent(entity, "Marked as paid");
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, id);
     }
 
     @Override
@@ -313,7 +313,7 @@ public class JpaOrderService implements OrderService {
 
         createSystemEvent(order, "Item \"" + item.getProduct().getName() + "\" status changed to " + newStatus.getDisplayName());
         recalculateOrderStatus(order);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, orderId);
     }
 
     @Override
@@ -332,7 +332,7 @@ public class JpaOrderService implements OrderService {
         createStaffMessage(order, message, item);
         createSystemEvent(order, "Item \"" + item.getProduct().getName() + "\" rejected");
         recalculateOrderStatus(order);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, orderId);
     }
 
     @Override
@@ -356,7 +356,7 @@ public class JpaOrderService implements OrderService {
         createSystemEvent(order, "Item \"" + item.getProduct().getName() + "\" resolved — returned to review");
         recalculateOrderStatus(order);
         clearUndoEntriesForItem(item);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, orderId);
     }
 
     @Override
@@ -380,7 +380,7 @@ public class JpaOrderService implements OrderService {
         createSystemEvent(order, "Item \"" + item.getProduct().getName() + "\" canceled");
         recalculateOrderStatus(order);
         clearUndoEntriesForItem(item);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, orderId);
     }
 
     @Override
@@ -391,7 +391,7 @@ public class JpaOrderService implements OrderService {
         entity.setPaid(!entity.isPaid());
         JpaServiceHelper.flushOrThrowStale(orderRepository, "order", id);
         createSystemEvent(entity, entity.isPaid() ? "Marked as paid" : "Marked as unpaid");
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, id);
     }
 
     @Override
@@ -412,7 +412,7 @@ public class JpaOrderService implements OrderService {
             throw new IllegalStateException("Order must be Ready for Pick Up or Picked Up to toggle");
         }
 
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.ORDER, id);
     }
 
     /**

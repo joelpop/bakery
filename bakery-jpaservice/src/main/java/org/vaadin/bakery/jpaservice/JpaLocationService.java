@@ -52,7 +52,7 @@ public class JpaLocationService implements LocationService {
     public LocationSummary create(LocationSummary location) {
         var entity = locationMapper.toNewEntity(location);
         var saved = locationRepository.save(entity);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION, saved.getId());
         return locationMapper.toSummary(saved);
     }
 
@@ -62,14 +62,14 @@ public class JpaLocationService implements LocationService {
                 .orElseThrow(() -> new IllegalArgumentException("Location not found: " + id));
         locationMapper.toEntity(location, entity);
         JpaServiceHelper.flushOrThrowStale(locationRepository, "location", id);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION, id);
         return locationMapper.toSummary(entity);
     }
 
     @Override
     public void delete(Long id) {
         locationRepository.deleteById(id);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.LOCATION, id);
     }
 
     @Override

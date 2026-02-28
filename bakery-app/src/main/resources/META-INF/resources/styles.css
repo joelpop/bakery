@@ -293,18 +293,19 @@ vaadin-grid::part(cell numeric) {
 
 @keyframes highlight-fade {
     0%   { background-color: var(--lumo-base-color); }
-    15%  { background-color: color-mix(in srgb, gold 15%, var(--lumo-base-color)); }
+    8%   { background-color: color-mix(in srgb, gold 25%, var(--lumo-base-color)); }
+    60%  { background-color: color-mix(in srgb, gold 25%, var(--lumo-base-color)); }
     100% { background-color: var(--lumo-base-color); }
 }
 
-/* Grid row highlight - fades in over ~0.6s, then slowly fades out */
+/* Grid row highlight - fades in quickly, holds for ~5s, then fades out over ~3s */
 vaadin-grid::part(row-highlight) {
-    animation: highlight-fade 4s ease;
+    animation: highlight-fade 6s ease-out;
 }
 
-/* Card highlight - fades in over ~0.6s, then slowly fades out */
+/* Card highlight - fades in quickly, holds for ~5s, then fades out over ~3s */
 .card-highlight {
-    animation: highlight-fade 4s ease;
+    animation: highlight-fade 6s ease-out;
 }
 
 /* New card appearance animation */
@@ -669,13 +670,9 @@ vaadin-grid::part(row-highlight) {
     transform: translateY(-1px);
 }
 
-/* Tile change highlighting — reuses existing highlight-fade and card-appear keyframes */
+/* Tile change highlighting — reuses existing highlight-fade keyframes */
 .bakery-tile.tile-highlight {
-    animation: highlight-fade 4s ease;
-}
-
-.bakery-tile.tile-new {
-    animation: card-appear 0.3s ease-out;
+    animation: highlight-fade 6s ease-out;
 }
 
 /* Dragged tile ghost */

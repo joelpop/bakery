@@ -111,7 +111,7 @@ public class UsersView extends Composite<VerticalLayout> implements HasSize, Has
 
         // Signal definitions
         refreshTriggerSignal = new ValueSignal<>(0);
-        changeTracker = new ChangeTracker<>();
+        changeTracker = new ChangeTracker<>(DataChangeSignals.userChanges());
 
         // Signal bindings - apply "row-highlight" CSS part to changed rows for animated highlight
         grid.setPartNameGenerator(user -> changeTracker.isHighlighted(user.getId()) ? "row-highlight" : null);
@@ -162,7 +162,7 @@ public class UsersView extends Composite<VerticalLayout> implements HasSize, Has
 
     private void refreshGrid() {
         var newData = userService.list();
-        changeTracker.detectChanges(newData);
+        changeTracker.processChanges(newData);
         allUsers = newData;
         filterGrid(searchField.getValue());
     }

@@ -71,7 +71,7 @@ public class JpaUserService implements UserService {
         var entity = userMapper.toNewEntity(user);
         entity.setPasswordHash(passwordEncoder.encode(user.getPassword()));
         var saved = userRepository.save(entity);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER, saved.getId());
         return userMapper.toDetail(saved);
     }
 
@@ -84,14 +84,14 @@ public class JpaUserService implements UserService {
             entity.setPasswordHash(passwordEncoder.encode(user.getPassword()));
         }
         JpaServiceHelper.flushOrThrowStale(userRepository, "user", id);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER, id);
         return userMapper.toDetail(entity);
     }
 
     @Override
     public void delete(Long id) {
         userRepository.deleteById(id);
-        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER);
+        dataChangeNotifier.notifyChange(DataChangeNotifier.EntityType.USER, id);
     }
 
     @Override

@@ -19,6 +19,7 @@ import org.vaadin.bakery.uimodel.type.OrderItemStatus;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +41,10 @@ import java.util.stream.Collectors;
  *       swimlanes during a drag — source and target alike.</li>
  * </ul>
  *
+ * <p>Updates are handled by calling {@link #renderAll} to rebuild the tile list,
+ * followed by {@link #highlightTile} for changed tiles. This single update path
+ * is used for both local DnD and cross-session changes.
+ *
  * <p><b>Important:</b> The source swimlane must NOT remove the dragged component
  * from the DOM during drag, or the browser will cancel the drag operation.
  * The overlay panel approach avoids this by leaving all tiles in place.
@@ -58,9 +63,9 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
     private Consumer<BakeryTile> dragStartHandler;
     private Runnable dragEndHandler;
     private TileDropHandler tileDropHandler;
-    private List<BakeryTile> cachedTiles;
-    private Set<String> highlightedKeys;
-    private Set<String> newKeys;
+
+    /** O(1) component lookup by grouping key. Maintained by all update operations. */
+    private Map<String, BakeryTileComponent> componentsByKey;
 
     // Drag mode state — tracks components inserted during drag so they can be removed on exit
     private List<Component> dragModeInsertions;
@@ -87,7 +92,7 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
                           Map<OrderItemStatus, Integer> flexWeights) {
         this.statuses = statuses;
         this.flexWeights = flexWeights;
-        cachedTiles = List.of();
+        componentsByKey = new HashMap<>();
 
         // Component initializations
         var root = getContent();
@@ -141,31 +146,70 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
         root.add(header, body);
     }
 
+    // ========== Path 1: Full Rebuild ==========
+
     /**
-     * Sets the tiles to display in this swimlane with change highlighting.
-     * Also cleans up any active drag mode state, since a data refresh
-     * effectively ends the drag interaction.
+     * Rebuilds the entire swimlane from scratch with the given tiles.
+     * Used for initial load and date range changes. Populates {@link #componentsByKey}.
      *
-     * @param allTiles        all tiles from the board; this method filters to relevant statuses
-     * @param highlightedKeys grouping keys of tiles that are new or modified
-     * @param newKeys         grouping keys of tiles that are newly added
+     * @param allTiles all tiles from the board; this method filters to relevant statuses
      */
-    public void setTiles(List<BakeryTile> allTiles, Set<String> highlightedKeys, Set<String> newKeys) {
-        cachedTiles = allTiles;
-        this.highlightedKeys = highlightedKeys;
-        this.newKeys = newKeys;
-        // Clean up drag mode artifacts before rendering (data refresh ends the drag)
+    public void renderAll(List<BakeryTile> allTiles) {
         cleanUpDragMode();
-        renderNormalMode();
+        componentsByKey = new HashMap<>();
+        tilesContainer.removeAll();
+        tilesContainer.addClassName(LumoUtility.Gap.SMALL);
+        tilesContainer.addClassName(LumoUtility.Padding.SMALL);
+        tilesContainer.getStyle().remove("flex");
+        tilesContainer.getStyle().remove("min-height");
+
+        var myTiles = allTiles.stream()
+                .filter(t -> statuses.contains(t.getStatus()))
+                .toList();
+
+        countBadge.setText(String.valueOf(myTiles.size()));
+
+        if (statuses.size() > 1) {
+            for (var status : statuses) {
+                var statusTiles = myTiles.stream()
+                        .filter(t -> t.getStatus() == status)
+                        .toList();
+                if (!statusTiles.isEmpty()) {
+                    addStatusSection(status.getDisplayName(), statusTiles);
+                }
+            }
+        } else {
+            myTiles.stream()
+                    .collect(Collectors.groupingBy(
+                            BakeryTile::getDueDate,
+                            LinkedHashMap::new,
+                            Collectors.toList()
+                    ))
+                    .forEach(this::addDateGroup);
+        }
+    }
+
+    /**
+     * Applies a highlight animation to the tile with the given key, if present.
+     *
+     * @param key the tile's grouping key
+     */
+    public void highlightTile(String key) {
+        var comp = componentsByKey.get(key);
+        if (comp != null) {
+            comp.addClassName("tile-highlight");
+        }
+    }
+
+    // ========== Drag Mode ==========
+
+    /** Returns whether this swimlane handles the given item status. */
+    public boolean handlesStatus(OrderItemStatus status) {
+        return statuses.contains(status);
     }
 
     /**
      * Enters drag mode with a translucent overlay panel and reorder insertion points.
-     *
-     * <p>All swimlanes get the same treatment during drag: an overlay panel on the
-     * left with status drop zones (First/Last sub-zones), and reorder insertion
-     * points between tiles of active statuses on the right. Tiles are never
-     * removed from the DOM, preventing any visual jumping.
      *
      * @param draggedTile   the tile being dragged
      * @param activeTargets the set of statuses that are valid transition targets
@@ -184,10 +228,10 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
         insertReorderDropZones(draggedTile, reorderStatuses);
 
         // 3. Mark the dragged tile with CSS class
-        tilesContainer.getChildren()
-                .filter(c -> c instanceof BakeryTileComponent tileComp
-                        && tileComp.getTile().getGroupingKey().equals(draggedTile.getGroupingKey()))
-                .forEach(c -> c.addClassName("v-dragged"));
+        var draggedComp = componentsByKey.get(draggedTile.getGroupingKey());
+        if (draggedComp != null) {
+            draggedComp.addClassName("v-dragged");
+        }
     }
 
     /**
@@ -196,32 +240,6 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
      */
     public void exitDragMode() {
         cleanUpDragMode();
-    }
-
-    /**
-     * Removes overlay panel, reorder zones, and drag CSS classes.
-     * Safe to call even when not in drag mode (no-op if nothing to clean up).
-     */
-    private void cleanUpDragMode() {
-        // Remove overlay panel
-        if (dropZonePanel != null) {
-            body.remove(dropZonePanel);
-            dropZonePanel = null;
-        }
-
-        // Remove reorder zones
-        if (dragModeInsertions != null) {
-            for (var comp : dragModeInsertions) {
-                tilesContainer.remove(comp);
-            }
-            dragModeInsertions = null;
-            tilesContainer.removeClassName("reorder-active");
-        }
-
-        // Remove v-dragged class from all tiles
-        tilesContainer.getChildren()
-                .filter(c -> c instanceof BakeryTileComponent)
-                .forEach(c -> c.removeClassName("v-dragged"));
     }
 
     /**
@@ -276,6 +294,8 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
         );
     }
 
+    // ========== Handler Setters ==========
+
     /** Sets the handler invoked when a tile is clicked. */
     public void setTileClickHandler(Consumer<BakeryTile> handler) {
         this.tileClickHandler = handler;
@@ -300,17 +320,136 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
         this.dragEndHandler = handler;
     }
 
+    // ========== Private: Rendering Helpers ==========
+
+    private void addDateGroup(LocalDate date, List<BakeryTile> tiles) {
+        var header = createDateHeaderSpan(date);
+        tilesContainer.add(header);
+
+        for (var tile : tiles) {
+            var comp = createTileComponent(tile);
+            componentsByKey.put(tile.getGroupingKey(), comp);
+            tilesContainer.add(comp);
+        }
+    }
+
+    private void addStatusSection(String sectionTitle, List<BakeryTile> tiles) {
+        var header = new Span(sectionTitle);
+        header.addClassNames(
+                LumoUtility.FontSize.XSMALL,
+                LumoUtility.TextColor.SECONDARY,
+                LumoUtility.FontWeight.SEMIBOLD,
+                LumoUtility.Padding.Horizontal.XSMALL,
+                LumoUtility.Margin.Top.SMALL
+        );
+        tilesContainer.add(header);
+
+        tiles.stream()
+                .collect(Collectors.groupingBy(
+                        BakeryTile::getDueDate,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ))
+                .forEach((date, dateTiles) -> {
+                    var dateLabel = createDateHeaderSpan(date);
+                    dateLabel.removeClassNames(
+                            LumoUtility.FontSize.XSMALL,
+                            LumoUtility.TextColor.SECONDARY,
+                            LumoUtility.FontWeight.SEMIBOLD,
+                            LumoUtility.Padding.Horizontal.XSMALL
+                    );
+                    dateLabel.addClassNames(
+                            LumoUtility.FontSize.XXSMALL,
+                            LumoUtility.TextColor.SECONDARY,
+                            LumoUtility.Padding.Left.SMALL
+                    );
+                    tilesContainer.add(dateLabel);
+
+                    for (var tile : dateTiles) {
+                        var comp = createTileComponent(tile);
+                        componentsByKey.put(tile.getGroupingKey(), comp);
+                        tilesContainer.add(comp);
+                    }
+                });
+    }
+
+    private BakeryTileComponent createTileComponent(BakeryTile tile) {
+        var component = new BakeryTileComponent(tile);
+        component.addTileClickListener(e -> {
+            if (tileClickHandler != null) {
+                tileClickHandler.accept(e.getTile());
+            }
+        });
+
+        // Add drag listeners for view-level coordination
+        var dragSource = DragSource.configure(component);
+        dragSource.addDragStartListener(_ -> {
+            if (dragStartHandler != null) {
+                dragStartHandler.accept(tile);
+            }
+        });
+        dragSource.addDragEndListener(_ -> {
+            if (dragEndHandler != null) {
+                dragEndHandler.run();
+            }
+        });
+
+        return component;
+    }
+
+    private Span createDateHeaderSpan(LocalDate date) {
+        var header = new Span(formatDateLabel(date));
+        header.addClassNames(
+                LumoUtility.FontSize.XSMALL,
+                LumoUtility.TextColor.SECONDARY,
+                LumoUtility.FontWeight.SEMIBOLD,
+                LumoUtility.Padding.Horizontal.XSMALL
+        );
+        header.getElement().setAttribute("data-date", date.toString());
+        return header;
+    }
+
+    private String formatDateLabel(LocalDate date) {
+        var today = LocalDate.now();
+        if (date.equals(today)) {
+            return "Today";
+        } else if (date.equals(today.plusDays(1))) {
+            return "Tomorrow";
+        } else if (date.isBefore(today)) {
+            return "Overdue - " + DATE_FORMATTER.format(date);
+        } else {
+            return DATE_FORMATTER.format(date);
+        }
+    }
+
+    // ========== Private: Drag Mode ==========
+
+    /**
+     * Removes overlay panel, reorder zones, and drag CSS classes.
+     * Safe to call even when not in drag mode (no-op if nothing to clean up).
+     */
+    private void cleanUpDragMode() {
+        // Remove overlay panel
+        if (dropZonePanel != null) {
+            body.remove(dropZonePanel);
+            dropZonePanel = null;
+        }
+
+        // Remove reorder zones
+        if (dragModeInsertions != null) {
+            for (var comp : dragModeInsertions) {
+                tilesContainer.remove(comp);
+            }
+            dragModeInsertions = null;
+            tilesContainer.removeClassName("reorder-active");
+        }
+
+        // Remove v-dragged class from all tile components
+        componentsByKey.values().forEach(c -> c.removeClassName("v-dragged"));
+    }
+
     /**
      * Creates the overlay panel with status drop zones for this swimlane.
-     *
-     * <p>Each status zone is split into "Top" (arrow up, inserts at position 0) and
-     * "Bottom" (arrow down, inserts at end) sub-zones with large arrow icons.
-     * Active zones are colored and interactive; disabled zones are greyed out.
-     * The source status is always active for quick first/last reorder.
-     *
-     * @param activeTargets statuses that are valid transition targets
-     * @param sourceStatus  the status of the tile being dragged (always active)
-     * @return the overlay panel Div
      */
     private Div createDropZonePanel(Set<OrderItemStatus> activeTargets, OrderItemStatus sourceStatus) {
         var panel = new Div();
@@ -348,15 +487,6 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
 
     /**
      * Creates a "Top" or "Bottom" sub-zone within a panel status zone.
-     *
-     * <p>Each sub-zone displays a large arrow icon in the status color. On hover
-     * or drag-over, the colors invert (icon becomes white, background fills with
-     * the status color).
-     *
-     * @param targetStatus the status this zone transitions to (or reorders within)
-     * @param position     0 for "Top", Integer.MAX_VALUE for "Bottom"
-     * @param vaadinIcon   the arrow icon to display (ARROW_UP or ARROW_DOWN)
-     * @return the sub-zone Div configured as a drop target
      */
     private Div createPanelSubZone(OrderItemStatus targetStatus, int position, VaadinIcon vaadinIcon) {
         var subZone = new Div();
@@ -380,13 +510,6 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
 
     /**
      * Inserts reorder drop zones between tiles of the given statuses.
-     *
-     * <p>For the dragged tile's status, no-op positions (adjacent to the dragged tile)
-     * are skipped. For other active statuses, zones are inserted at all positions
-     * since the dragged tile isn't in that group.
-     *
-     * @param draggedTile     the tile being dragged
-     * @param reorderStatuses the set of statuses to insert reorder zones for
      */
     private void insertReorderDropZones(BakeryTile draggedTile, Set<OrderItemStatus> reorderStatuses) {
         if (reorderStatuses.isEmpty()) {
@@ -494,11 +617,6 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
 
     /**
      * Creates a reorder drop zone that invokes the unified drop handler with a computed position.
-     *
-     * @param targetStatus the status of the target position
-     * @param targetIndex  the position index within the status group
-     * @param currentOrder the current ordered list of grouping keys for this status
-     * @param draggedKey   the dragged tile's grouping key (for source status), or null for target statuses
      */
     private Div createReorderDropZone(OrderItemStatus targetStatus, int targetIndex,
                                        List<String> currentOrder, String draggedKey) {
@@ -526,132 +644,6 @@ public class BakerySwimlane extends Composite<Div> implements HasSize, HasStyle 
                 }));
 
         return dropZone;
-    }
-
-    private void renderNormalMode() {
-        tilesContainer.removeAll();
-        // Restore default styling (may have been modified by drag mode)
-        tilesContainer.addClassName(LumoUtility.Gap.SMALL);
-        tilesContainer.addClassName(LumoUtility.Padding.SMALL);
-        tilesContainer.getStyle().remove("flex");
-        tilesContainer.getStyle().remove("min-height");
-
-        var myTiles = cachedTiles.stream()
-                .filter(t -> statuses.contains(t.getStatus()))
-                .toList();
-
-        countBadge.setText(String.valueOf(myTiles.size()));
-
-        if (statuses.size() > 1) {
-            for (var status : statuses) {
-                var statusTiles = myTiles.stream()
-                        .filter(t -> t.getStatus() == status)
-                        .toList();
-                if (!statusTiles.isEmpty()) {
-                    addStatusSection(status.getDisplayName(), statusTiles);
-                }
-            }
-        } else {
-            myTiles.stream()
-                    .collect(Collectors.groupingBy(
-                            BakeryTile::getDueDate,
-                            LinkedHashMap::new,
-                            Collectors.toList()
-                    ))
-                    .forEach(this::addDateGroup);
-        }
-    }
-
-    private void addDateGroup(LocalDate date, List<BakeryTile> tiles) {
-        var header = new Span(formatDateLabel(date));
-        header.addClassNames(
-                LumoUtility.FontSize.XSMALL,
-                LumoUtility.TextColor.SECONDARY,
-                LumoUtility.FontWeight.SEMIBOLD,
-                LumoUtility.Padding.Horizontal.XSMALL
-        );
-        tilesContainer.add(header);
-
-        for (var tile : tiles) {
-            tilesContainer.add(createTileComponent(tile));
-        }
-    }
-
-    private void addStatusSection(String sectionTitle, List<BakeryTile> tiles) {
-        var header = new Span(sectionTitle);
-        header.addClassNames(
-                LumoUtility.FontSize.XSMALL,
-                LumoUtility.TextColor.SECONDARY,
-                LumoUtility.FontWeight.SEMIBOLD,
-                LumoUtility.Padding.Horizontal.XSMALL,
-                LumoUtility.Margin.Top.SMALL
-        );
-        tilesContainer.add(header);
-
-        tiles.stream()
-                .collect(Collectors.groupingBy(
-                        BakeryTile::getDueDate,
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ))
-                .forEach((date, dateTiles) -> {
-                    var dateLabel = new Span(formatDateLabel(date));
-                    dateLabel.addClassNames(
-                            LumoUtility.FontSize.XXSMALL,
-                            LumoUtility.TextColor.SECONDARY,
-                            LumoUtility.Padding.Left.SMALL
-                    );
-                    tilesContainer.add(dateLabel);
-
-                    for (var tile : dateTiles) {
-                        tilesContainer.add(createTileComponent(tile));
-                    }
-                });
-    }
-
-    private BakeryTileComponent createTileComponent(BakeryTile tile) {
-        var component = new BakeryTileComponent(tile);
-        component.addTileClickListener(e -> {
-            if (tileClickHandler != null) {
-                tileClickHandler.accept(e.getTile());
-            }
-        });
-
-        // Change highlighting
-        var key = tile.getGroupingKey();
-        if (newKeys != null && newKeys.contains(key)) {
-            component.addClassName("tile-new");
-        } else if (highlightedKeys != null && highlightedKeys.contains(key)) {
-            component.addClassName("tile-highlight");
-        }
-
-        // Add drag listeners for view-level coordination
-        var dragSource = DragSource.configure(component);
-        dragSource.addDragStartListener(_ -> {
-            if (dragStartHandler != null) {
-                dragStartHandler.accept(tile);
-            }
-        });
-        dragSource.addDragEndListener(_ -> {
-            if (dragEndHandler != null) {
-                dragEndHandler.run();
-            }
-        });
-
-        return component;
-    }
-
-    private String formatDateLabel(LocalDate date) {
-        var today = LocalDate.now();
-        if (date.equals(today)) {
-            return "Today";
-        } else if (date.equals(today.plusDays(1))) {
-            return "Tomorrow";
-        } else if (date.isBefore(today)) {
-            return "Overdue - " + DATE_FORMATTER.format(date);
-        } else {
-            return DATE_FORMATTER.format(date);
-        }
     }
 
     /**
