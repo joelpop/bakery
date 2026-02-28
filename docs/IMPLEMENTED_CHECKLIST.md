@@ -848,17 +848,21 @@ The following decisions were made during documentation review to resolve conflic
   - [x] @Route("bakery"), @RolesAllowed({ROLE_ADMIN, ROLE_BAKER})
   - [x] Date range preset buttons (Today, Today+Tomorrow, This Week)
   - [x] Default date range: Today (spec says Today+Tomorrow — see gaps)
-  - [x] Auto-refresh via DataChangeSignals.orderVersion() + local ValueSignal trigger
+  - [x] Two-path update architecture: `fullLoad()` (initial render, date range change) + `reconcile()` (local DnD and cross-session changes)
+  - [x] Auto-refresh via `Signal.effect()` subscribing to `DataChangeSignals.orderVersion()` + local `refreshTriggerSignal`
+  - [x] `operationInProgress` guard prevents mid-operation re-entry; `triggerRefresh()` fires after guard releases
   - [x] Unified drop handler dispatching reorder vs transition based on same/different status
   - [x] Active target computation with today-only rule and hold constraint
   - [x] Batch transition for batchable tiles (all items updated individually with version check)
   - [x] Reorder persistence via saveTileOrder() (full ordered list, not single position)
   - [x] Position save after transition via transitionTilePosition() (removes from source, inserts in target, resequences both)
-  - [x] Undo via TileDetailOverlay UndoEvent → bakeryService.undoTileTransition()
+  - [x] Undo via TileDetailOverlay UndoEvent → bakeryService.undoTileTransition() → fullLoad()
   - [x] StaleDataException handling with warning notification
-  - [x] Change highlighting on tiles (content hash tracking, gold fade for modified, scale-in for new)
+  - [x] Tile-level change highlighting via `tileChanges` SharedMapSignal (gold fade animation, 6-second duration)
 - [x] **BakerySwimlane** — Status column with date-grouped tiles and overlay panel drag system
   - [x] Four swimlanes: To Review, Reviewed (Rejected+Accepted), In Progress, Done (Produced+Canceled)
+  - [x] Single update path: `renderAll()` rebuilds tile list, `highlightTile()` applies gold fade to changed tiles
+  - [x] `componentsByKey` map for O(1) tile component lookup by grouping key
   - [x] Overlay panel (left ~30%): Absolutely positioned status drop zones with First/Last sub-zones
   - [x] Per-status color theming via CSS custom property (--_panel-zone-color)
   - [x] Active zones: Tinted background, large chevron icons (ANGLE_DOUBLE_UP/DOWN), vertical status label
@@ -868,9 +872,11 @@ The following decisions were made during documentation review to resolve conflic
   - [x] No-op zone skipping for source status (adjacent to dragged tile)
   - [x] Auto-scroll on drag: Client-side JS, 50px edge detection, 6px/frame via requestAnimationFrame
   - [x] Tiles remain in DOM during drag (no layout shift)
-  - [x] Clean drag mode exit: Remove panel, remove reorder zones, remove CSS classes
+  - [x] Clean drag mode exit: Remove panel, remove reorder zones, remove CSS classes; `onTileDragEnd()` called in `onTileDrop()` before reconcile to ensure cleanup when DOM replacement prevents `dragend` event delivery
 - [x] **BakeryTileComponent** — Draggable tile card with product info and indicators
   - [x] DragSource for drag-and-drop transitions
+  - [x] `update(BakeryTile)` method for in-place content refresh (root element preserved for CSS animations)
+  - [x] `buildContent(Div)` extracted from constructor for reuse by `update()`
   - [x] Hold indicator (lock icon with tooltip) when on hold
   - [x] Unread message indicator (blue dot)
   - [x] Notes indicator (comment icon)
@@ -896,9 +902,14 @@ The following decisions were made during documentation review to resolve conflic
 ### 16.1 Stale Data Prevention
 
 - [x] **Version tracking** - AbstractModel base class with version field
-- [x] **Shared signals** - DataChangeSignals with SharedNumberSignal for cross-session notification
-  - [x] orderVersion, userVersion, productVersion, locationVersion, messageVersion signals
+- [x] **Shared signals** - DataChangeSignals with SharedNumberSignal and SharedMapSignal for cross-session notification
+  - [x] Version triggers: orderVersion, userVersion, productVersion, locationVersion, messageVersion (`SharedNumberSignal`)
+  - [x] Change detail maps: orderChanges, userChanges, productChanges, locationChanges, messageChanges (`SharedMapSignal<Long>` — entity ID → timestamp)
+  - [x] Tile-level signal: tileChanges (`SharedMapSignal<Long>` — grouping key → timestamp) for bakery board reconciliation
 - [x] **DataChangeNotifier** - Bridge interface (bakery-service) for service→UI layer communication
+  - [x] `notifyChange(EntityType, long entityId)` — entity-level change broadcast
+  - [x] `notifyTileChange(String groupingKey)` — tile-level change broadcast (default no-op)
+  - [x] `notifyMessage(MessageNotification)` — targeted message broadcast (default no-op)
 - [x] **DataChangeSignalUpdater** - UI-side listener that increments shared signals on data changes
 - [x] **List view auto-refresh** - All list views (Storefront, Users, Products, Locations, Dashboard) react to signal changes
   - [x] Change detection with highlight animations for new/modified items

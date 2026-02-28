@@ -41,40 +41,21 @@ Traditional username/password authentication using Spring Security form login.
 **Behavior**:
 - Credentials are submitted to Spring Security's login endpoint
 - Invalid credentials display an error message on the form
-- Successful authentication redirects to the originally requested view, or by default:
-  - **Admin**: Dashboard (business overview)
-  - **Baker/Barista**: Storefront (order management)
+- Successful authentication redirects to the originally requested view, or to the Storefront (default route) if no specific view was requested
 
-### Passkey Authentication (WebAuthn)
+**Planned**: Role-based default redirect (Admin → Dashboard, Baker → Bakery, Barista → Storefront). Currently all roles land on Storefront.
 
-Biometric and hardware security key authentication using the WebAuthn standard.
+### Passkey Authentication (WebAuthn) *(Deferred)*
+
+> **Note**: Full WebAuthn implementation deferred due to webauthn4j dependency issues. A placeholder passkey button is present in the UI but disabled with a "Coming Soon" label.
 
 | Element | Description |
 |---------|-------------|
-| Passkey Button | Initiates passkey authentication flow |
+| Passkey Button | Disabled placeholder — "Sign in with Passkey (Coming Soon)" |
 
-**Supported Authenticators**:
+**Planned Supported Authenticators** (when implemented):
 - **Platform authenticators**: TouchID, FaceID, Windows Hello, Android biometrics
 - **Roaming authenticators**: YubiKey, other FIDO2 security keys
-
-**Behavior**:
-- User clicks the passkey button
-- Browser prompts for biometric verification or security key
-- Authenticator validates user presence and identity
-- Server verifies the credential signature
-- Successful authentication establishes a session
-
-### Passkey Registration
-
-Users can register passkeys from their profile settings after initial password login.
-
-| Step | Description |
-|------|-------------|
-| 1 | User navigates to profile preferences |
-| 2 | User selects "Add Passkey" option |
-| 3 | Browser prompts for authenticator selection |
-| 4 | User completes biometric/PIN verification |
-| 5 | Passkey is registered and associated with user account |
 
 ---
 

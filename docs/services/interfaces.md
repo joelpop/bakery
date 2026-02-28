@@ -147,6 +147,99 @@ Filter criteria for order queries:
 
 ---
 
+## BakeryService
+
+Manages the bakery production board: tile listing, status transitions, position persistence, and undo.
+
+### Query Operations
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| listTiles | startDate: LocalDate, endDate: LocalDate | List&lt;BakeryTile&gt; | Fetch all tiles for date range (includes overdue non-terminal items) |
+| getTileDetails | groupingKey: String | List&lt;BakeryTileDetail&gt; | Get contributing order items for a tile |
+| getUndoStack | groupingKey: String | List&lt;OrderItemStatus&gt; | Get previous statuses for undo |
+
+### Mutation Operations
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| saveTileOrder | swimlane: OrderItemStatus, dueDate: LocalDate, orderedGroupingKeys: List&lt;String&gt;, movedGroupingKey: String | void | Bulk persist tile positions for a swimlane/date group |
+| transitionTile | tile: BakeryTile, newStatus: OrderItemStatus, position: int, rejectionMessage: String | void | Atomic tile transition (items, positions, events, roll-up, undo) |
+| undoTileTransition | groupingKey: String | OrderItemStatus | Undo most recent transition; returns previous status |
+
+---
+
+## OrderActivityService
+
+Manages the order activity timeline for staff messaging and system event recording.
+
+### Query Operations
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| listActivities | orderId: Long | List&lt;OrderActivity&gt; | Get all activities for an order |
+| listActivitiesSince | orderId: Long, since: Instant | List&lt;OrderActivity&gt; | Get activities since timestamp (incremental load) |
+| hasUnreadMessages | orderId: Long | boolean | Check if order has unread messages |
+
+### Mutation Operations
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| postMessage | orderId: Long, text: String | OrderActivity | Post a staff message to the activity timeline |
+| recordSystemEvent | orderId: Long, text: String, referencedItemId: Long | OrderActivity | Record an automated system event |
+| markRead | orderId: Long | void | Mark all messages as read for an order |
+
+---
+
+## CurrentUserService
+
+Provides access to the currently authenticated user.
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| getCurrentUserEmail | — | String | Email from security context |
+| getCurrentUser | — | Optional&lt;UserSummary&gt; | Current user as UI model |
+| isAdmin | — | boolean | Check if user has ADMIN role |
+| isBaker | — | boolean | Check if user has BAKER role |
+| isBarista | — | boolean | Check if user has BARISTA role |
+
+---
+
+## UserLocationService
+
+Session-scoped working location management. Persists the user's selected working location for the session.
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| getCurrentLocation | — | Optional&lt;LocationSummary&gt; | Get the user's current working location |
+| setCurrentLocation | location: LocationSummary | void | Set the working location for this session |
+| isCurrentLocationSet | — | boolean | Whether a location has been selected |
+| initializeFromUserPrimaryLocation | — | void | Auto-initialize from user's primary location |
+
+---
+
+## ClientDetailsService
+
+Lazily detects and caches browser client details per session.
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| getBrowserTimezone | — | ZoneId | Browser timezone (falls back to system default) |
+
+---
+
+## DataChangeNotifier
+
+Bridge interface for service implementations to notify the UI layer of data changes. Implemented by `DataChangeSignalUpdater` in `bakery-ui`.
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| notifyChange | entityType: EntityType, entityId: long | void | Broadcast entity-level change |
+| notifyTileChange | groupingKey: String | void | Broadcast tile-level change (default no-op) |
+| notifyMessage | notification: MessageNotification | void | Broadcast message notification (default no-op) |
+
+---
+
 ## DashboardService
 
 Provides analytics and KPI data.

@@ -17,13 +17,13 @@ The application provides user-friendly error pages for various error conditions.
 
 ## Not Found View
 
-Displayed when a user navigates to a route that does not exist.
+Displayed when a user navigates to a route that does not exist. Also used as the display for 403 Access Denied (see below).
 
 ### Layout
 
 | Element | Description |
 |---------|-------------|
-| Error Icon | Visual indicator (e.g., magnifying glass or 404 graphic) |
+| Error Icon | Search icon |
 | Heading | "Page Not Found" |
 | Message | "The page you're looking for doesn't exist or has been moved." |
 | Home Link | Button/link to return to the Storefront |
@@ -39,24 +39,23 @@ Displayed when a user navigates to a route that does not exist.
 
 ## Access Denied View
 
-Displayed when an authenticated user attempts to access a resource they don't have permission for.
+Displayed when an authenticated user attempts to access a resource they don't have permission for. **For security, this view is disguised as a 404 page** — it returns HTTP status `SC_NOT_FOUND` and shows the same content as the Not Found view to prevent information disclosure about protected resources.
 
 ### Layout
 
 | Element | Description |
 |---------|-------------|
-| Error Icon | Lock or shield icon |
-| Heading | "Access Denied" |
-| Message | "You don't have permission to view this page." |
+| Error Icon | Search icon (same as 404) |
+| Heading | "Page Not Found" (same as 404) |
+| Message | Same message as Not Found view |
 | Home Link | Button/link to return to the Storefront |
-| Contact Info | Suggestion to contact an administrator if access is needed |
 
 ### Logging
 
 | Field | Value |
 |-------|-------|
 | Level | WARN |
-| Message | Requested path, user ID, user role, timestamp |
+| Message | Requested path, user ID, user role, timestamp (logged server-side only) |
 
 ---
 
@@ -68,12 +67,12 @@ Displayed when an unexpected server error occurs.
 
 | Element | Description |
 |---------|-------------|
-| Error Icon | Warning or error indicator |
+| Error Icon | Warning icon |
 | Heading | "Something Went Wrong" |
-| Message | "We encountered an unexpected error. Our team has been notified." |
-| Error Reference | Unique error ID for support reference |
+| Message | Generic message — no stack traces or internal details exposed to the user |
+| Error Reference | UUID-based error reference ID for support correlation |
 | Home Link | Button/link to return to the Storefront |
-| Retry Option | Option to retry the previous action (where applicable) |
+| Retry Option | Page reload button |
 
 ### Logging
 
@@ -87,17 +86,17 @@ Displayed when an unexpected server error occurs.
 
 ## Invalid Parameters View
 
-Displayed when request parameters are invalid, malformed, or fail validation.
+Displayed when request parameters are invalid, malformed, or fail validation. Only shown if no 403 error is possible (otherwise displayed as 404 for security).
 
 ### Layout
 
 | Element | Description |
 |---------|-------------|
-| Error Icon | Warning indicator |
+| Error Icon | Exclamation circle icon |
 | Heading | "Invalid Request" |
 | Message | "The request contained invalid parameters." |
-| Details | Specific validation errors (when safe to display) |
-| Back Link | Button to go back or return to Storefront |
+| Details | Validation error details (when safe to display) |
+| Home Link | Button/link to return to the Storefront |
 
 ### Logging
 

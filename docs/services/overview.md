@@ -70,9 +70,15 @@ The service layer follows a clean separation between interfaces and implementati
 | `UserService` | User CRUD and authentication |
 | `CustomerService` | Customer management |
 | `ProductService` | Product catalog |
+| `LocationService` | Pickup location management |
 | `OrderService` | Order management |
 | `OrderActivityService` | Order messaging and activity timeline |
+| `BakeryService` | Bakery board tile listing, transitions, undo |
 | `DashboardService` | Analytics and KPIs |
+| `CurrentUserService` | Authenticated user access and role checking |
+| `UserLocationService` | Session-scoped working location management |
+| `ClientDetailsService` | Browser client details (timezone) |
+| `DataChangeNotifier` | Cross-session change notification bridge |
 
 ## Related Documentation
 

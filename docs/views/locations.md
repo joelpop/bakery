@@ -19,30 +19,31 @@ A grid displaying all locations with the following columns:
 | Column | Description | Sortable |
 |--------|-------------|----------|
 | Name | Display name of the location | Yes |
-| Code | Short identifier code | Yes |
 | Address | Physical address | No |
+| Timezone | IANA timezone ID | No |
 | Active | Whether location accepts new orders | Yes |
-| Order | Sort order in dropdowns | Yes |
+| Sort Order | Display order in dropdowns | Yes |
 
 ### Toolbar
 
 | Element | Description |
 |---------|-------------|
-| Search | Filter locations by name or code |
-| New Location | Button to create a new location |
+| + New location | Button to create a new location |
+
+### Cross-Session Updates
+The location grid auto-refreshes via shared signals when locations are modified in another session. Changed rows receive a temporary gold highlight animation.
 
 ---
 
 ## Location Dialog
 
-A dialog for creating and editing locations.
+A dialog for creating and editing locations. Uses delegation pattern (wraps Dialog rather than extending it). Includes stale data detection with a warning banner when external changes are detected.
 
 ### Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | Name | Text | Yes | Display name (e.g., "Downtown Store") |
-| Code | Text | Yes | Short unique code (e.g., "DOWNTOWN") |
 | Address | Text Area | No | Physical address |
 | Timezone | Text | Yes | IANA timezone ID for the location (e.g., "America/New_York") |
 | Default Country Code | Text | Yes | Country code for phone formatting at this location (e.g., "+1") |
@@ -54,9 +55,9 @@ A dialog for creating and editing locations.
 
 | Field | Rule |
 |-------|------|
-| Name | Required, unique, max 100 characters |
-| Code | Required, unique, max 20 characters, uppercase letters and underscores only |
+| Name | Required, unique |
 | Sort Order | Required, positive integer |
+| Active | At least one location must remain active |
 
 ---
 
@@ -106,7 +107,6 @@ A dialog for creating and editing locations.
 | Rule | Description |
 |------|-------------|
 | Unique names | Each location must have a unique name |
-| Unique codes | Each location must have a unique code |
 | Active requirement | At least one location must remain active |
 | Deletion protection | Locations with associated orders cannot be deleted |
 
